@@ -1,0 +1,10 @@
+INSERT INTO usuario(nombre_completo, correo, contrasena, cedula, telefono, rol) VALUES ("Nombre1", "correo1", "contrasena1", 1, 1, "rol1");
+INSERT INTO usuario(nombre_completo, correo, contrasena, cedula, telefono, rol) VALUES ("Nombre2", "correo2", "contrasena2", 2, 2, "rol2");
+INSERT INTO usuario(nombre_completo, correo, contrasena, cedula, telefono, rol) VALUES ("Nombre3", "correo3", "contrasena3", 3, 3, "rol3");
+INSERT INTO usuario(nombre_completo, correo, contrasena, cedula, telefono, rol) VALUES ("Nombre4", "correo4", "contrasena4", 4, 4, "rol4");
+INSERT INTO usuario(nombre_completo, correo, contrasena, cedula, telefono, rol) VALUES ("Nombre5", "correo5", "contrasena5", 5, 5, "rol5");
+INSERT INTO usuario(nombre_completo, correo, contrasena, cedula, telefono, rol) VALUES ("Nombre6", "correo6", "contrasena6", 6, 6, "rol6");
+INSERT INTO usuario(nombre_completo, correo, contrasena, cedula, telefono, rol) VALUES ("Nombre7", "correo7", "contrasena7", 7, 7, "rol7");
+INSERT INTO usuario(nombre_completo, correo, contrasena, cedula, telefono, rol) VALUES ("Nombre8", "correo8", "contrasena8", 8, 8, "rol8");
+INSERT INTO usuario(nombre_completo, correo, contrasena, cedula, telefono, rol) VALUES ("Nombre9", "correo9", "contrasena9", 9, 9, "rol9");
+INSERT INTO usuario(nombre_completo, correo, contrasena, cedula, telefono, rol) VALUES ("Nombre10", "correo10", "contrasena10", 10, 10, "rol10");

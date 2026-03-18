@@ -4,13 +4,18 @@ import co.edu.uceva.microserviciousuario.domain.model.Usuario;
 import co.edu.uceva.microserviciousuario.domain.repository.IUsuarioRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
 
+@Service
 public class UsuarioServiceImpl implements IUsuarioService {
 
     private IUsuarioRepository repository;
+
+    public UsuarioServiceImpl(IUsuarioRepository repository) {
+        this.repository = repository;
+    }
 
     @Override
     public List<Usuario> findAll() {
@@ -18,8 +23,8 @@ public class UsuarioServiceImpl implements IUsuarioService {
     }
 
     @Override
-    public Optional<Usuario> findById(long id) {
-        return repository.findById(id);
+    public Usuario findById(long id) {
+        return repository.findById(id).orElse(null);
     }
 
     @Override
