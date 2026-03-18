@@ -26,9 +26,9 @@ public class PlanillaRestController {
         return planillaService.save(planilla);
     }
 
-    @DeleteMapping("/planillas")
-    public void delete(@RequestBody Planilla planilla) {
-        planillaService.delete(planilla);
+    @DeleteMapping("/planillas/{id}")
+    public void delete(@PathVariable Long id) {
+        planillaService.deleteById(id);
     }
 
     @PutMapping("/planillas")

@@ -38,8 +38,8 @@ public class PlanillaServiceImpl implements IPlanillaService {
     }
 
     @Override
-    public void delete(Planilla planilla) {
-        repository.delete(planilla);
+    public void deleteById(long id) {
+        repository.deleteById(id);
     }
 
     @Override

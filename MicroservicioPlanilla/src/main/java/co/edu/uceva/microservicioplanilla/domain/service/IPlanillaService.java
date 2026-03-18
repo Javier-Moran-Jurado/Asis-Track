@@ -16,7 +16,7 @@ public interface IPlanillaService {
 
     public Planilla save(Planilla planilla);
 
-    public void delete(Planilla planilla);
+    public void deleteById(long id);
 
     public Page<Planilla> findAll(Pageable pageable);
 }

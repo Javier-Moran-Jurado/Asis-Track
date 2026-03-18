@@ -4,13 +4,12 @@ services:
   postgres:
     image: postgres:15
     container_name: postgres
-    restart: always
     environment:
       POSTGRES_DB: planilla_db
       POSTGRES_USER: devdb
-      POSTGRES_PASSWORD: 123456
+      POSTGRES_PASSWORD: a1b2c3d4
     ports:
-      - "5433:5432"
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
