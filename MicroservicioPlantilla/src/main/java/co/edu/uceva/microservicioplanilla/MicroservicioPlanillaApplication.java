@@ -1,13 +1,13 @@
-package co.edu.uceva.microservicioplantilla;
+package co.edu.uceva.microservicioplanilla;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class MicroservicioPlantillaApplication {
+public class MicroservicioPlanillaApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(MicroservicioPlantillaApplication.class, args);
+        SpringApplication.run(MicroservicioPlanillaApplication.class, args);
     }
 
 }

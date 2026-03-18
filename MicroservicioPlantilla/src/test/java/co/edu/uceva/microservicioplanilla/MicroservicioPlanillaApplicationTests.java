@@ -1,10 +1,10 @@
-package co.edu.uceva.microservicioplantilla;
+package co.edu.uceva.microservicioplanilla;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class MicroservicioPlantillaApplicationTests {
+class MicroservicioPlanillaApplicationTests {
 
     @Test
     void contextLoads() {
