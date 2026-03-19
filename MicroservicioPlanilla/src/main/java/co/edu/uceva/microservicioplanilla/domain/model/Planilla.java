@@ -1,5 +1,5 @@
 package co.edu.uceva.microservicioplanilla.domain.model;
-
+//solucionerror
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
