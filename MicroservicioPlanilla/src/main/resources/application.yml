@@ -1,0 +1,52 @@
+app:
+    api:
+        version: v1
+    version: 1.0.0
+logging:
+    level:
+        com:
+            zaxxer:
+                hikari: ERROR
+        org:
+            hibernate: ERROR
+            hibernate.SQL: DEBUG
+            springframework: ERROR
+        root: ERROR
+        web: INFO
+management:
+    endpoints:
+        web:
+            exposure:
+                include: '*'
+    server:
+        port: 8081
+server:
+    port: 8080
+spring:
+    application:
+        name: MicroservicioPlanilla
+    datasource:
+        driver-class-name: org.postgresql.Driver
+        hikari:
+            connection-timeout: 30000
+            idle-timeout: 600000
+            initialization-fail-timeout: 60000
+            max-lifetime: 1800000
+            maximum-pool-size: 10
+            minimum-idle: 5
+        password: a1b2c3d4
+        url: jdbc:postgresql://postgres:5432/planilla_db
+        username: devdb
+    jpa:
+        defer-datasource-initialization: true
+        hibernate:
+            ddl-auto: create
+        properties:
+            hibernate:
+                dialect: org.hibernate.dialect.PostgreSQLDialect
+        show-sql: true
+    main:
+        allow-circular-references: true
+    sql:
+        init:
+            mode: always
