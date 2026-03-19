@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: asistencia-postgres
+    environment:
+      POSTGRES_DB: asistencia_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - asistencia-network
+    restart: unless-stopped
+
+  app:
+    build: .
+    container_name: asistencia-app
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/asistencia_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+    depends_on:
+      - postgres
+    networks:
+      - asistencia-network
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+
+networks:
+  asistencia-network:
+    driver: bridge
