@@ -1,6 +1,7 @@
 package co.edu.uceva.microserviciousuario.domain.service;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -27,8 +28,8 @@ public class UsuarioServiceImpl implements IUsuarioService {
 
     @Override
     @Transactional
-    public Usuario findById(long id) {
-        return repository.findById(id).orElse(null);
+    public Optional<Usuario> findById(long id) {
+        return repository.findById(id);
     }
 
     @Override

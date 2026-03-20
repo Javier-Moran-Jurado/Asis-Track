@@ -1,0 +1,50 @@
+app:
+    api:
+        version: v1
+    version: 1.0.0
+logging:
+    level:
+        com:
+            zaxxer:
+                hikari: ERROR
+        org:
+            hibernate: ERROR
+            hibernate.SQL: DEBUG
+            springframework: ERROR
+        root: ERROR
+        web: INFO
+management:
+    endpoints:
+        web:
+            exposure:
+                include: '*'
+    server:
+        port: 8081
+server:
+    port: ${PORT:8080}
+spring:
+    application:
+        name: MicroservicioService
+    datasource:
+        driver-class-name: org.postgresql.Driver
+        hikari:
+            connection-test-query: SELECT 1
+            connection-timeout: 30000
+            idle-timeout: 600000
+            keepalive-time: 300000
+            max-lifetime: 1800000
+            maximum-pool-size: 50
+            minimum-idle: 10
+            validation-timeout: 5000
+        password: ${DB_PASS:a1b2c3d4}
+        url: ${DB_HOST:jdbc:postgresql://localhost:5432/curso_springboot}
+        username: ${DB_USER:devdb}
+    jpa:
+        hibernate:
+            ddl-auto: ${JPA_DDL:create-drop}
+        properties:
+            hibernate:
+                dialect: org.hibernate.dialect.PostgreSQLDialect
+        show-sql: true
+    main:
+        allow-circular-references: true
