@@ -2,25 +2,42 @@ version: '3.8'
 
 services:
   postgres:
-    image: postgres:15
+    image: ${DB_IMAGE}
     container_name: postgres
+    restart: unless-stopped
     environment:
-      POSTGRES_DB: planilla_db
-      POSTGRES_USER: devdb
-      POSTGRES_PASSWORD: a1b2c3d4
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
     ports:
-      - "5432:5432"
+      - "${DB_HOST_PORT}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - mynetwork
 
   planilla-service:
-    build: .   # 👈 AQUÍ hace build automático con tu Dockerfile
+    build: .
     container_name: planilla-service
     restart: always
     ports:
-      - "8080:8080"
+      - "${PLANILLA_PORT}:8080"
     depends_on:
       - postgres
+    environment:
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
+      - DB_NAME=${DB_NAME}
+      - DB_HOST=jdbc:postgresql://postgres:5432/${DB_NAME}
+      - JPA_DDL=${JPA_DDL}
+      - PORT=8080
+    networks:
+      - mynetwork
 
 volumes:
   postgres_data:
+    name: ${VOLUME_NAME:-postgres_data}
+
+networks:
+  mynetwork:
+    driver: bridge
