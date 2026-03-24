@@ -1,0 +1,54 @@
+app:
+    api:
+        version: v1
+    version: 1.0.0
+
+logging:
+    level:
+        com.zaxxer.hikari: ERROR
+        org.hibernate: ERROR
+        org.hibernate.SQL: DEBUG
+        org.springframework: ERROR
+        root: ERROR
+        web: INFO
+
+management:
+    endpoints:
+        web:
+            exposure:
+                include: '*'
+    server:
+        port: 8081
+
+server:
+    port: ${PORT:8080}   # Valor por defecto solo por si acaso
+
+spring:
+    application:
+        name: MicroservicioPlanilla
+    datasource:
+        driver-class-name: org.postgresql.Driver
+        hikari:
+            connection-timeout: 30000
+            idle-timeout: 600000
+            initialization-fail-timeout: 60000
+            max-lifetime: 1800000
+            maximum-pool-size: 10
+            minimum-idle: 5
+        # Sin valores por defecto (fail-fast si no están definidas)
+        password: ${DB_PASS}
+        url: ${DB_HOST}
+        username: ${DB_USER}
+    jpa:
+        defer-datasource-initialization: true
+        hibernate:
+            ddl-auto: ${JPA_DDL}   # Sin default
+        properties:
+            hibernate:
+                dialect: org.hibernate.dialect.PostgreSQLDialect
+        show-sql: true
+    main:
+        allow-circular-references: true
+    sql:
+        init:
+            mode: always
