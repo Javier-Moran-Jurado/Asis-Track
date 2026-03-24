@@ -9,6 +9,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -44,6 +45,7 @@ public class UsuarioRestController {
     }
 
     @GetMapping("/usuarios")
+    @PreAuthorize("isAuthenticated() and !hasAnyRole('Estudiante', 'Monitor')")
     public ResponseEntity<Map<String, Object>> getUsuarios() {
         Map<String, Object> response = new HashMap<>();
         List<Usuario> usuarios = usuarioService.findAll();
@@ -55,6 +57,7 @@ public class UsuarioRestController {
     }
 
     @GetMapping("/usuario/page/{page}")
+    @PreAuthorize("isAuthenticated() and !hasAnyRole('Estudiante', 'Monitor')")
     public ResponseEntity<Object> index(@PathVariable Integer page) {
         Pageable pageable = PageRequest.of(page, 4);
         Page<Usuario> usuarios = usuarioService.findAll(pageable);
@@ -65,6 +68,7 @@ public class UsuarioRestController {
     }
 
     @PostMapping("/usuarios")
+    @PreAuthorize("isAuthenticated() and hasAnyRole('Administrador', 'Administrativo')")
     public ResponseEntity<Map<String, Object>> save(@Valid @RequestBody Usuario usuario, BindingResult bindingResult) {
         Map<String, Object> response = new HashMap<>();
         if (bindingResult.hasErrors()) {
@@ -81,6 +85,7 @@ public class UsuarioRestController {
     }
 
     @DeleteMapping("/usuarios")
+    @PreAuthorize("isAuthenticated() and hasAnyRole('Administrador', 'Administrativo')")
     public ResponseEntity<Map<String, Object>> delete(@RequestBody Usuario usuario) {
         Map<String, Object> response = new HashMap<>();
         usuarioService.findById(usuario.getCodigo()).orElseThrow(
@@ -93,6 +98,7 @@ public class UsuarioRestController {
     }
 
     @PutMapping("/usuarios")
+    @PreAuthorize("isAuthenticated() and hasAnyRole('Administrador', 'Administrativo')")
     public ResponseEntity<Map<String, Object>> update(@Valid @RequestBody Usuario usuario, BindingResult bindingResult) {
         Map<String, Object> response = new HashMap<>();
         if (bindingResult.hasErrors()) {
@@ -108,6 +114,7 @@ public class UsuarioRestController {
     }
 
     @GetMapping("/usuarios/{id}")
+    @PreAuthorize("isAuthenticated() and !hasAnyRole('Estudiante', 'Monitor')")
     public ResponseEntity<Map<String, Object>> findById(@PathVariable Long id) {
         Map<String, Object> response = new HashMap<>();
         Usuario usuario = usuarioService.findById(id).orElseThrow(

@@ -1,7 +1,7 @@
-INSERT INTO usuario(nombre_completo, correo, contrasena, cedula, telefono, rol) VALUES ('Nombre1', 'correo1', 'contrasena1', 1, 1, 'Coordinador');
-INSERT INTO usuario(nombre_completo, correo, contrasena, cedula, telefono, rol) VALUES ('Nombre2', 'correo2', 'contrasena2', 2, 2, 'Docente');
+INSERT INTO usuario(nombre_completo, correo, contrasena, cedula, telefono, rol) VALUES ('Nombre1', 'correo1', 'contrasena1', 1, 1, 'Monitor');
+INSERT INTO usuario(nombre_completo, correo, contrasena, cedula, telefono, rol) VALUES ('Nombre2', 'correo2', 'contrasena2', 2, 2, 'Estudiante');
 INSERT INTO usuario(nombre_completo, correo, contrasena, cedula, telefono, rol) VALUES ('Nombre3', 'correo3', 'contrasena3', 3, 3, 'Docente');
-INSERT INTO usuario(nombre_completo, correo, contrasena, cedula, telefono, rol) VALUES ('Nombre4', 'correo4', 'contrasena4', 4, 4, 'rol4');
+INSERT INTO usuario(nombre_completo, correo, contrasena, cedula, telefono, rol) VALUES ('Nombre4', 'correo4', 'contrasena4', 4, 4, 'Administrador');
 INSERT INTO usuario(nombre_completo, correo, contrasena, cedula, telefono, rol) VALUES ('Nombre5', 'correo5', 'contrasena5', 5, 5, 'Coordinador');
 INSERT INTO usuario(nombre_completo, correo, contrasena, cedula, telefono, rol) VALUES ('Nombre6', 'correo6', 'contrasena6', 6, 6, 'Decano');
 INSERT INTO usuario(nombre_completo, correo, contrasena, cedula, telefono, rol) VALUES ('Nombre7', 'correo7', 'contrasena7', 7, 7, 'Docente');
