@@ -1,4 +1,4 @@
 package co.edu.uceva.microserviciousuario.auth.controller;
 
-public class LoginRequest {
+public record LoginRequest (Long codigo, String contrasena) {
 }
