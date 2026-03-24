@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -19,7 +20,7 @@ import java.util.List;
 public class AsistenciaController {
 
     private final IAsistenciaService asistenciaService;
-
+    @PreAuthorize("isAuthenticated() and hasRole('Estudiante')")
     @PostMapping("/entrada")
     public ResponseEntity<Asistencia> registrarEntrada(
             @RequestParam String codigoEstudiante,
@@ -82,6 +83,7 @@ public class AsistenciaController {
         );
     }
 
+    @PreAuthorize("isAuthenticated() and hasRole('Estudiante')")
     @PostMapping("/salida")
     public ResponseEntity<Asistencia> registrarSalida(
             @RequestParam String codigoEstudiante,
@@ -144,6 +146,7 @@ public class AsistenciaController {
         );
     }
 
+    @PreAuthorize("isAuthenticated() and hasRole('Estudiante')")
     @PostMapping("/justificar")
     public ResponseEntity<Asistencia> justificarAusencia(
             @RequestParam String codigoEstudiante,
@@ -171,26 +174,31 @@ public class AsistenciaController {
         );
     }
 
+    @PreAuthorize("isAuthenticated() and hasAnyRole('Docente', 'Administrador', 'Administrativo')")
     @GetMapping("/{id}")
     public ResponseEntity<Asistencia> findById(@PathVariable Long id) {
         return ResponseEntity.ok(asistenciaService.findById(id));
     }
 
+    @PreAuthorize("isAuthenticated() and hasAnyRole('Docente', 'Administrador', 'Administrativo')")
     @GetMapping("/estudiante/{codigoEstudiante}")
     public ResponseEntity<List<Asistencia>> findByCodigoEstudiante(@PathVariable String codigoEstudiante) {
         return ResponseEntity.ok(asistenciaService.findByCodigoEstudiante(codigoEstudiante));
     }
 
+    @PreAuthorize("isAuthenticated() and hasAnyRole('Administrador', 'Administrativo')")
     @GetMapping("/planilla/{planillaId}")
     public ResponseEntity<List<Asistencia>> findByPlanillaId(@PathVariable Long planillaId) {
         return ResponseEntity.ok(asistenciaService.findByPlanillaId(planillaId));
     }
 
+    @PreAuthorize("isAuthenticated() and hasAnyRole('Administrador', 'Administrativo')")
     @GetMapping("/planilla/{planillaId}/presentes")
     public ResponseEntity<List<Asistencia>> findPresentesByPlanilla(@PathVariable Long planillaId) {
         return ResponseEntity.ok(asistenciaService.findPresentesByPlanilla(planillaId));
     }
 
+    @PreAuthorize("isAuthenticated() and hasAnyRole('Administrador', 'Administrativo')")
     @GetMapping("/rango")
     public ResponseEntity<List<Asistencia>> findByFechaHoraRegistroBetween(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime inicio,
@@ -198,18 +206,21 @@ public class AsistenciaController {
         return ResponseEntity.ok(asistenciaService.findByFechaHoraRegistroBetween(inicio, fin));
     }
 
+    @PreAuthorize("isAuthenticated() and hasAnyRole('Administrador', 'Administrativo')")
     @PutMapping("/{id}")
     public ResponseEntity<Asistencia> update(@PathVariable Long id, @RequestBody Asistencia asistencia) {
         asistencia.setId(id);
         return ResponseEntity.ok(asistenciaService.update(asistencia));
     }
 
+    @PreAuthorize("isAuthenticated() and hasAnyRole('Administrador', 'Administrativo')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteById(@PathVariable Long id) {
         asistenciaService.deleteById(id);
         return ResponseEntity.noContent().build();
     }
 
+    @PreAuthorize("isAuthenticated() and hasAnyRole('Administrador', 'Administrativo')")
     @PatchMapping("/{id}/estado")
     public ResponseEntity<Asistencia> actualizarEstado(
             @PathVariable Long id,
