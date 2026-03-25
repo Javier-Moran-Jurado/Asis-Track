@@ -36,6 +36,27 @@ services:
     networks:
       - mynetwork
 
+  planilla-service:
+    image: ${PLANILLA_IMAGE}
+    container_name: planilla-service
+    restart: always
+    ports:
+      - "${PLANILLA_PORT}:8080"
+      - "${PLANILLA_PORT_ACTUATOR}:8081"
+    depends_on:
+      - db
+    environment:
+      - SECRET_KEY=${SECRET_KEY}
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
+      - DB_NAME=${DB_NAME}
+      - DB_HOST=jdbc:postgresql://db:5432/${DB_NAME}
+      - JPA_DDL=${JPA_DDL}
+      - PORT=8080
+      - PLANILLA_PORT_ACTUATOR=${PLANILLA_PORT_ACTUATOR}
+    networks:
+      - mynetwork
+
   db:
     image: ${DB_IMAGE}
     container_name: db

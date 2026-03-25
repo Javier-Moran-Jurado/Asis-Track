@@ -1,4 +1,4 @@
-package org.example.microservicioasistencia.domain.model;
+package co.edu.uceva.microservicioplanilla.domain.model;
 
 import jakarta.persistence.*;
 import lombok.Getter;
