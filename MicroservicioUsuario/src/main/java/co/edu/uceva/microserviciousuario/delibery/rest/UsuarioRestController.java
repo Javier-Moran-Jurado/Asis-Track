@@ -114,7 +114,7 @@ public class UsuarioRestController {
     }
 
     @GetMapping("/usuarios/{id}")
-    @PreAuthorize("isAuthenticated() and !hasAnyRole('Estudiante', 'Monitor')")
+    @PreAuthorize("isAuthenticated()")d
     public ResponseEntity<Map<String, Object>> findById(@PathVariable Long id) {
         Map<String, Object> response = new HashMap<>();
         Usuario usuario = usuarioService.findById(id).orElseThrow(

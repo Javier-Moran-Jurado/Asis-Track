@@ -77,6 +77,28 @@ services:
       - REPORTE_PORT_ACTUATOR=${REPORTE_PORT_ACTUATOR}
     networks:
       - mynetwork
+
+  justificacion-service:
+    image: ${JUSTIFICACION_IMAGE}
+    container_name: justificacion-service
+    restart: always
+    ports:
+      - "${JUSTIFICACION_PORT}:8080"
+      - "${JUSTIFICACION_PORT_ACTUATOR}:8081"
+    depends_on:
+      - db
+    environment:
+      - SECRET_KEY=${SECRET_KEY}
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
+      - DB_NAME=${DB_NAME}
+      - DB_HOST=jdbc:postgresql://db:5432/${DB_NAME}
+      - JPA_DDL=${JPA_DDL}
+      - PORT=8080
+      - JUSTIFICACION_PORT_ACTUATOR=${JUSTIFICACION_PORT_ACTUATOR}
+    networks:
+      - mynetwork
+
   db:
     image: ${DB_IMAGE}
     container_name: db
