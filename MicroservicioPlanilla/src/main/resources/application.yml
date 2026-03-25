@@ -3,6 +3,13 @@ app:
         version: v1
     version: 1.0.0
 
+    security:
+        jwt:
+            secrect-key: ${SECRET_KEY}
+            expiration: 86400000 #day
+            refresh-token:
+                expiration: 604800000 #week
+
 logging:
     level:
         com.zaxxer.hikari: ERROR
@@ -18,7 +25,7 @@ management:
             exposure:
                 include: '*'
     server:
-        port: 8081
+        port: ${PLANILLA_PORT_ACTUATOR:8081}
 
 server:
     port: ${PORT:8080}   # Valor por defecto solo por si acaso

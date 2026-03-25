@@ -9,6 +9,7 @@ services:
       - "${USUARIO_PORT}:8080"
       - "${USUARIO_ACTUATOR_PORT}:8081"
     environment:
+      - SECRET_KEY=${SECRET_KEY}
       - DB_USER=${DB_USER}
       - DB_PASS=${DB_PASS}
       - JPA_DDL=${JPA_DDL}

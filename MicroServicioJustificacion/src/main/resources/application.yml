@@ -1,0 +1,58 @@
+app:
+  api:
+    version: v1
+  version: 1.0.0
+
+  security:
+    jwt:
+      secrect-key: ${SECRET_KEY}
+      expiration: 86400000 #day
+      refresh-token:
+        expiration: 604800000 #week
+
+logging:
+  level:
+    com.zaxxer.hikari: ERROR
+    org.hibernate: ERROR
+    org.hibernate.SQL: DEBUG
+    org.springframework: ERROR
+    root: ERROR
+    web: INFO
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+  server:
+    port: 8083
+
+server:
+  port: ${PORT:8082}
+
+spring:
+  application:
+    name: MicroservicioJustificacion
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-test-query: SELECT 1
+      connection-timeout: 30000
+      idle-timeout: 600000
+      keepalive-time: 300000
+      max-lifetime: 1800000
+      maximum-pool-size: 50
+      minimum-idle: 10
+      validation-timeout: 5000
+    password: ${DB_PASS}
+    url: ${DB_HOST}
+    username: ${DB_USER}
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL}
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: true
+  main:
+    allow-circular-references: true
