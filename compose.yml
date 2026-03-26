@@ -1,0 +1,119 @@
+services:
+  usuarioservice:
+    image: ${USUARIO_IMAGE}
+    container_name: usuarioservice
+    restart: unless-stopped
+    depends_on:
+      - db
+    ports:
+      - "${USUARIO_PORT}:8080"
+      - "${USUARIO_ACTUATOR_PORT}:8081"
+    environment:
+      - SECRET_KEY=${SECRET_KEY}
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
+      - JPA_DDL=${JPA_DDL}
+      - DB_HOST=jdbc:postgresql://db:5432/${DB_NAME}
+      - PORT=8080
+    networks:
+      - mynetwork
+
+  asistenciaservice:
+    image: ${ASISTENCIA_IMAGE}
+    container_name: asistencia-app
+    restart: unless-stopped
+    depends_on:
+      - db
+    ports:
+      - "${ASISTENCIA_PORT}:8081"
+      - "${ASISTENCIA_ACTUATOR_PORT}:8082"
+    environment:
+      - SECRET_KEY=${SECRET_KEY}
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
+      - JPA_DDL=${JPA_DDL}
+      - DB_HOST=jdbc:postgresql://db:5432/${DB_NAME}
+    networks:
+      - mynetwork
+
+  planilla-service:
+    image: ${PLANILLA_IMAGE}
+    container_name: planilla-service
+    restart: always
+    ports:
+      - "${PLANILLA_PORT}:8080"
+      - "${PLANILLA_PORT_ACTUATOR}:8081"
+    depends_on:
+      - db
+    environment:
+      - SECRET_KEY=${SECRET_KEY}
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
+      - DB_NAME=${DB_NAME}
+      - DB_HOST=jdbc:postgresql://db:5432/${DB_NAME}
+      - JPA_DDL=${JPA_DDL}
+      - PORT=8080
+      - PLANILLA_PORT_ACTUATOR=${PLANILLA_PORT_ACTUATOR}
+    networks:
+      - mynetwork
+
+  reporte-service:
+    image: ${REPORTE_IMAGE}
+    container_name: reporte-service
+    restart: always
+    ports:
+      - "${REPORTE_PORT}:8080"
+      - "${REPORTE_PORT_ACTUATOR}:8081"
+    depends_on:
+      - db
+    environment:
+      - SECRET_KEY=${SECRET_KEY}
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
+      - DB_NAME=${DB_NAME}
+      - DB_HOST=jdbc:postgresql://db:5432/${DB_NAME}
+      - JPA_DDL=${JPA_DDL}
+      - PORT=8080
+      - REPORTE_PORT_ACTUATOR=${REPORTE_PORT_ACTUATOR}
+    networks:
+      - mynetwork
+
+  justificacion-service:
+    image: ${JUSTIFICACION_IMAGE}
+    container_name: justificacion-service
+    restart: always
+    ports:
+      - "${JUSTIFICACION_PORT}:8080"
+      - "${JUSTIFICACION_PORT_ACTUATOR}:8081"
+    depends_on:
+      - db
+    environment:
+      - SECRET_KEY=${SECRET_KEY}
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
+      - DB_NAME=${DB_NAME}
+      - DB_HOST=jdbc:postgresql://db:5432/${DB_NAME}
+      - JPA_DDL=${JPA_DDL}
+      - PORT=8080
+      - JUSTIFICACION_PORT_ACTUATOR=${JUSTIFICACION_PORT_ACTUATOR}
+    networks:
+      - mynetwork
+
+  db:
+    image: ${DB_IMAGE}
+    container_name: db
+    restart: unless-stopped
+    ports:
+      - "${DB_HOST_PORT}:5432"
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASS}
+    volumes:
+      - ./data:/var/lib/postgresql/data
+    networks:
+      - mynetwork
+
+networks:
+  mynetwork:
+    driver: bridge
