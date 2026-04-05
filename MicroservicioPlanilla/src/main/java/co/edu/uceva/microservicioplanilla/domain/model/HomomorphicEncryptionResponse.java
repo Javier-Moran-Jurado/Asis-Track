@@ -1,0 +1,17 @@
+package co.edu.uceva.microservicioplanilla.domain.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+public class HomomorphicEncryptionResponse {
+
+    private byte[] ciphertext;
+    private byte[] key;
+
+}
