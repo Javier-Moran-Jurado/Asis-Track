@@ -10,7 +10,6 @@ import lombok.Setter;
 @Setter
 public class Usuario {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long codigo;
     @NotEmpty(message = "No puede estar vacio")
     @Size(min = 2, max = 30)

@@ -1,3 +1,4 @@
 {
-    "debug.enableStatusBarColor": false
+    "debug.enableStatusBarColor": false,
+    "java.compile.nullAnalysis.mode": "automatic"
 }
