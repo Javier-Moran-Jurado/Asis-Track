@@ -9,6 +9,9 @@ app:
             expiration: 86400000 #day
             refresh-token:
                 expiration: 604800000 #week
+        integration:
+            url: ${SECURITY_URL:http://localhost:8085}
+            secret: ${INTERNAL_SECRET:microservice-internal-secret}
 
 logging:
     level:
@@ -56,6 +59,12 @@ spring:
         show-sql: true
     main:
         allow-circular-references: true
+    data:
+        redis:
+            host: ${REDIS_HOST:localhost}
+            port: ${REDIS_PORT:6379}
+    session:
+        store-type: redis
     sql:
         init:
             mode: always
