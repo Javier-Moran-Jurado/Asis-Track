@@ -13,6 +13,7 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Configuration
 @RequiredArgsConstructor
@@ -21,7 +22,7 @@ public class AppConfig {
     private final IUsuarioRepository usuarioRepository;
 
     @Bean
-    public UserDetailsService userDetailsService(){
+    public UserDetailsService userDetailsService() {
         return username -> {
             Long codigo = Long.parseLong(username);
             final Usuario usuario = usuarioRepository.findById(codigo)
@@ -45,9 +46,13 @@ public class AppConfig {
         return NoOpPasswordEncoder.getInstance();
     }
 
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration cofig) throws Exception {
+        return cofig.getAuthenticationManager();
+    }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration cofig) throws Exception{
-        return cofig.getAuthenticationManager();
+    public ObjectMapper objectMapper() {
+        return new ObjectMapper();
     }
 }
