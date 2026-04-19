@@ -5,8 +5,8 @@ target/
 !**/src/test/**/target/
 data/
 .env
+data/
 *.class
-
 ### STS ###
 .apt_generated
 .classpath

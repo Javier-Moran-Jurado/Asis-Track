@@ -68,3 +68,6 @@ spring:
     sql:
         init:
             mode: always
+    ai:
+        ollama:
+            base-url: https://echoless-vashti-flauntingly.ngrok-free.dev
