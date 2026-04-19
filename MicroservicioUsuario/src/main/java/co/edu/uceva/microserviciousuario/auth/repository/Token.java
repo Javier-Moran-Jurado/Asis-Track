@@ -1,6 +1,5 @@
 package co.edu.uceva.microserviciousuario.auth.repository;
 
-
 import co.edu.uceva.microserviciousuario.domain.model.Usuario;
 import jakarta.persistence.*;
 import lombok.*;
