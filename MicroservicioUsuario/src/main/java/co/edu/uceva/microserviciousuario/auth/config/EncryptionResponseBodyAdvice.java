@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 
 import java.math.BigInteger;
+import java.util.Base64;
 
 @ControllerAdvice
 public class EncryptionResponseBodyAdvice implements ResponseBodyAdvice<Object> {
@@ -59,8 +60,9 @@ public class EncryptionResponseBodyAdvice implements ResponseBodyAdvice<Object> 
 
                     String payload = objectMapper.writeValueAsString(body);
                     String encryptedPayload = RSAEncryption.encrypt(rsaPublicKey, payload);
+                    String b64Payload = Base64.getEncoder().encodeToString(encryptedPayload.getBytes());
 
-                    return new EncryptedResponse(encryptedPayload);
+                    return new EncryptedResponse(b64Payload);
 
                 } catch (Exception e) {
                     e.printStackTrace();

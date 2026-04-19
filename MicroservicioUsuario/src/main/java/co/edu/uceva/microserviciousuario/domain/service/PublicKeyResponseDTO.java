@@ -1,4 +1,4 @@
-package co.edu.uceva.microservicioseguridad.delivery.dto;
+package co.edu.uceva.microserviciousuario.domain.service;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -10,7 +10,7 @@ import java.io.Serializable;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class PublicKeyDTO implements Serializable {
+public class PublicKeyResponseDTO implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private Long id;

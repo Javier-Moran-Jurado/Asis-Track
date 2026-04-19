@@ -13,20 +13,23 @@ public class Usuario {
     private Long codigo;
     @NotEmpty(message = "No puede estar vacio")
     @Size(min = 2, max = 30)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TEXT")
+    @Convert(converter = co.edu.uceva.microserviciousuario.domain.converters.UsuarioConverter.class)
     private String nombreCompleto;
     @NotEmpty(message = "No puede estar vacio")
     @Size(max = 255)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TEXT")
     @Email(message = "Debe ser un correo valido example@some.com")
+    @Convert(converter = co.edu.uceva.microserviciousuario.domain.converters.UsuarioConverter.class)
     private String correo;
     @NotEmpty(message = "No puede estar vacio")
     @Size(min = 8, max = 255)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TEXT")
     @Pattern(
             regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[#$@!%&*-_?])[A-Za-z\\d#$@!%&*-_?]{8,}$",
             message = "La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial (#$@!%&*-_?)"
     )
+    @Convert(converter = co.edu.uceva.microserviciousuario.domain.converters.UsuarioConverter.class)
     private String contrasena;
     @Min(value = 0, message = "No puede ser negativo")
     @NotNull(message = "Su cedula no puede quedar sin un valor.")

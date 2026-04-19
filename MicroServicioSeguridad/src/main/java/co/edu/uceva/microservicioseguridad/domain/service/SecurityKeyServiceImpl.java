@@ -12,6 +12,7 @@ import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,12 +34,14 @@ public class SecurityKeyServiceImpl implements ISecurityKeyService {
     @Value("${app.security.master-key-d}")
     private String masterD;
 
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
     // Ejecuta la rotación cada semana (604800000 ms) - Puedes ajustarlo en el cron si prefieres: @Scheduled(cron = "0 0 0 * * SUN")
     @Override
     @Transactional
     @Scheduled(fixedDelayString = "${app.security.rotation-delay:604800000}") 
     public void rotarLlaves() {
-        System.out.println("Iniciando rotacion de llaves RSA...");
         
         // 1. Generar nuevo par RSA
         RSAKeyPair newKeyPair = RSAEncryption.generateKeyPair();
@@ -64,6 +67,15 @@ public class SecurityKeyServiceImpl implements ISecurityKeyService {
         
         repository.save(newKey);
         System.out.println("Nueva llave generada y activada con ID: " + newKey.getId());
+
+        // 5. Invalidar caché en Microservicio de Usuarios directamente en Redis
+        try {
+            redisTemplate.delete("securityKeys::active_private");
+            redisTemplate.delete("securityKeys::active_public");
+            System.out.println("Caché de llaves invalidada en Redis.");
+        } catch (Exception e) {
+            System.err.println("No se pudo invalidar el caché de Redis: " + e.getMessage());
+        }
     }
 
     @Override

@@ -56,10 +56,10 @@ public class AuthController {
             // 4. Guardar en Session de Redis
             session.setAttribute("CLIENT_PUBLIC_KEY", clientKey);
 
-            return ResponseEntity.ok("Llave de sesion registrada correctamente.");
+            return ResponseEntity.ok(java.util.Map.of("message", "Llave de sesion registrada correctamente."));
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.badRequest().body("Error al procesar la llave: " + e.getMessage());
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", "Error al procesar la llave: " + e.getMessage()));
         }
     }
 }
