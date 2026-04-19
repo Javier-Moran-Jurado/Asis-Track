@@ -30,4 +30,4 @@ app:
     internal-secret: ${INTERNAL_SECRET:microservice-internal-secret}
     rotation-delay: ${ROTATION_DELAY:604800000}
     jwt:
-      secrect-key: ${JWT_SECRET_KEY:ThisIsAVeryLongSecretKeyDefinedForJWTAuthenticationToWorkBecauseItNeedsToBeVeryLong}
+      secret-key: ${JWT_SECRET_KEY:ThisIsAVeryLongSecretKeyDefinedForJWTAuthenticationToWorkBecauseItNeedsToBeVeryLong}

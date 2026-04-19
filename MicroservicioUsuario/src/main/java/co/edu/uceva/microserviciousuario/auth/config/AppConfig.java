@@ -22,7 +22,7 @@ public class AppConfig {
     private final IUsuarioRepository usuarioRepository;
 
     @Bean
-    public UserDetailsService userDetailsService(){
+    public UserDetailsService userDetailsService() {
         return username -> {
             Long codigo = Long.parseLong(username);
             final Usuario usuario = usuarioRepository.findById(codigo)
@@ -46,9 +46,8 @@ public class AppConfig {
         return NoOpPasswordEncoder.getInstance();
     }
 
-
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration cofig) throws Exception{
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration cofig) throws Exception {
         return cofig.getAuthenticationManager();
     }
 
