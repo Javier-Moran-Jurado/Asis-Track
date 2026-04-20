@@ -43,7 +43,7 @@ public class PlanillaRestController {
     }
 
     @SneakyThrows
-    @PreAuthorize("isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Monitor')")
+    // @PreAuthorize("isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Monitor')")
     @PostMapping("/planillas/digitalizar")
     public String digitalizar(@RequestParam("file") MultipartFile file) {
         String text = "";

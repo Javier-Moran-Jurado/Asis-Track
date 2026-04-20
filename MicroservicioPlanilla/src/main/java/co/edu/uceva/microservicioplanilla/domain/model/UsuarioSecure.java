@@ -10,6 +10,7 @@ import lombok.Setter;
 @Setter
 public class UsuarioSecure {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long codigo;
     private String nombreCompleto;
     private String rol;
