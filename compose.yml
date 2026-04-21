@@ -58,6 +58,7 @@ services:
       - JPA_DDL=${JPA_DDL}
       - PORT=8080
       - PLANILLA_PORT_ACTUATOR=${PLANILLA_PORT_ACTUATOR}
+      - HOMOMORPHIC_A_SETS=${HOMOMORPHIC_A_SETS}
     networks:
       - mynetwork
 

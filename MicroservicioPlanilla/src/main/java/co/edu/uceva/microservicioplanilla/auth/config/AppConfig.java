@@ -3,6 +3,7 @@ package co.edu.uceva.microservicioplanilla.auth.config;
 
 import co.edu.uceva.microservicioplanilla.domain.model.UsuarioSecure;
 import co.edu.uceva.microservicioplanilla.domain.repository.IUsuarioSecureRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.context.annotation.Bean;
@@ -49,5 +50,10 @@ public class AppConfig {
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration cofig) throws Exception{
         return cofig.getAuthenticationManager();
+    }
+
+    @Bean
+    public ObjectMapper objectMapper() {
+        return new ObjectMapper();
     }
 }

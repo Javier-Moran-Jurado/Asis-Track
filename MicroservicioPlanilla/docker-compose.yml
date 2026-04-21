@@ -31,6 +31,7 @@ services:
       - DB_HOST=jdbc:postgresql://postgres:5432/${DB_NAME}
       - JPA_DDL=${JPA_DDL}
       - PORT=8080
+      - HOMOMORPHIC_A_SETS=${HOMOMORPHIC_A_SETS}
     networks:
       - mynetwork
 

@@ -4,19 +4,12 @@ import co.edu.uceva.microservicioplanilla.domain.model.Planilla;
 import co.edu.uceva.microservicioplanilla.domain.service.IPlanillaService;
 import co.edu.uceva.microservicioplanilla.domain.service.OllamaAiService;
 import co.edu.uceva.microservicioplanilla.utils.FileHandlerUtil;
-import jakarta.validation.constraints.NotNull;
-import lombok.NonNull;
 import lombok.SneakyThrows;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import co.edu.uceva.microservicioplanilla.domain.service.HomomorphicEncryptionService;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.Collections;
 import java.util.List;
 
 @RestController
@@ -24,16 +17,10 @@ import java.util.List;
 public class PlanillaRestController {
 
     private final IPlanillaService planillaService;
-    private final HomomorphicEncryptionService homomorphicEncryptionService;
-
-    public PlanillaRestController(IPlanillaService planillaService, HomomorphicEncryptionService homomorphicEncryptionService) {
-
-    @Autowired
     private final OllamaAiService ollamaAiService;
 
     public PlanillaRestController(IPlanillaService planillaService, OllamaAiService ollamaAiService) {
         this.planillaService = planillaService;
-        this.homomorphicEncryptionService = homomorphicEncryptionService;
         this.ollamaAiService = ollamaAiService;
     }
 
@@ -46,14 +33,6 @@ public class PlanillaRestController {
     @PreAuthorize("isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Docente', 'Monitor', 'Decano')")
     @PostMapping("/planillas")
     public Planilla save(@RequestBody Planilla planilla) {
-        if (planilla.getMetadatos() != null && !planilla.getMetadatos().trim().isEmpty()) {
-            var encryptionResult = homomorphicEncryptionService
-                    .encrypt(planilla.getMetadatos().getBytes(StandardCharsets.UTF_8));
-            String ciphertextB64 = Base64.getEncoder().encodeToString(encryptionResult.getCiphertext());
-            String keyB64 = Base64.getEncoder().encodeToString(encryptionResult.getKey());
-            // Store as <ciphertext_base64>:<key_base64>
-            planilla.setMetadatos(ciphertextB64 + ":" + keyB64);
-        }
         return planillaService.save(planilla);
     }
 

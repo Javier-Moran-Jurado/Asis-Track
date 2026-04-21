@@ -1,28 +1,40 @@
-package co.edu.uceva.microservicioplanilla.domain.service;
+package co.uceva.edu.security.homomorphic;
 
-import co.edu.uceva.microservicioplanilla.domain.model.HomomorphicEncryptionResponse;
-import org.springframework.stereotype.Service;
-
+import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
+import java.util.Base64;
 import java.util.Random;
 
-@Service
-public class HomomorphicEncryptionService {
+public class HomomorphicEncryption {
 
-    private static final byte[] A_SETS = {
-            (byte) 0xFC, // 11111100
-            (byte) 0xF3, // 11110011
-            (byte) 0xCF, // 11001111
-            (byte) 0x3F, // 00111111
-            (byte) 0x7E, // 01111110
-            (byte) 0xF9, // 11111001
-            (byte) 0xE7, // 11100111
-            (byte) 0x9F  // 10011111
-    };
+    private static final Random random = new SecureRandom();
 
-    private final Random random = new Random();
+    public static String encrypt(String text, byte[] aSets) {
+        if (text == null || text.isEmpty()) return "";
 
-    public HomomorphicEncryptionResponse encrypt(byte[] plaintext) {
+        HomomorphicEncryptionResponse response = encrypt(text.getBytes(StandardCharsets.UTF_8), aSets);
+        String ciphertextB64 = Base64.getEncoder().encodeToString(response.getCiphertext());
+        String keyB64 = Base64.getEncoder().encodeToString(response.getKey());
+        return ciphertextB64 + ":" + keyB64;
+    }
+
+    public static String decrypt(String encryptedPayload) {
+        if (encryptedPayload == null || encryptedPayload.isEmpty()) return "";
+
+        String[] parts = encryptedPayload.split(":", 2);
+        if (parts.length != 2) {
+            throw new IllegalArgumentException("Invalid homomorphic payload format");
+        }
+
+        byte[] ciphertext = Base64.getDecoder().decode(parts[0]);
+        byte[] key = Base64.getDecoder().decode(parts[1]);
+        return new String(decrypt(ciphertext, key), StandardCharsets.UTF_8);
+    }
+
+    public static HomomorphicEncryptionResponse encrypt(byte[] plaintext, byte[] aSets) {
         if (plaintext == null) return null;
+
+        byte[] masks = validateASets(aSets);
 
         byte[] ciphertext = new byte[plaintext.length];
         byte[] key = new byte[plaintext.length];
@@ -30,9 +42,9 @@ public class HomomorphicEncryptionService {
         for (int i = 0; i < plaintext.length; i += 4) {
             int limit = Math.min(4, plaintext.length - i);
             byte[] p = new byte[4];
-            
+
             for (int j = 0; j < limit; j++) {
-                byte a = A_SETS[random.nextInt(A_SETS.length)];
+                byte a = masks[random.nextInt(masks.length)];
                 p[j] = (byte) ((plaintext[i + j] | a) ^ a);
             }
 
@@ -69,7 +81,7 @@ public class HomomorphicEncryptionService {
         return new HomomorphicEncryptionResponse(ciphertext, key);
     }
 
-    public byte[] decrypt(byte[] ciphertext, byte[] key) {
+    public static byte[] decrypt(byte[] ciphertext, byte[] key) {
         if (ciphertext == null || key == null || ciphertext.length != key.length) {
             throw new IllegalArgumentException("Invalid ciphertext or key length");
         }
@@ -79,7 +91,7 @@ public class HomomorphicEncryptionService {
         for (int i = 0; i < ciphertext.length; i += 4) {
             int limit = Math.min(4, ciphertext.length - i);
             byte[] c = new byte[4];
-            
+
             for (int j = 0; j < limit; j++) {
                 c[j] = ciphertext[i + j];
             }
@@ -102,5 +114,12 @@ public class HomomorphicEncryptionService {
         }
 
         return plaintext;
+    }
+
+    private static byte[] validateASets(byte[] aSets) {
+        if (aSets == null || aSets.length == 0) {
+            throw new IllegalArgumentException("A_SETS cannot be null or empty");
+        }
+        return aSets.clone();
     }
 }

@@ -12,6 +12,8 @@ app:
         integration:
             url: ${SECURITY_URL:http://localhost:8085}
             secret: ${INTERNAL_SECRET:microservice-internal-secret}
+        homomorphic:
+            a-sets: ${HOMOMORPHIC_A_SETS}
 
 logging:
     level:
