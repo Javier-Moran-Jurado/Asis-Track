@@ -2,7 +2,7 @@ package co.edu.uceva.microserviciojustificacion.auth.config;
 
 import co.uceva.edu.security.RSA.RSAEncryption;
 import co.uceva.edu.security.RSA.RSAPrivateKey;
-import co.edu.uceva.microserviciojustificacion.domain.service.PrivateKeyResponseDTO;
+import co.edu.uceva.microserviciousuario.domain.service.PrivateKeyResponseDTO;
 import co.edu.uceva.microserviciojustificacion.domain.service.SecurityIntegrationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;

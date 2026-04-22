@@ -1,6 +1,6 @@
 package co.edu.uceva.microserviciojustificacion.auth.config;
 
-import co.edu.uceva.microserviciojustificacion.auth.controller.ClientKeyPairDTO;
+import co.edu.uceva.microserviciousuario.auth.controller.ClientKeyPairDTO;
 import co.uceva.edu.security.RSA.RSAEncryption;
 import co.uceva.edu.security.RSA.RSAPublicKey;
 import com.fasterxml.jackson.databind.ObjectMapper;

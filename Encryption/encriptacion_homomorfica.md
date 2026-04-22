@@ -24,6 +24,11 @@ Para la manipulacion de flujos de datos (`byte[]`), se aplican las siguientes re
 ### Procesos Criptograficos
 
 El sistema itera sobre la entrada separandola en **bloques de 4 bytes** ($P_0, P_1, P_2, P_3$):
+
+### Caso de bloque incompleto (ultimo chunk)
+
+Si el texto no es multiplo de 4 bytes, el ultimo chunk se procesa con `limit < 4`. Para mantener la proporcion **1:1** (sin emitir bytes extra en el `ciphertext`), los bytes de salida `Y` que no se emiten se tratan como `0x00` al derivar el vector $Z$ (y por ende al construir la llave $K$). Durante el descifrado, esos bytes ausentes tambien se asumen `0x00`, garantizando que `decrypt(encrypt(x)) == x` para cualquier longitud.
+
 1. **Enmascaramiento Aleatorio**: A cada byte del bloque se le inyecta una variante no deterministica con un elemento aleatorio $A_r$.
 2. **Cifrado Multi-Etapa ($C$)**: Los 4 bytes pasan por dos iteraciones de entrelazado cruzado usando `|` y `^`, produciendo 4 salidas para el cifrado ($Y$).
 3. **Proyeccion y Generacion de Clave ($K$)**: Internamente, el codigo proyecta el cifrado para producir una salida pre-calculo ($Z$). La llave se extrae como $K = P \oplus Z$.

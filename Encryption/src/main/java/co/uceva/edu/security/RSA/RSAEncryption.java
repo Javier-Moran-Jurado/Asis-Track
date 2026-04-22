@@ -15,7 +15,7 @@ public class RSAEncryption {
         BigInteger d;
         SecureRandom random = new SecureRandom();
         long e = 65537;
-        int bitLength = 2048;
+        int bitLength = 1024;
         q = BigInteger.probablePrime(bitLength / 2, random);
         p = BigInteger.probablePrime(bitLength / 2, random);
         n = p.multiply(q);

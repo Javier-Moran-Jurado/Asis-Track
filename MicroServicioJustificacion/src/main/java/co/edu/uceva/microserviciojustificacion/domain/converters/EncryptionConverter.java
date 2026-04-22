@@ -1,7 +1,7 @@
 package co.edu.uceva.microserviciojustificacion.domain.converters;
 
-import co.edu.uceva.microserviciojustificacion.domain.service.PrivateKeyResponseDTO;
-import co.edu.uceva.microserviciojustificacion.domain.service.PublicKeyResponseDTO;
+import co.edu.uceva.microserviciousuario.domain.service.PrivateKeyResponseDTO;
+import co.edu.uceva.microserviciousuario.domain.service.PublicKeyResponseDTO;
 import co.edu.uceva.microserviciojustificacion.domain.service.SecurityIntegrationService;
 import co.uceva.edu.security.RSA.RSAEncryption;
 import co.uceva.edu.security.RSA.RSAPrivateKey;

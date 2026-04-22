@@ -1,8 +1,7 @@
 package co.edu.uceva.microservicioplanilla.auth.config;
 
 
-import co.edu.uceva.microservicioplanilla.domain.model.UsuarioSecure;
-import co.edu.uceva.microservicioplanilla.domain.repository.IUsuarioSecureRepository;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 
@@ -20,18 +19,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 @RequiredArgsConstructor
 public class AppConfig {
 
-    private final IUsuarioSecureRepository usuarioRepository;
-
     @Bean
     public UserDetailsService userDetailsService(){
-        return username -> {
-            Long codigo = Long.parseLong(username);
-            final UsuarioSecure usuario = usuarioRepository.findById(codigo)
-                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado."));
-            return org.springframework.security.core.userdetails.User.builder()
-                    .username(codigo.toString())
-                    .build();
-        };
+        return username -> org.springframework.security.core.userdetails.User.builder()
+                .username(username)
+                .password("")
+                .authorities(new java.util.ArrayList<>())
+                .build();
     }
 
     @Bean

@@ -1,7 +1,6 @@
 package co.edu.uceva.microserviciojustificacion.auth.config;
 
-import co.edu.uceva.microserviciojustificacion.domain.model.UsuarioSecure;
-import co.edu.uceva.microserviciojustificacion.domain.repository.IUsuarioSecureRepository;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,18 +16,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 @RequiredArgsConstructor
 public class AppConfig {
 
-    private final IUsuarioSecureRepository usuarioRepository;
-
     @Bean
     public UserDetailsService userDetailsService(){
-        return username -> {
-            Long codigo = Long.parseLong(username);
-            final UsuarioSecure usuario = usuarioRepository.findById(codigo)
-                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado."));
-            return org.springframework.security.core.userdetails.User.builder()
-                    .username(codigo.toString())
-                    .build();
-        };
+        return username -> org.springframework.security.core.userdetails.User.builder()
+                .username(username)
+                .password("")
+                .authorities(new java.util.ArrayList<>())
+                .build();
     }
 
     @Bean
@@ -47,5 +41,10 @@ public class AppConfig {
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration cofig) throws Exception{
         return cofig.getAuthenticationManager();
+    }
+
+    @Bean
+    public com.fasterxml.jackson.databind.ObjectMapper objectMapper() {
+        return new com.fasterxml.jackson.databind.ObjectMapper();
     }
 }

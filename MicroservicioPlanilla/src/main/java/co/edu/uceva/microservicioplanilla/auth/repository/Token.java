@@ -1,7 +1,7 @@
 package co.edu.uceva.microservicioplanilla.auth.repository;
 
 
-import co.edu.uceva.microservicioplanilla.domain.model.UsuarioSecure;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -32,7 +32,6 @@ public class Token {
 
     public boolean expired;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "codigo")
-    public UsuarioSecure usuario;
+    @Column(name = "codigo")
+    public Long codigo;
 }

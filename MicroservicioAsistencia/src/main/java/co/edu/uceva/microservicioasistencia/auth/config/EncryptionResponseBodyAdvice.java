@@ -1,9 +1,8 @@
 package co.edu.uceva.microservicioasistencia.auth.config;
-import co.edu.uceva.microservicioasistencia.auth.controller.ClientKeyPairDTO;
+import co.edu.uceva.microserviciousuario.auth.controller.ClientKeyPairDTO;
 import co.uceva.edu.security.RSA.RSAEncryption;
 import co.uceva.edu.security.RSA.RSAPublicKey;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import lombok.*;
 import org.springframework.core.MethodParameter;

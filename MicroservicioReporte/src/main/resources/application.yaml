@@ -5,7 +5,7 @@ app:
 
   security:
     jwt:
-      secrect-key: ${SECRET_KEY}
+      secret-key: ${SECRET_KEY}
       expiration: 86400000 #day
       refresh-token:
         expiration: 604800000 #week

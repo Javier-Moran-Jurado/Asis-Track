@@ -5,10 +5,7 @@ import co.uceva.edu.security.RSA.RSAPrivateKey;
 import co.edu.uceva.microserviciousuario.domain.service.PrivateKeyResponseDTO;
 import co.edu.uceva.microserviciousuario.domain.service.SecurityIntegrationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpInputMessage;
 import org.springframework.http.converter.HttpMessageConverter;
@@ -86,8 +83,6 @@ public class DecryptionRequestBodyAdvice extends RequestBodyAdviceAdapter {
     @NoArgsConstructor
     @AllArgsConstructor
     @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
     public static class EncryptedRequest {
         private String encryptedData;
     }

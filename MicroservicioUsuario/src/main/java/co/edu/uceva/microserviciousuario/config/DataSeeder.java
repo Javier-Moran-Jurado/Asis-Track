@@ -2,21 +2,24 @@ package co.edu.uceva.microserviciousuario.config;
 
 import co.edu.uceva.microserviciousuario.domain.model.Usuario;
 import co.edu.uceva.microserviciousuario.domain.repository.IUsuarioRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class DataSeeder implements CommandLineRunner {
+public class DataSeeder implements ApplicationRunner {
 
     private final IUsuarioRepository usuarioRepository;
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
     @Override
-    public void run(String... args) {
+    @Transactional
+    public void run(ApplicationArguments args) {
         if (usuarioRepository.count() > 0) {
             logger.info("Datos de prueba ya existen, omitiendo seed.");
             return;
