@@ -69,13 +69,12 @@ public class DecryptionRequestBodyAdvice extends RequestBodyAdviceAdapter {
                 }
             } catch (Exception e) {
                 System.err.println("[!] Decryption error: " + e.getMessage());
-                e.printStackTrace();
-                // Si no es un EncryptedRequest, dejar pasar como plano (para compatibilidad o
-                // si el cliente no encripta)
+                // No es necesario el printStackTrace si es solo un campo faltante
                 return new DecryptedInputMessage(inputMessage, bodyBytes);
             }
+            // Si llegamos aquí es porque encryptedRequest.getEncryptedData() era null
+            return new DecryptedInputMessage(inputMessage, bodyBytes);
         }
-        return inputMessage;
     }
 
     @Getter

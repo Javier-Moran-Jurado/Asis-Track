@@ -26,6 +26,10 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
         <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+        </dependency>
+        <dependency>
             <groupId>co.uceva.edu</groupId>
             <artifactId>Encryption</artifactId>
             <version>1.0-SNAPSHOT</version>

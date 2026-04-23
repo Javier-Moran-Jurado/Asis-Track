@@ -36,21 +36,29 @@ public class PlanillaRestController {
         return planillaService.save(planilla);
     }
 
-    @SneakyThrows
     @PreAuthorize("isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Monitor')")
     @PostMapping("/planillas/digitalizar")
     public String digitalizar(@RequestParam("file") MultipartFile file) {
-        String text = "";
-        if (file.getContentType().equals("application/pdf")) {
-            List<Resource> resources = FileHandlerUtil.pdfToImages(file);
-            text = ollamaAiService.generateResponse(resources);
-        } else if (file.getContentType().equals("application/zip")) {
-            List<Resource> resources = FileHandlerUtil.extractZip(file);
-            text = ollamaAiService.generateResponse(resources);
-        } else if (file.getContentType().equals("image/jpeg")) {
-            text = ollamaAiService.generateResponse(List.of(file.getResource()));
+        try {
+            String text = "";
+            System.out.println("[*] Digitalizar - Tipo de contenido: " + file.getContentType());
+            if (file.getContentType().equals("application/pdf")) {
+                List<Resource> resources = FileHandlerUtil.pdfToImages(file);
+                text = ollamaAiService.generateResponse(resources);
+            } else if (file.getContentType().equals("application/zip")) {
+                List<Resource> resources = FileHandlerUtil.extractZip(file);
+                text = ollamaAiService.generateResponse(resources);
+            } else if (file.getContentType().equals("image/jpeg")) {
+                text = ollamaAiService.generateResponse(List.of(file.getResource()));
+            } else {
+                return "Error: Tipo de archivo no soportado: " + file.getContentType();
+            }
+            return text;
+        } catch (Exception e) {
+            System.err.println("[!] Error en digitalizar: " + e.getMessage());
+            e.printStackTrace();
+            return "Error en el servidor: " + e.getMessage();
         }
-        return text;
     }
 
     @PreAuthorize("isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Docente', 'Monitor', 'Decano')")

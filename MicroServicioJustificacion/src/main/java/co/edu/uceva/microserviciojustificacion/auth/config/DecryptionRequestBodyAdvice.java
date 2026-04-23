@@ -65,8 +65,8 @@ public class DecryptionRequestBodyAdvice extends RequestBodyAdviceAdapter {
             } catch (Exception e) {
                 return new DecryptedInputMessage(inputMessage, bodyBytes);
             }
+            return new DecryptedInputMessage(inputMessage, bodyBytes);
         }
-        return inputMessage;
     }
 
     @Getter

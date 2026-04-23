@@ -27,7 +27,14 @@ public class EncryptionResponseBodyAdvice implements ResponseBodyAdvice<Object> 
                 try {
                     ClientKeyPairDTO key = (ClientKeyPairDTO) session.getAttribute("CLIENT_PUBLIC_KEY");
                     RSAPublicKey pub = new RSAPublicKey(key.getE(), new BigInteger(key.getN()));
-                    return new EncryptedResponse(Base64.getEncoder().encodeToString(RSAEncryption.encrypt(pub, objectMapper.writeValueAsString(body)).getBytes()));
+                    String encryptedData = Base64.getEncoder().encodeToString(RSAEncryption.encrypt(pub, objectMapper.writeValueAsString(body)).getBytes());
+                    EncryptedResponse encryptedResponse = new EncryptedResponse(encryptedData);
+
+                    if (body instanceof String) {
+                        res.getHeaders().setContentType(MediaType.APPLICATION_JSON);
+                        return objectMapper.writeValueAsString(encryptedResponse);
+                    }
+                    return encryptedResponse;
                 } catch (Exception e) { e.printStackTrace(); }
             }
         }

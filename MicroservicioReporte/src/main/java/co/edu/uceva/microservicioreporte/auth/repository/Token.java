@@ -11,7 +11,8 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity(name = "tokens")
+@Entity(name = "tokens_reporte")
+@Table(name = "tokens_reporte")
 public class Token {
 
     public enum TokenType {

@@ -35,8 +35,8 @@ public class DecryptionRequestBodyAdvice extends RequestBodyAdviceAdapter {
                     return new DecryptedInputMessage(im, RSAEncryption.decrypt(pk, req.getEncryptedData()).getBytes(StandardCharsets.UTF_8));
                 }
             } catch (Exception e) { return new DecryptedInputMessage(im, bytes); }
+            return new DecryptedInputMessage(im, bytes);
         }
-        return im;
     }
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor public static class EncryptedRequest { private String encryptedData; }
     private static class DecryptedInputMessage implements HttpInputMessage {
