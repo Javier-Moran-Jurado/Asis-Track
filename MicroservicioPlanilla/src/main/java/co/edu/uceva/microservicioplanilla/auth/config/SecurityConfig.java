@@ -1,6 +1,5 @@
 package co.edu.uceva.microservicioplanilla.auth.config;
 
-
 import co.edu.uceva.microservicioplanilla.auth.repository.ITokenRepository;
 import co.edu.uceva.microservicioplanilla.auth.repository.Token;
 import jakarta.servlet.http.HttpServletRequest;
@@ -36,7 +35,7 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(req ->
-                        req.requestMatchers("/api/v1/auth/**")
+                        req.requestMatchers("/api/v1/auth/**", "/actuator/**") // 👈 agregado
                                 .permitAll()
                                 .anyRequest()
                                 .authenticated()
@@ -47,26 +46,27 @@ public class SecurityConfig {
                 .logout(logout ->
                         logout.logoutUrl("/api/v1/auth/logout")
                                 .addLogoutHandler(this::logout)
-                                .logoutSuccessHandler((request, response, authentication) -> SecurityContextHolder.clearContext())
-                )
-        ;
+                                .logoutSuccessHandler((request, response, authentication) ->
+                                        SecurityContextHolder.clearContext()
+                                )
+                );
 
         return http.build();
     }
 
     private void logout(
-            final HttpServletRequest request, final HttpServletResponse response,
+            final HttpServletRequest request,
+            final HttpServletResponse response,
             final Authentication authentication
     ) {
-
         final String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             return;
         }
 
         final String jwt = authHeader.substring(7);
-        final Token storedToken = tokenRepository.findByToken(jwt)
-                .orElse(null);
+        final Token storedToken = tokenRepository.findByToken(jwt).orElse(null);
+
         if (storedToken != null) {
             storedToken.setExpired(true);
             storedToken.setRevoked(true);

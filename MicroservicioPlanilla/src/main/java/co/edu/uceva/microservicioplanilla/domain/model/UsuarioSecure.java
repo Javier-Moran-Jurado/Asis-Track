@@ -14,6 +14,7 @@ import lombok.Setter;
 @Setter
 public class UsuarioSecure {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long codigo;
     @Convert(converter = EncryptionConverter.class)
     private String nombreCompleto;
