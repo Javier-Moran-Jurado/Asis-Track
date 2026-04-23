@@ -16,13 +16,15 @@ app:
 
     security:
         jwt:
-            secrect-key: ${SECRET_KEY}
+            secret-key: ${SECRET_KEY}
             expiration: 86400000 #day
             refresh-token:
                 expiration: 604800000 #week
         integration:
             url: ${SECURITY_URL:http://localhost:8085}
             secret: ${INTERNAL_SECRET:microservice-internal-secret}
+        homomorphic:
+            a-sets: ${HOMOMORPHIC_A_SETS}
 
 logging:
   level:

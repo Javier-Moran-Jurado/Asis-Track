@@ -1,5 +1,7 @@
 package co.edu.uceva.microservicioreporte.domain.converters;
 import co.edu.uceva.microservicioreporte.domain.service.*;
+import co.edu.uceva.microserviciousuario.domain.service.PrivateKeyResponseDTO;
+import co.edu.uceva.microserviciousuario.domain.service.PublicKeyResponseDTO;
 import co.uceva.edu.security.RSA.*;
 import jakarta.persistence.*;
 import org.springframework.beans.factory.annotation.Autowired;

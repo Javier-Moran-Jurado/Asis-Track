@@ -4,16 +4,12 @@ import co.edu.uceva.microservicioplanilla.domain.model.Planilla;
 import co.edu.uceva.microservicioplanilla.domain.service.IPlanillaService;
 import co.edu.uceva.microservicioplanilla.domain.service.OllamaAiService;
 import co.edu.uceva.microservicioplanilla.utils.FileHandlerUtil;
-import jakarta.validation.constraints.NotNull;
-import lombok.NonNull;
 import lombok.SneakyThrows;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.Collections;
 import java.util.List;
 
 @RestController
@@ -21,8 +17,6 @@ import java.util.List;
 public class PlanillaRestController {
 
     private final IPlanillaService planillaService;
-
-    @Autowired
     private final OllamaAiService ollamaAiService;
 
     public PlanillaRestController(IPlanillaService planillaService, OllamaAiService ollamaAiService) {
@@ -42,21 +36,29 @@ public class PlanillaRestController {
         return planillaService.save(planilla);
     }
 
-    @SneakyThrows
-    // @PreAuthorize("isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Monitor')")
+    @PreAuthorize("isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Monitor')")
     @PostMapping("/planillas/digitalizar")
     public String digitalizar(@RequestParam("file") MultipartFile file) {
-        String text = "";
-        if (file.getContentType().equals("application/pdf")){
-            List<Resource> resources = FileHandlerUtil.pdfToImages(file);
-            text = ollamaAiService.generateResponse(resources);
-        }else if (file.getContentType().equals("application/zip")){
-            List<Resource> resources = FileHandlerUtil.extractZip(file);
-            text = ollamaAiService.generateResponse(resources);
-        }else if (file.getContentType().equals("image/jpeg")){
-            text = ollamaAiService.generateResponse(List.of(file.getResource()));
+        try {
+            String text = "";
+            System.out.println("[*] Digitalizar - Tipo de contenido: " + file.getContentType());
+            if (file.getContentType().equals("application/pdf")) {
+                List<Resource> resources = FileHandlerUtil.pdfToImages(file);
+                text = ollamaAiService.generateResponse(resources);
+            } else if (file.getContentType().equals("application/zip")) {
+                List<Resource> resources = FileHandlerUtil.extractZip(file);
+                text = ollamaAiService.generateResponse(resources);
+            } else if (file.getContentType().equals("image/jpeg")) {
+                text = ollamaAiService.generateResponse(List.of(file.getResource()));
+            } else {
+                return "Error: Tipo de archivo no soportado: " + file.getContentType();
+            }
+            return text;
+        } catch (Exception e) {
+            System.err.println("[!] Error en digitalizar: " + e.getMessage());
+            e.printStackTrace();
+            return "Error en el servidor: " + e.getMessage();
         }
-        return text;
     }
 
     @PreAuthorize("isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Docente', 'Monitor', 'Decano')")

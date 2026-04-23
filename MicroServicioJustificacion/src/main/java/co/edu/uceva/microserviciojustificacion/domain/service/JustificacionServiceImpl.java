@@ -80,10 +80,20 @@ public class JustificacionServiceImpl implements IJustificacionService {
     @Override
     @Transactional
     public Justificacion update(Justificacion justificacion) {
-        if (!justificacionRepository.existsById(justificacion.getId())) {
-            throw new ResourceNotFoundException("Justificación no encontrada con id: " + justificacion.getId());
-        }
-        return justificacionRepository.save(justificacion);
+        Justificacion existing = justificacionRepository.findById(justificacion.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Justificación no encontrada con id: " + justificacion.getId()));
+
+        existing.setRegistroId(justificacion.getRegistroId() != null ? justificacion.getRegistroId() : existing.getRegistroId());
+        existing.setUsuarioCodigo(justificacion.getUsuarioCodigo() != null ? justificacion.getUsuarioCodigo() : existing.getUsuarioCodigo());
+        existing.setMotivo(justificacion.getMotivo() != null ? justificacion.getMotivo() : existing.getMotivo());
+        existing.setDocumentoUrl(justificacion.getDocumentoUrl() != null ? justificacion.getDocumentoUrl() : existing.getDocumentoUrl());
+        existing.setEstado(justificacion.getEstado() != null ? justificacion.getEstado() : existing.getEstado());
+        existing.setFechaSolicitud(justificacion.getFechaSolicitud() != null ? justificacion.getFechaSolicitud() : existing.getFechaSolicitud());
+        existing.setFechaRevision(justificacion.getFechaRevision() != null ? justificacion.getFechaRevision() : existing.getFechaRevision());
+        existing.setRevisadoPor(justificacion.getRevisadoPor() != null ? justificacion.getRevisadoPor() : existing.getRevisadoPor());
+        existing.setObservaciones(justificacion.getObservaciones() != null ? justificacion.getObservaciones() : existing.getObservaciones());
+
+        return justificacionRepository.save(existing);
     }
 
     @Override

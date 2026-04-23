@@ -1,7 +1,7 @@
 package co.edu.uceva.microservicioreporte.auth.repository;
 
 
-import co.edu.uceva.microservicioreporte.domain.model.UsuarioSecure;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -11,7 +11,8 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity(name = "tokens")
+@Entity(name = "tokens_reporte")
+@Table(name = "tokens_reporte")
 public class Token {
 
     public enum TokenType {
@@ -32,7 +33,6 @@ public class Token {
 
     public boolean expired;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "codigo")
-    public UsuarioSecure usuario;
+    @Column(name = "codigo")
+    public Long codigo;
 }

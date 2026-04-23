@@ -63,7 +63,13 @@ public class EncryptionResponseBodyAdvice implements ResponseBodyAdvice<Object> 
                     String encryptedPayload = RSAEncryption.encrypt(rsaPublicKey, payload);
                     String b64Payload = Base64.getEncoder().encodeToString(encryptedPayload.getBytes());
 
-                    return new EncryptedResponse(b64Payload);
+                    EncryptedResponse encryptedResponse = new EncryptedResponse(b64Payload);
+
+                    if (body instanceof String) {
+                        response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
+                        return objectMapper.writeValueAsString(encryptedResponse);
+                    }
+                    return encryptedResponse;
 
                 } catch (Exception e) {
                     e.printStackTrace();

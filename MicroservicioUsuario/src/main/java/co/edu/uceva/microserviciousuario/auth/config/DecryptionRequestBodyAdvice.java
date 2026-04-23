@@ -5,10 +5,7 @@ import co.uceva.edu.security.RSA.RSAPrivateKey;
 import co.edu.uceva.microserviciousuario.domain.service.PrivateKeyResponseDTO;
 import co.edu.uceva.microserviciousuario.domain.service.SecurityIntegrationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpInputMessage;
 import org.springframework.http.converter.HttpMessageConverter;
@@ -72,13 +69,12 @@ public class DecryptionRequestBodyAdvice extends RequestBodyAdviceAdapter {
                 }
             } catch (Exception e) {
                 System.err.println("[!] Decryption error: " + e.getMessage());
-                e.printStackTrace();
-                // Si no es un EncryptedRequest, dejar pasar como plano (para compatibilidad o
-                // si el cliente no encripta)
+                // No es necesario el printStackTrace si es solo un campo faltante
                 return new DecryptedInputMessage(inputMessage, bodyBytes);
             }
+            // Si llegamos aquí es porque encryptedRequest.getEncryptedData() era null
+            return new DecryptedInputMessage(inputMessage, bodyBytes);
         }
-        return inputMessage;
     }
 
     @Getter
@@ -86,8 +82,6 @@ public class DecryptionRequestBodyAdvice extends RequestBodyAdviceAdapter {
     @NoArgsConstructor
     @AllArgsConstructor
     @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
     public static class EncryptedRequest {
         private String encryptedData;
     }

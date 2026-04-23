@@ -51,7 +51,7 @@ public class UsuarioConverter implements AttributeConverter<String, String> {
         } catch(Exception e) {
             logger.info("Failed to encode: "+ e.getMessage());
             e.printStackTrace();
-            return null;
+            throw new RuntimeException("Error encriptando atributo de Usuario", e);
         }
     }
 
@@ -84,7 +84,7 @@ public class UsuarioConverter implements AttributeConverter<String, String> {
         } catch(Exception e) {
             logger.info("Failed to decode: "+ e.getMessage());
             e.printStackTrace();
-            return null;
+            throw new RuntimeException("Error desencriptando atributo de Usuario", e);
         }
     }
 }

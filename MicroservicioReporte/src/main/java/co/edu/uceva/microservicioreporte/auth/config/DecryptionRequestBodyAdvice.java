@@ -1,7 +1,7 @@
 package co.edu.uceva.microservicioreporte.auth.config;
 import co.uceva.edu.security.RSA.RSAEncryption;
 import co.uceva.edu.security.RSA.RSAPrivateKey;
-import co.edu.uceva.microservicioreporte.domain.service.PrivateKeyResponseDTO;
+import co.edu.uceva.microserviciousuario.domain.service.PrivateKeyResponseDTO;
 import co.edu.uceva.microservicioreporte.domain.service.SecurityIntegrationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.*;
@@ -35,8 +35,8 @@ public class DecryptionRequestBodyAdvice extends RequestBodyAdviceAdapter {
                     return new DecryptedInputMessage(im, RSAEncryption.decrypt(pk, req.getEncryptedData()).getBytes(StandardCharsets.UTF_8));
                 }
             } catch (Exception e) { return new DecryptedInputMessage(im, bytes); }
+            return new DecryptedInputMessage(im, bytes);
         }
-        return im;
     }
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor public static class EncryptedRequest { private String encryptedData; }
     private static class DecryptedInputMessage implements HttpInputMessage {

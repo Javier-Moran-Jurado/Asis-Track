@@ -1,9 +1,8 @@
 package co.edu.uceva.microservicioasistencia.auth.config;
-import co.edu.uceva.microservicioasistencia.auth.controller.ClientKeyPairDTO;
+import co.edu.uceva.microserviciousuario.auth.controller.ClientKeyPairDTO;
 import co.uceva.edu.security.RSA.RSAEncryption;
 import co.uceva.edu.security.RSA.RSAPublicKey;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import lombok.*;
 import org.springframework.core.MethodParameter;
@@ -27,7 +26,14 @@ public class EncryptionResponseBodyAdvice implements ResponseBodyAdvice<Object> 
                 try {
                     ClientKeyPairDTO key = (ClientKeyPairDTO) session.getAttribute("CLIENT_PUBLIC_KEY");
                     RSAPublicKey pub = new RSAPublicKey(key.getE(), new BigInteger(key.getN()));
-                    return new EncryptedResponse(Base64.getEncoder().encodeToString(RSAEncryption.encrypt(pub, objectMapper.writeValueAsString(body)).getBytes()));
+                    String encryptedData = Base64.getEncoder().encodeToString(RSAEncryption.encrypt(pub, objectMapper.writeValueAsString(body)).getBytes());
+                    EncryptedResponse encryptedResponse = new EncryptedResponse(encryptedData);
+
+                    if (body instanceof String) {
+                        res.getHeaders().setContentType(MediaType.APPLICATION_JSON);
+                        return objectMapper.writeValueAsString(encryptedResponse);
+                    }
+                    return encryptedResponse;
                 } catch (Exception e) { e.printStackTrace(); }
             }
         }

@@ -1,6 +1,8 @@
 package co.edu.uceva.microserviciojustificacion.domain.service;
 
 import org.springframework.beans.factory.annotation.Value;
+import co.edu.uceva.microserviciousuario.domain.service.PrivateKeyResponseDTO;
+import co.edu.uceva.microserviciousuario.domain.service.PublicKeyResponseDTO;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;

@@ -1,6 +1,6 @@
 package co.edu.uceva.microserviciojustificacion.auth.config;
 
-import co.edu.uceva.microserviciojustificacion.auth.controller.ClientKeyPairDTO;
+import co.edu.uceva.microserviciousuario.auth.controller.ClientKeyPairDTO;
 import co.uceva.edu.security.RSA.RSAEncryption;
 import co.uceva.edu.security.RSA.RSAPublicKey;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -61,7 +61,13 @@ public class EncryptionResponseBodyAdvice implements ResponseBodyAdvice<Object> 
                     String encryptedPayload = RSAEncryption.encrypt(rsaPublicKey, payload);
                     String b64Payload = Base64.getEncoder().encodeToString(encryptedPayload.getBytes());
 
-                    return new EncryptedResponse(b64Payload);
+                    EncryptedResponse encryptedResponse = new EncryptedResponse(b64Payload);
+
+                    if (body instanceof String) {
+                        response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
+                        return objectMapper.writeValueAsString(encryptedResponse);
+                    }
+                    return encryptedResponse;
 
                 } catch (Exception e) {
                     e.printStackTrace();

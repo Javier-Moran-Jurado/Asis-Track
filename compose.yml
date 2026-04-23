@@ -1,11 +1,13 @@
 services:
   usuarioservice:
+    build: ./MicroservicioUsuario
     image: ${USUARIO_IMAGE}
     build: ./MicroservicioUsuario
     container_name: usuarioservice
     restart: unless-stopped
     depends_on:
       - db
+      - redis
     ports:
       - "${USUARIO_PORT}:8080"
       - "${USUARIO_ACTUATOR_PORT}:8081"
@@ -24,11 +26,13 @@ services:
       - mynetwork
 
   asistenciaservice:
+    build: ./MicroservicioAsistencia
     image: ${ASISTENCIA_IMAGE}
     container_name: asistencia-app
     restart: unless-stopped
     depends_on:
       - db
+      - redis
     ports:
       - "${ASISTENCIA_PORT}:8081"
       - "${ASISTENCIA_ACTUATOR_PORT}:8082"
@@ -38,10 +42,15 @@ services:
       - DB_PASS=${DB_PASS}
       - JPA_DDL=${JPA_DDL}
       - DB_HOST=jdbc:postgresql://db:5432/${DB_NAME}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SECURITY_URL=http://seguridad-service:8085
+      - INTERNAL_SECRET=${INTERNAL_SECRET}
     networks:
       - mynetwork
 
   planilla-service:
+    build: ./MicroservicioPlanilla
     image: ${PLANILLA_IMAGE}
     build: ./MicroservicioPlanilla
     container_name: planilla-service
@@ -51,6 +60,7 @@ services:
       - "${PLANILLA_PORT_ACTUATOR}:8081"
     depends_on:
       - db
+      - redis
     environment:
       - SECRET_KEY=${SECRET_KEY}
       - APP_SECURITY_JWT_SECRECT_KEY=${SECRET_KEY}
@@ -64,10 +74,16 @@ services:
       - JPA_DDL=${JPA_DDL}
       - PORT=8080
       - PLANILLA_PORT_ACTUATOR=${PLANILLA_PORT_ACTUATOR}
+      - HOMOMORPHIC_A_SETS=${HOMOMORPHIC_A_SETS}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SECURITY_URL=http://seguridad-service:8085
+      - INTERNAL_SECRET=${INTERNAL_SECRET}
     networks:
       - mynetwork
 
   reporte-service:
+    build: ./MicroservicioReporte
     image: ${REPORTE_IMAGE}
     container_name: reporte-service
     restart: always
@@ -76,6 +92,7 @@ services:
       - "${REPORTE_PORT_ACTUATOR}:8081"
     depends_on:
       - db
+      - redis
     environment:
       - SECRET_KEY=${SECRET_KEY}
       - DB_USER=${DB_USER}
@@ -85,10 +102,15 @@ services:
       - JPA_DDL=${JPA_DDL}
       - PORT=8080
       - REPORTE_PORT_ACTUATOR=${REPORTE_PORT_ACTUATOR}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SECURITY_URL=http://seguridad-service:8085
+      - INTERNAL_SECRET=${INTERNAL_SECRET}
     networks:
       - mynetwork
 
   justificacion-service:
+    build: ./MicroServicioJustificacion
     image: ${JUSTIFICACION_IMAGE}
     container_name: justificacion-service
     restart: always
@@ -97,6 +119,7 @@ services:
       - "${JUSTIFICACION_PORT_ACTUATOR}:8081"
     depends_on:
       - db
+      - redis
     environment:
       - SECRET_KEY=${SECRET_KEY}
       - DB_USER=${DB_USER}
@@ -106,6 +129,10 @@ services:
       - JPA_DDL=${JPA_DDL}
       - PORT=8080
       - JUSTIFICACION_PORT_ACTUATOR=${JUSTIFICACION_PORT_ACTUATOR}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SECURITY_URL=http://seguridad-service:8085
+      - INTERNAL_SECRET=${INTERNAL_SECRET}
     networks:
       - mynetwork
 
@@ -134,11 +161,13 @@ services:
       - mynetwork
 
   seguridad-service:
+    build: ./MicroServicioSeguridad
     image: ${SEGURIDAD_IMAGE}
     container_name: seguridad-service
     restart: unless-stopped
     depends_on:
       - db
+      - redis
     ports:
       - "${SEGURIDAD_PORT}:8085"
     environment:
