@@ -1,8 +1,6 @@
 services:
   usuarioservice:
     build: ./MicroservicioUsuario
-    image: ${USUARIO_IMAGE}
-    build: ./MicroservicioUsuario
     container_name: usuarioservice
     restart: unless-stopped
     depends_on:
@@ -27,7 +25,6 @@ services:
 
   asistenciaservice:
     build: ./MicroservicioAsistencia
-    image: ${ASISTENCIA_IMAGE}
     container_name: asistencia-app
     restart: unless-stopped
     depends_on:
@@ -50,8 +47,6 @@ services:
       - mynetwork
 
   planilla-service:
-    build: ./MicroservicioPlanilla
-    image: ${PLANILLA_IMAGE}
     build: ./MicroservicioPlanilla
     container_name: planilla-service
     restart: always
@@ -84,7 +79,6 @@ services:
 
   reporte-service:
     build: ./MicroservicioReporte
-    image: ${REPORTE_IMAGE}
     container_name: reporte-service
     restart: always
     ports:
@@ -111,7 +105,6 @@ services:
 
   justificacion-service:
     build: ./MicroServicioJustificacion
-    image: ${JUSTIFICACION_IMAGE}
     container_name: justificacion-service
     restart: always
     ports:
@@ -162,7 +155,6 @@ services:
 
   seguridad-service:
     build: ./MicroServicioSeguridad
-    image: ${SEGURIDAD_IMAGE}
     container_name: seguridad-service
     restart: unless-stopped
     depends_on:

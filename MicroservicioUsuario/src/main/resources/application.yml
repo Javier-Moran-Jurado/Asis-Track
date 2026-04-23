@@ -4,22 +4,13 @@ app:
   version: 1.0.0
   security:
     jwt:
-      secrect-key: ${SECRET_KEY}
-      expiration: 86400000 #day
+      secret-key: ${SECRET_KEY}
+      expiration: 86400000               # day
       refresh-token:
-        expiration: 604800000 #week
-
-
-=======
-    security:
-        jwt:
-            secret-key: ${SECRET_KEY}
-            expiration: 86400000 #day
-            refresh-token:
-                expiration: 604800000 #week
-        integration:
-            url: ${SECURITY_URL:http://localhost:8085}
-            secret: ${INTERNAL_SECRET:microservice-internal-secret}
+        expiration: 604800000            # week
+    integration:
+      url: ${SECURITY_URL:http://localhost:8085}
+      secret: ${INTERNAL_SECRET:microservice-internal-secret}
 
 logging:
   level:
@@ -31,28 +22,19 @@ logging:
     web: INFO
 
 management:
-
   endpoints:
     web:
       exposure:
         include: '*'
   server:
     port: ${USUARIO_ACTUATOR_PORT:8081}
-    endpoints:
-        web:
-            exposure:
-                include: '*'
-    server:
-        port: ${USUARIO_ACTUATOR_PORT:8081}
-
 
 server:
   port: ${PORT:8080}
 
 spring:
-
   application:
-    name: MicroservicioService
+    name: MicroservicioUsuario     # O MicroservicioService, según corresponda
   datasource:
     driver-class-name: org.postgresql.Driver
     hikari:
@@ -79,37 +61,10 @@ spring:
     allow-circular-references: true
   sql:
     init:
-      mode: always                          
-=======
-    application:
-        name: MicroservicioUsuario
-    datasource:
-        driver-class-name: org.postgresql.Driver
-        hikari:
-            connection-test-query: SELECT 1
-            connection-timeout: 30000
-            idle-timeout: 600000
-            keepalive-time: 300000
-            max-lifetime: 1800000
-            maximum-pool-size: 50
-            minimum-idle: 10
-            validation-timeout: 5000
-        password: ${DB_PASS}
-        url: ${DB_HOST}
-        username: ${DB_USER}
-    jpa:
-        hibernate:
-            ddl-auto: ${JPA_DDL}
-        properties:
-            hibernate:
-                dialect: org.hibernate.dialect.PostgreSQLDialect
-        show-sql: true
-    main:
-        allow-circular-references: true
-    data:
-        redis:
-            host: ${REDIS_HOST:localhost}
-            port: ${REDIS_PORT:6379}
-    session:
-        store-type: redis
-
+      mode: always
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  session:
+    store-type: redis
