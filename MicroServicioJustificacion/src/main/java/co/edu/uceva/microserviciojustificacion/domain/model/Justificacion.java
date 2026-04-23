@@ -1,5 +1,6 @@
 package co.edu.uceva.microserviciojustificacion.domain.model;
 
+import co.edu.uceva.microserviciojustificacion.domain.converters.EncryptionConverter;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.time.LocalDateTime;
@@ -17,15 +18,19 @@ public class Justificacion {
     private Long registroId;
 
     @Column(nullable = false, columnDefinition = "TEXT")
+    @Convert(converter = EncryptionConverter.class)
     private String motivo;
 
     @Column(name = "documento_url", columnDefinition = "TEXT")
+    @Convert(converter = EncryptionConverter.class)
     private String documentoUrl;
 
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, columnDefinition = "TEXT")
+    @Convert(converter = EncryptionConverter.class)
     private String estado; // PENDIENTE, APROBADO, RECHAZADO
 
-    @Column(name = "usuario_codigo", nullable = false, length = 50)
+    @Column(name = "usuario_codigo", nullable = false, columnDefinition = "TEXT")
+    @Convert(converter = EncryptionConverter.class)
     private String usuarioCodigo;
 
     @Column(name = "fecha_solicitud", nullable = false)
@@ -34,9 +39,11 @@ public class Justificacion {
     @Column(name = "fecha_revision")
     private LocalDateTime fechaRevision;
 
-    @Column(name = "revisado_por", length = 50)
+    @Column(name = "revisado_por", columnDefinition = "TEXT")
+    @Convert(converter = EncryptionConverter.class)
     private String revisadoPor;
 
     @Column(columnDefinition = "TEXT")
+    @Convert(converter = EncryptionConverter.class)
     private String observaciones;
 }

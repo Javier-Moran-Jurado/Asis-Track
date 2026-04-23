@@ -8,8 +8,8 @@ import java.util.Optional;
 
 public interface ITokenRepository extends JpaRepository<Token, Long> {
     @Query("""
-        select t from tokens t 
-        where t.usuario.codigo = :usuarioId 
+        select t from tokens_asistencia t 
+        where t.codigo = :usuarioId 
         and (t.expired = false or t.revoked = false)
     """)
     List<Token> findAllValidTokensByUser(Long usuarioId);

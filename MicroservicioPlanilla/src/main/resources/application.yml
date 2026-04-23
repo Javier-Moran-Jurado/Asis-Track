@@ -1,36 +1,84 @@
 app:
+
+  api:
+    version: v1
+  version: 1.0.0
+  security:
+    jwt:
+      secrect-key: ${SECRET_KEY:fallback}
+      expiration: 86400000
+      refresh-token:
+        expiration: 604800000
+=======
     api:
         version: v1
     version: 1.0.0
 
     security:
         jwt:
-            secrect-key: ${SECRET_KEY}
+            secret-key: ${SECRET_KEY}
             expiration: 86400000 #day
             refresh-token:
                 expiration: 604800000 #week
+        integration:
+            url: ${SECURITY_URL:http://localhost:8085}
+            secret: ${INTERNAL_SECRET:microservice-internal-secret}
+        homomorphic:
+            a-sets: ${HOMOMORPHIC_A_SETS}
 
 logging:
-    level:
-        com.zaxxer.hikari: ERROR
-        org.hibernate: ERROR
-        org.hibernate.SQL: DEBUG
-        org.springframework: ERROR
-        root: ERROR
-        web: INFO
+  level:
+    com.zaxxer.hikari: ERROR
+    org.hibernate: ERROR
+    org.hibernate.SQL: DEBUG
+    org.springframework: ERROR
+    root: ERROR
+    web: INFO
 
 management:
-    endpoints:
-        web:
-            exposure:
-                include: '*'
-    server:
-        port: ${PLANILLA_PORT_ACTUATOR:8081}
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+  server:
+    port: ${PLANILLA_PORT_ACTUATOR:8081}
 
 server:
-    port: ${PORT:8080}   # Valor por defecto solo por si acaso
+  port: ${PORT:8080}
 
 spring:
+
+  application:
+    name: MicroservicioPlanilla
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-timeout: 30000
+      idle-timeout: 600000
+      initialization-fail-timeout: 60000
+      max-lifetime: 1800000
+      maximum-pool-size: 10
+      minimum-idle: 5
+    password: ${DB_PASS}
+    url: ${DB_HOST}
+    username: ${DB_USER}
+  jpa:
+    defer-datasource-initialization: true
+    hibernate:
+      ddl-auto: ${JPA_DDL}
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: true
+  main:
+    allow-circular-references: true
+  sql:
+    init:
+      mode: always
+  ai:
+    ollama:
+      base-url: ${OLLAMA_URL:http://localhost:11434}
+=======
     application:
         name: MicroservicioPlanilla
     datasource:
@@ -56,6 +104,15 @@ spring:
         show-sql: true
     main:
         allow-circular-references: true
+    data:
+        redis:
+            host: ${REDIS_HOST:localhost}
+            port: ${REDIS_PORT:6379}
+    session:
+        store-type: redis
     sql:
         init:
             mode: always
+    ai:
+        ollama:
+            base-url: https://echoless-vashti-flauntingly.ngrok-free.dev

@@ -4,7 +4,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
-import co.edu.uceva.microservicioasistencia.domain.model.UsuarioSecure;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -14,7 +14,7 @@ import java.util.Map;
 
 @Service
 public class JwtService {
-    @Value("${app.security.jwt.secrect-key}")
+    @Value("${app.security.jwt.secret-key}")
     private  String secretKey;
 
     @Value("${app.security.jwt.expiration}")
@@ -49,35 +49,15 @@ public class JwtService {
                 .getExpiration();
     }
 
-    public boolean isTokenValid(String token, UsuarioSecure usuario) {
-        final Long codigo = extractCodigo(token);
-        return (codigo.equals(usuario.getCodigo())) && !isTokenExpired(token);
+    public boolean isTokenValid(String token) {
+        return !isTokenExpired(token);
     }
 
     private boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());
     }
 
-    public String generateToken(final UsuarioSecure usuario){
-        return buildToken(usuario, jwtExpiration);
-    }
 
-    public String generateRefreshToken(final UsuarioSecure usuario){
-        return buildToken(usuario, jwtRefreshExpiration);
-    }
-
-    private String buildToken (final UsuarioSecure usuario, final long expiration){
-        return Jwts.builder()
-                .id(usuario.getCodigo().toString())
-                .claims(Map.of(
-                "nombre_completo", usuario.getNombreCompleto(),
-                "rol", usuario.getRol()
-                ))
-                .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + expiration))
-                .signWith(getSingInKey())
-                .compact();
-    }
 
     private SecretKey getSingInKey(){
         byte[] keyBytes = Decoders.BASE64.decode(secretKey);

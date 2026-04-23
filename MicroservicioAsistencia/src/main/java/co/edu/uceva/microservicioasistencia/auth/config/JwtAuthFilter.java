@@ -9,8 +9,7 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import co.edu.uceva.microservicioasistencia.auth.repository.ITokenRepository;
 import co.edu.uceva.microservicioasistencia.auth.service.JwtService;
-import co.edu.uceva.microservicioasistencia.domain.model.UsuarioSecure;
-import co.edu.uceva.microservicioasistencia.domain.repository.IUsuarioSecureRepository;
+
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -24,7 +23,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
@@ -33,7 +31,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
     private final ITokenRepository tokenRepository;
-    private final IUsuarioSecureRepository usuarioRepository;
 
     @Override
     protected void doFilterInternal(
@@ -61,32 +58,27 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         final UserDetails userDetails = this.userDetailsService.loadUserByUsername(codigoUsuario.toString());
-        final boolean isTokenExpiredOrRevoked = tokenRepository.findByToken(jwt)
+        final boolean isTokenValidInDB = tokenRepository.findByToken(jwt)
                 .map(token -> !token.isExpired() && !token.isRevoked())
                 .orElse(false);
 
+        if (isTokenValidInDB) {
+            final boolean isTokenValid = jwtService.isTokenValid(jwt);
 
-        if (isTokenExpiredOrRevoked) {
-            final Optional<UsuarioSecure> user = usuarioRepository.findById(codigoUsuario);
-
-            if (user.isPresent()) {
-                final boolean isTokenValid = jwtService.isTokenValid(jwt, user.get());
-
-                if (isTokenValid) {
-                    String rol = jwtService.extractRol(jwt);
-                    List<SimpleGrantedAuthority> authorities = List.of(
-                            new SimpleGrantedAuthority("ROLE_" + rol)
-                    );
-                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                            userDetails,
-                            null,
-                            authorities
-                    );
-                    authToken.setDetails(
-                            new WebAuthenticationDetailsSource().buildDetails(request)
-                    );
-                    SecurityContextHolder.getContext().setAuthentication(authToken);
-                }
+            if (isTokenValid) {
+                String rol = jwtService.extractRol(jwt);
+                List<SimpleGrantedAuthority> authorities = List.of(
+                        new SimpleGrantedAuthority("ROLE_" + rol)
+                );
+                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                        userDetails,
+                        null,
+                        authorities
+                );
+                authToken.setDetails(
+                        new WebAuthenticationDetailsSource().buildDetails(request)
+                );
+                SecurityContextHolder.getContext().setAuthentication(authToken);
             }
         }
 

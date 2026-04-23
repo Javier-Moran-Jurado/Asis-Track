@@ -1,6 +1,5 @@
 package co.edu.uceva.microserviciousuario.auth.repository;
 
-
 import co.edu.uceva.microserviciousuario.domain.model.Usuario;
 import jakarta.persistence.*;
 import lombok.*;
@@ -11,7 +10,8 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity(name = "tokens")
+@Entity(name = "tokens_usuario")
+@Table(name = "tokens_usuario")
 public class Token {
 
     public enum TokenType {

@@ -1,0 +1,10 @@
+# Ignorar todo por defecto
+*
+
+# Permitir solo la carpeta target y el JAR
+!target/
+!target/*.jar
+
+# Ignorar otras cosas en target
+target/*
+!target/*.jar
