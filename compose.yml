@@ -2,6 +2,7 @@ services:
   usuarioservice:
     build: ./MicroservicioUsuario
     image: ${USUARIO_IMAGE}
+    build: ./MicroservicioUsuario
     container_name: usuarioservice
     restart: unless-stopped
     depends_on:
@@ -51,6 +52,7 @@ services:
   planilla-service:
     build: ./MicroservicioPlanilla
     image: ${PLANILLA_IMAGE}
+    build: ./MicroservicioPlanilla
     container_name: planilla-service
     restart: always
     ports:
@@ -61,6 +63,10 @@ services:
       - redis
     environment:
       - SECRET_KEY=${SECRET_KEY}
+      - APP_SECURITY_JWT_SECRECT_KEY=${SECRET_KEY}
+      - APP_SECURITY_JWT_EXPIRATION=3600000
+      - APP_SECURITY_JWT_REFRESH_TOKEN_EXPIRATION=86400000
+      - OLLAMA_URL=${OLLAMA_URL}
       - DB_USER=${DB_USER}
       - DB_PASS=${DB_PASS}
       - DB_NAME=${DB_NAME}
