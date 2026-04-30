@@ -74,12 +74,12 @@ class AsistenciaHomeScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _ScanButton(
-                      onTap: () => context.push('/asistencia/escaner'),
+                      onTap: () => context.push('/a-escaner'),
                     ),
                     if (RoleService.isProfesorOrMonitor) ...[
                       const SizedBox(height: 16),
                       _GenerateQRButton(
-                        onTap: () => context.push('/asistencia/generador'),
+                        onTap: () => context.push('/a-generador'),
                       ),
                     ],
                   ],

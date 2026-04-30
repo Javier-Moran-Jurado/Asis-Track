@@ -47,17 +47,17 @@ class HomeScreen extends StatelessWidget {
                       const SizedBox(width: 16),
                       Expanded(
                         child: _ActionCard(
-                          icon: Icons.description_outlined,
-                          title: 'Solicitar\njustificación',
-                          onTap: () {},
+                          icon: Icons.history_outlined,
+                          title: 'Ver\nhistorial',
+                          onTap: () => context.push('/historial'),
                         ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
                         child: _ActionCard(
-                          icon: Icons.person_outline,
-                          title: 'Ver\nperfil',
-                          onTap: () => context.push('/perfil'),
+                          icon: Icons.description_outlined,
+                          title: 'Solicitar\njustificación',
+                          onTap: () {},
                         ),
                       ),
                     ],
