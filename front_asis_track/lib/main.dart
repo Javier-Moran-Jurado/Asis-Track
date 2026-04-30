@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:front_asis_track/routes/app_router.dart';
-import 'package:go_router/go_router.dart';
-import 'themes/app_theme.dart'; // Importar el tema
+import 'themes/app_theme.dart';
 
 void main() {
   runApp(const MyApp());

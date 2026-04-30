@@ -71,6 +71,19 @@ class CustomDrawer extends StatelessWidget {
               context.go('/paso_parametros');
             },
           ),
+          //!ASISTENCIA QR
+          ListTile(
+            leading: const Icon(Icons.qr_code_scanner, color: Color(0xFF2563EB)),
+            title: const Text(
+              'Registrar Asistencia',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            subtitle: const Text('Escanear código QR', style: TextStyle(fontSize: 12)),
+            onTap: () {
+              Navigator.pop(context);
+              context.go('/asistencia');
+            },
+          ),
           ListTile(
             leading: const Icon(Icons.loop),
             title: const Text('Ciclo de Vida'),
