@@ -74,6 +74,15 @@ services:
       - REDIS_PORT=6379
       - SECURITY_URL=http://seguridad-service:8085
       - INTERNAL_SECRET=${INTERNAL_SECRET}
+      - AI_PRIMARY_PROVIDER=${AI_PRIMARY_PROVIDER}
+      - AI_CLOUD_MODEL=${AI_CLOUD_MODEL}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - HF_URL=${HF_URL}
+      - HF_TOKEN=${HF_TOKEN}
+      - GROQ_URL=${GROQ_URL}
+      - GROQ_TOKEN=${GROQ_TOKEN}
+      - GROQ_MODEL=${GROQ_MODEL}
     networks:
       - mynetwork
 

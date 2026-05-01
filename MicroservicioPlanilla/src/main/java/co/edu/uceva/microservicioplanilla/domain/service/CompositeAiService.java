@@ -17,22 +17,45 @@ import java.util.stream.Collectors;
 @Service("compositeAiService")
 public class CompositeAiService {
 
-    private final IAiModelService primaryService;
-    private final IAiModelService fallbackService;
+    private final IAiModelService cloudService;
+    private final IAiModelService huggingFaceService;
+    private final IAiModelService ollamaService;
+    private final IAiModelService groqService;
+    private final DynamicAiConfigService configService;
 
     @Autowired
     public CompositeAiService(
             @Qualifier("cloudAiService") IAiModelService cloudService,
+            @Qualifier("huggingFaceAiService") IAiModelService huggingFaceService,
             @Qualifier("ollamaAiService") IAiModelService ollamaService,
-            @Value("${app.ai.primary:cloud}") String primaryProvider) {
-        
-        if ("cloud".equalsIgnoreCase(primaryProvider)) {
-            this.primaryService = cloudService;
-            this.fallbackService = ollamaService;
-        } else {
-            this.primaryService = ollamaService;
-            this.fallbackService = cloudService;
+            @Qualifier("groqAiService") IAiModelService groqService,
+            DynamicAiConfigService configService) {
+        this.cloudService = cloudService;
+        this.huggingFaceService = huggingFaceService;
+        this.ollamaService = ollamaService;
+        this.groqService = groqService;
+        this.configService = configService;
+    }
+
+    private IAiModelService getPrimaryService() {
+        String provider = configService.getActiveProvider();
+        System.out.println("[DEBUG] getPrimaryService() - Raw activeProvider from configService: '" + provider + "'");
+        if (provider != null) {
+            provider = provider.trim();
         }
+        if ("hf".equalsIgnoreCase(provider)) return huggingFaceService;
+        if ("cloud".equalsIgnoreCase(provider)) return cloudService;
+        if ("groq".equalsIgnoreCase(provider)) return groqService;
+        return ollamaService;
+    }
+
+    private IAiModelService getFallbackService() {
+        String provider = configService.getActiveProvider();
+        if (provider != null) {
+            provider = provider.trim();
+        }
+        if ("ollama".equalsIgnoreCase(provider)) return cloudService;
+        return ollamaService;
     }
 
     /**
@@ -66,6 +89,9 @@ public class CompositeAiService {
      */
     @Cacheable(value = "ocrImagesCache", key = "target.generateCacheKey(#image)")
     public String processSingleImageWithFallback(Resource image) {
+        IAiModelService primaryService = getPrimaryService();
+        IAiModelService fallbackService = getFallbackService();
+        
         try {
             System.out.println("[*] Intentando OCR con modelo primario: " + primaryService.getProviderName());
             return primaryService.generateResponse(List.of(image));

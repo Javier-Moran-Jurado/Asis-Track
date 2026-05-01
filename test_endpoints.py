@@ -345,7 +345,7 @@ def test_planilla(session, sn, se, ck, headers_admin):
 def test_digitalizar(session, headers_admin, client_key):
     section("PLANILLA ─ DIGITALIZAR")
     url = f"{URL_PLANILLAS}/digitalizar"
-    file_path = r"c:\Users\david\OneDrive\Escritorio\Universidad\repos\Asis-Track\MicroservicioPlanilla\testImages\2026-04-14_082294-4.jpg"
+    file_path = "/home/nicoguti/Almacenamiento/PROYECTO/Asis-Track/MicroservicioPlanilla/testImages/2026-04-14_082294-4.jpg"
 
     print(f"\n{C_TITLE}▶  PLANILLA ─ Digitalizar imagen{C_RESET}")
     try:

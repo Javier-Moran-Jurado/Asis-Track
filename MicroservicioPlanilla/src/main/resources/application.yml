@@ -4,7 +4,7 @@ app:
   version: 1.0.0
   security:
     jwt:
-      secret-key: ${SECRET_KEY:fallback}   # corregido
+      secret-key: ${SECRET_KEY:fallback}
       expiration: 86400000
       refresh-token:
         expiration: 604800000
@@ -13,6 +13,18 @@ app:
       secret: ${INTERNAL_SECRET:microservice-internal-secret}
     homomorphic:
       a-sets: ${HOMOMORPHIC_A_SETS}
+
+  ai:
+    primary: ${AI_PRIMARY_PROVIDER:hf}
+    cloud:
+      model: ${AI_CLOUD_MODEL:gpt-4o-mini}
+    hf:
+      url: ${HF_URL:https://router.huggingface.co/zai-org/api/paas/v4/layout_parsing}
+      token: ${HF_TOKEN:}
+    groq:
+      url: ${GROQ_URL:https://api.groq.com/openai/v1}
+      token: ${GROQ_TOKEN:}
+      model: ${GROQ_MODEL:meta-llama/llama-4-scout-17b-16e-instruct}
 
 logging:
   level:
@@ -37,8 +49,12 @@ server:
 spring:
   application:
     name: MicroservicioPlanilla
+
   datasource:
     driver-class-name: org.postgresql.Driver
+    url: ${DB_HOST}
+    username: ${DB_USER}
+    password: ${DB_PASS}
     hikari:
       connection-timeout: 30000
       idle-timeout: 600000
@@ -46,9 +62,7 @@ spring:
       max-lifetime: 1800000
       maximum-pool-size: 10
       minimum-idle: 5
-    password: ${DB_PASS}
-    url: ${DB_HOST}
-    username: ${DB_USER}
+
   jpa:
     defer-datasource-initialization: true
     hibernate:
@@ -57,27 +71,25 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
     show-sql: true
+
   main:
     allow-circular-references: true
+
   sql:
     init:
       mode: always
+
   data:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+
   session:
     store-type: redis
+
   ai:
     ollama:
       base-url: ${OLLAMA_URL:http://localhost:11434}
     openai:
-      # Puede ser de OpenAI, Groq, OpenRouter, Nvidia, Together, etc.
       base-url: ${OPENAI_BASE_URL:https://api.openai.com}
-      api-key: ${OPENAI_API_KEY:}
-      
-app:
-  ai:
-    primary: ${AI_PRIMARY_PROVIDER:cloud}
-    cloud:
-      model: ${AI_CLOUD_MODEL:gpt-4o-mini}
+      api-key: ${OPENAI_API_KEY:dummy-key}

@@ -8,37 +8,43 @@ import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.content.Media;
+import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.MimeTypeUtils;
 
 import java.util.List;
 
-@NoArgsConstructor
-@AllArgsConstructor
 @Service("cloudAiService")
+@AllArgsConstructor
 public class OpenAiServiceImpl implements IAiModelService {
 
-    @Autowired(required = false)
-    private OpenAiChatModel model;
-
-    @Value("${app.ai.cloud.model:gpt-4o-mini}")
-    private String modelName;
+    private final DynamicAiConfigService configService;
 
     @Override
     public String getProviderName() {
-        return "Cloud API (OpenAI Compatible - " + modelName + ")";
+        return "Cloud API (OpenAI Compatible - " + configService.getCloudModelName() + ")";
     }
 
     @Override
     public String generateResponse(List<Resource> images) {
-        if (model == null) {
-            throw new IllegalStateException("OpenAI model is not configured.");
+        String baseUrl = configService.getCloudBaseUrl();
+        String apiKey = configService.getCloudApiKey();
+        
+        if (baseUrl == null || baseUrl.isEmpty()) {
+            throw new IllegalStateException("Cloud API Base URL is not configured.");
         }
+
+        OpenAiApi api = OpenAiApi.builder()
+                .baseUrl(baseUrl)
+                .apiKey(apiKey)
+                .build();
+                
+        OpenAiChatModel dynamicModel = OpenAiChatModel.builder()
+                .openAiApi(api)
+                .build();
 
         StringBuilder fullText = new StringBuilder();
 
@@ -55,12 +61,12 @@ public class OpenAiServiceImpl implements IAiModelService {
 
                 // 3. Configurar opciones del modelo
                 OpenAiChatOptions options = OpenAiChatOptions.builder()
-                        .model(modelName)
+                        .model(configService.getCloudModelName())
                         .temperature(0.0)
                         .build();
 
                 // 4. Llamar al modelo
-                ChatResponse response = model.call(new Prompt(userMessage, options));
+                ChatResponse response = dynamicModel.call(new Prompt(userMessage, options));
 
                 if (response != null && response.getResult() != null) {
                     String rawText = response.getResult().getOutput().getText();
