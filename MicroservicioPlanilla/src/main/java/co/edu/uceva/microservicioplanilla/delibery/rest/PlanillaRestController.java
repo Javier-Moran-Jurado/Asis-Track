@@ -2,7 +2,7 @@ package co.edu.uceva.microservicioplanilla.delibery.rest;
 
 import co.edu.uceva.microservicioplanilla.domain.model.Planilla;
 import co.edu.uceva.microservicioplanilla.domain.service.IPlanillaService;
-import co.edu.uceva.microservicioplanilla.domain.service.OllamaAiService;
+import co.edu.uceva.microservicioplanilla.domain.service.CompositeAiService;
 import co.edu.uceva.microservicioplanilla.utils.FileHandlerUtil;
 import lombok.SneakyThrows;
 import org.springframework.core.io.Resource;
@@ -17,11 +17,11 @@ import java.util.List;
 public class PlanillaRestController {
 
     private final IPlanillaService planillaService;
-    private final OllamaAiService ollamaAiService;
+    private final CompositeAiService compositeAiService;
 
-    public PlanillaRestController(IPlanillaService planillaService, OllamaAiService ollamaAiService) {
+    public PlanillaRestController(IPlanillaService planillaService, CompositeAiService compositeAiService) {
         this.planillaService = planillaService;
-        this.ollamaAiService = ollamaAiService;
+        this.compositeAiService = compositeAiService;
     }
 
     @PreAuthorize("isAuthenticated() and hasAnyRole('Administrativo', 'Administrador')")
@@ -44,12 +44,12 @@ public class PlanillaRestController {
             System.out.println("[*] Digitalizar - Tipo de contenido: " + file.getContentType());
             if (file.getContentType().equals("application/pdf")) {
                 List<Resource> resources = FileHandlerUtil.pdfToImages(file);
-                text = ollamaAiService.generateResponse(resources);
+                text = compositeAiService.processBatch(resources);
             } else if (file.getContentType().equals("application/zip")) {
                 List<Resource> resources = FileHandlerUtil.extractZip(file);
-                text = ollamaAiService.generateResponse(resources);
+                text = compositeAiService.processBatch(resources);
             } else if (file.getContentType().equals("image/jpeg")) {
-                text = ollamaAiService.generateResponse(List.of(file.getResource()));
+                text = compositeAiService.processBatch(List.of(file.getResource()));
             } else {
                 return "Error: Tipo de archivo no soportado: " + file.getContentType();
             }

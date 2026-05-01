@@ -13,7 +13,7 @@ class HistorialDetalleScreen extends StatelessWidget {
     final bool esFalta = !asistencia.asistio;
     final bool mostrarBotonJustificar = esFalta &&
         (asistencia.estadoJustificacion == EstadoJustificacion.ninguna ||
-         asistencia.estadoJustificacion == EstadoJustificacion.rechazada);
+            asistencia.estadoJustificacion == EstadoJustificacion.rechazada);
 
     return Scaffold(
       backgroundColor: AppTheme.gray50,
@@ -52,7 +52,8 @@ class HistorialDetalleScreen extends StatelessWidget {
                           color: AppTheme.primaryColor.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.class_outlined, color: AppTheme.primaryColor),
+                        child: const Icon(Icons.class_outlined,
+                            color: AppTheme.primaryColor),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -87,7 +88,8 @@ class HistorialDetalleScreen extends StatelessWidget {
                   _DetailRow(
                     icon: Icons.calendar_today,
                     label: 'Fecha',
-                    value: DateFormat('EEEE, d MMMM yyyy', 'es').format(asistencia.fecha),
+                    value: DateFormat('EEEE, d MMMM yyyy', 'es')
+                        .format(asistencia.fecha),
                   ),
                   const SizedBox(height: 12),
                   _DetailRow(
@@ -119,7 +121,8 @@ class HistorialDetalleScreen extends StatelessWidget {
                         style: TextStyle(fontSize: 14, color: Colors.grey),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
                           color: esFalta
                               ? AppTheme.errorColor.withValues(alpha: 0.1)
@@ -132,13 +135,17 @@ class HistorialDetalleScreen extends StatelessWidget {
                             Icon(
                               esFalta ? Icons.close : Icons.check,
                               size: 16,
-                              color: esFalta ? AppTheme.errorColor : AppTheme.secondaryColor,
+                              color: esFalta
+                                  ? AppTheme.errorColor
+                                  : AppTheme.secondaryColor,
                             ),
                             const SizedBox(width: 6),
                             Text(
                               esFalta ? 'Falta' : 'Presente',
                               style: TextStyle(
-                                color: esFalta ? AppTheme.errorColor : AppTheme.secondaryColor,
+                                color: esFalta
+                                    ? AppTheme.errorColor
+                                    : AppTheme.secondaryColor,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -154,7 +161,8 @@ class HistorialDetalleScreen extends StatelessWidget {
             const SizedBox(height: 24),
 
             // ── Card de Justificación (si es falta y tiene justificación) ──
-            if (esFalta && asistencia.estadoJustificacion != EstadoJustificacion.ninguna)
+            if (esFalta &&
+                asistencia.estadoJustificacion != EstadoJustificacion.ninguna)
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -177,8 +185,10 @@ class HistorialDetalleScreen extends StatelessWidget {
                     _DetailRow(
                       icon: Icons.info_outline,
                       label: 'Estado',
-                      value: _obtenerTextoEstado(asistencia.estadoJustificacion),
-                      valueColor: _obtenerColorEstado(asistencia.estadoJustificacion),
+                      value:
+                          _obtenerTextoEstado(asistencia.estadoJustificacion),
+                      valueColor:
+                          _obtenerColorEstado(asistencia.estadoJustificacion),
                     ),
                     if (asistencia.motivoJustificacion != null) ...[
                       const SizedBox(height: 12),
@@ -189,26 +199,29 @@ class HistorialDetalleScreen extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         asistencia.motivoJustificacion!,
-                        style: const TextStyle(fontSize: 15, color: AppTheme.gray900),
+                        style: const TextStyle(
+                            fontSize: 15, color: AppTheme.gray900),
                       ),
                     ],
                     if (asistencia.archivoAdjunto != null) ...[
                       const SizedBox(height: 16),
                       InkWell(
-                        onTap: () {
-                          // TODO: Abrir archivo adjunto
-                        },
+                        onTap: () {},
                         borderRadius: BorderRadius.circular(8),
                         child: Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: AppTheme.primaryColor.withValues(alpha: 0.05),
-                            border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2)),
+                            color:
+                                AppTheme.primaryColor.withValues(alpha: 0.05),
+                            border: Border.all(
+                                color: AppTheme.primaryColor
+                                    .withValues(alpha: 0.2)),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.attach_file, color: AppTheme.primaryColor, size: 20),
+                              const Icon(Icons.attach_file,
+                                  color: AppTheme.primaryColor, size: 20),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
@@ -220,7 +233,8 @@ class HistorialDetalleScreen extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              const Icon(Icons.download_rounded, color: AppTheme.primaryColor, size: 20),
+                              const Icon(Icons.download_rounded,
+                                  color: AppTheme.primaryColor, size: 20),
                             ],
                           ),
                         ),
@@ -256,19 +270,27 @@ class HistorialDetalleScreen extends StatelessWidget {
 
   String _obtenerTextoEstado(EstadoJustificacion estado) {
     switch (estado) {
-      case EstadoJustificacion.ninguna: return 'Sin justificar';
-      case EstadoJustificacion.pendiente: return 'En revisión';
-      case EstadoJustificacion.aprobada: return 'Aprobada';
-      case EstadoJustificacion.rechazada: return 'Rechazada';
+      case EstadoJustificacion.ninguna:
+        return 'Sin justificar';
+      case EstadoJustificacion.pendiente:
+        return 'En revisión';
+      case EstadoJustificacion.aprobada:
+        return 'Aprobada';
+      case EstadoJustificacion.rechazada:
+        return 'Rechazada';
     }
   }
 
   Color _obtenerColorEstado(EstadoJustificacion estado) {
     switch (estado) {
-      case EstadoJustificacion.ninguna: return Colors.grey;
-      case EstadoJustificacion.pendiente: return const Color(0xFFB45309);
-      case EstadoJustificacion.aprobada: return AppTheme.secondaryColor;
-      case EstadoJustificacion.rechazada: return AppTheme.errorColor;
+      case EstadoJustificacion.ninguna:
+        return Colors.grey;
+      case EstadoJustificacion.pendiente:
+        return const Color(0xFFB45309);
+      case EstadoJustificacion.aprobada:
+        return AppTheme.secondaryColor;
+      case EstadoJustificacion.rechazada:
+        return AppTheme.errorColor;
     }
   }
 }

@@ -19,11 +19,18 @@ import java.util.List;
 
 @NoArgsConstructor
 @AllArgsConstructor
-@Service
-public class OllamaAiService {
+@Service("ollamaAiService")
+public class OllamaAiServiceImpl implements IAiModelService {
 
     @Autowired
     private OllamaChatModel model;
+
+    @Override
+    public String getProviderName() {
+        return "Ollama";
+    }
+
+    @Override
 
     public String generateResponse(List<Resource> images) {
         StringBuilder fullText = new StringBuilder();

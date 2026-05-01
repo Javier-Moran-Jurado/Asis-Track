@@ -71,3 +71,13 @@ spring:
   ai:
     ollama:
       base-url: ${OLLAMA_URL:http://localhost:11434}
+    openai:
+      # Puede ser de OpenAI, Groq, OpenRouter, Nvidia, Together, etc.
+      base-url: ${OPENAI_BASE_URL:https://api.openai.com}
+      api-key: ${OPENAI_API_KEY:}
+      
+app:
+  ai:
+    primary: ${AI_PRIMARY_PROVIDER:cloud}
+    cloud:
+      model: ${AI_CLOUD_MODEL:gpt-4o-mini}
