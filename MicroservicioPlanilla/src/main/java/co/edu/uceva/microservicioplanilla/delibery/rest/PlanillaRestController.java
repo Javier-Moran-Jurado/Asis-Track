@@ -61,6 +61,31 @@ public class PlanillaRestController {
         }
     }
 
+    @PreAuthorize("isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Monitor')")
+    @PostMapping("/planillas/campos")
+    public String obtenerCampos(@RequestParam("file") MultipartFile file) {
+        try {
+            String text = "";
+            System.out.println("[*] Obtener Campos - Tipo de contenido: " + file.getContentType());
+            if (file.getContentType().equals("application/pdf")) {
+                List<Resource> resources = FileHandlerUtil.pdfToImages(file);
+                text = compositeAiService.processStructureBatch(resources);
+            } else if (file.getContentType().equals("application/zip")) {
+                List<Resource> resources = FileHandlerUtil.extractZip(file);
+                text = compositeAiService.processStructureBatch(resources);
+            } else if (file.getContentType().equals("image/jpeg")) {
+                text = compositeAiService.processStructureBatch(List.of(file.getResource()));
+            } else {
+                return "Error: Tipo de archivo no soportado: " + file.getContentType();
+            }
+            return text;
+        } catch (Exception e) {
+            System.err.println("[!] Error en obtenerCampos: " + e.getMessage());
+            e.printStackTrace();
+            return "Error en el servidor: " + e.getMessage();
+        }
+    }
+
     @PreAuthorize("isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Docente', 'Monitor', 'Decano')")
     @DeleteMapping("/planillas/{id}")
     public void delete(@PathVariable Long id) {

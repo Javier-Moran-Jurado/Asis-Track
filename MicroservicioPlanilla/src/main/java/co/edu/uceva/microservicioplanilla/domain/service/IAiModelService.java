@@ -5,5 +5,6 @@ import java.util.List;
 
 public interface IAiModelService {
     String generateResponse(List<Resource> images);
+    String extractStructure(List<Resource> images);
     String getProviderName();
 }

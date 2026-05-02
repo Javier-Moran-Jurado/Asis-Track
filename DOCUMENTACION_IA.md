@@ -13,7 +13,7 @@ Para garantizar un sistema robusto, flexible y tolerante a fallos, el módulo de
 - **`IAiModelService`**: Interfaz central que define el contrato base de cualquier modelo de IA dentro del sistema. Todo proveedor (Groq, OpenAI, etc.) implementa esta interfaz exponiendo el método `generateResponse(List<Resource> images)`.
 - **`DynamicAiConfigService`**: Servicio encarcado de inyectar las credenciales y parámetros de los proveedores desde las variables de entorno (`application.yml` o `.env`). Este servicio retiene la configuración actual en memoria y permite modificarla en caliente (Runtime).
 - **`CompositeAiService`**: Es el cerebro orquestador. Intercepta todas las peticiones OCR entrantes, evalúa a qué proveedor enviarlas (según lo indicado por el administrador en el `DynamicAiConfigService`), y si el proveedor activo llega a fallar (por caídas, rate-limits, etc.), ejecuta automáticamente una estrategia de contingencia (*Fallback*) hacia el proveedor local `Ollama`.
-- **`AiConfigRestController`**: Exposición REST para que un administrador cambie las credenciales y el proveedor primario en tiempo real.
+- **`AiConfigRestController`**: Exposición REST (`GET` y `PUT`) para que un administrador cambie las credenciales, modelo y proveedor primario en tiempo real.
 
 ---
 
@@ -23,9 +23,9 @@ El sistema ha sido adaptado para soportar los siguientes ecosistemas, cada uno c
 
 ### 2.1 Groq (Implementación Nativa RestTemplate)
 **Servicio:** `GroqAiServiceImpl`
-- **Enfoque:** Construido usando `RestTemplate` directamente hacia la API compatible de Groq (`https://api.groq.com/openai/v1/chat/completions`). 
-- **Razón:** Groq posee una implementación rápida de inferencia en hardware LPU. Sin embargo, su endpoint visual no siempre es compatible de forma plug-and-play con ciertas dependencias de *Spring AI*, por lo cual se adaptó un cliente manual y optimizado.
-- **Propósito:** Ejecuta un prompt robusto *zero-shot* que **extrae toda la tabla fila por fila**. Transforma dinámicamente los encabezados detectados a formato `snake_case`, estructura campos compuestos y fechas como objetos anidados, detecta marcas en casillas transformándolas en valores booleanos (`true`/`false`), y estandariza los campos vacíos y firmas. El resultado final es un arreglo JSON estricto listo para ser persistido.
+- **Enfoque:** Construido usando `RestTemplate` directamente hacia la API compatible de Groq (`https://api.groq.com/openai/v1`). 
+- **Razón:** Groq posee una implementación rápida de inferencia en hardware LPU. Se utiliza un cliente REST personalizado para inyectar dinámicamente los prompts que exigen respuestas exclusivas en JSON.
+- **Propósito:** Ejecuta un prompt robusto *zero-shot* que extrae la información y deduce los metadatos estructurales (tipos de campo digitales como `texto`, `numerico`, `fecha`, `firma`).
 
 ### 2.2 Hugging Face (Modelos PaaS / Zai)
 **Servicio:** `HuggingFaceAiServiceImpl`
@@ -34,12 +34,12 @@ El sistema ha sido adaptado para soportar los siguientes ecosistemas, cada uno c
 
 ### 2.3 OpenAI (Cloud)
 **Servicio:** `OpenAiServiceImpl`
-- **Enfoque:** Implementado usando el ecosistema `Spring AI`. Permite interactuar nativamente con la gama `gpt-4o-mini` o superior, integrando capacidades multimodales avanzadas.
+- **Enfoque:** Implementado usando el ecosistema `Spring AI` (`OpenAiChatModel`). Permite interactuar nativamente con la gama `gpt-4o-mini` o cualquier otro endpoint compatible con OpenAI (como **NVIDIA Integrate API** usando modelos como `microsoft/phi-4-multimodal-instruct`).
 
 ### 2.4 Ollama (Fallback Local)
 **Servicio:** `OllamaAiServiceImpl`
-- **Enfoque:** Conecta con una instancia local de Ollama (ej. LLaVA). 
-- **Propósito:** Actúa como red de seguridad. Si el sistema primario pierde acceso a Internet o la API colapsa, Ollama atiende el OCR garantizando 100% de disponibilidad (*Zero Downtime OCR*).
+- **Enfoque:** Conecta con una instancia remota o local de Ollama. Utiliza `RestTemplate` directo hacia el endpoint `/api/chat` para soportar cambios de URL y de modelo en caliente (Runtime).
+- **Propósito:** Actúa como red de seguridad. Si el sistema primario pierde acceso a Internet o la API colapsa, Ollama atiende el OCR garantizando 100% de disponibilidad. Los prompts de Ollama han sido ajustados específicamente para modelos tipo `glm-ocr` (ej. usando la instrucción obligatoria `Table Recognition:` para datos y la instrucción en chino requerida para estructura JSON).
 
 ---
 
@@ -56,10 +56,14 @@ GROQ_URL=https://api.groq.com/openai/v1
 GROQ_TOKEN=gsk_your_token_here
 GROQ_MODEL=meta-llama/llama-4-scout-17b-16e-instruct
 
-# OpenAI Config
+# OpenAI / NVIDIA Config
 OPENAI_BASE_URL=https://api.openai.com
 OPENAI_API_KEY=sk-your_token_here
 AI_CLOUD_MODEL=gpt-4o-mini
+
+# Ollama Config
+OLLAMA_URL=http://localhost:11434
+OLLAMA_MODEL=ocr-masivo
 ```
 
 ---
@@ -103,6 +107,46 @@ curl -X POST "http://localhost:8084/api/v1/planilla-service/planillas/digitaliza
 ]
 ```
 
+### 4.2. Obtener Campos/Estructura (OCR Semántico)
+Endpoint especializado para extraer no los datos, sino la estructura del documento y el tipo de componente digital ideal para cada columna.
+
+- **URL:** `POST /api/v1/planilla-service/planillas/campos`
+- **Roles Permitidos:** `[Administrador, Coordinador, Decano, Docente, Monitor]`
+- **Consumo:** `multipart/form-data`
+
+**Parámetros:**
+- `file` (Obligatorio, tipo Archivo): Imagen a analizar.
+
+**Ejemplo de Petición cURL:**
+```bash
+curl -X POST "http://localhost:8084/api/v1/planilla-service/planillas/campos" \
+     -H "Authorization: Bearer <TU_TOKEN_JWT>" \
+     -F "file=@/ruta/a/tu/planilla.jpg"
+```
+
+**Respuesta Exitosa:**
+```json
+{
+  "encabezados": [
+    {
+      "nombre": "Cédula",
+      "tipo_campo": "numerico",
+      "opciones": []
+    },
+    {
+      "nombre": "Nombres",
+      "tipo_campo": "texto",
+      "opciones": []
+    },
+    {
+      "nombre": "Firma",
+      "tipo_campo": "firma",
+      "opciones": []
+    }
+  ]
+}
+```
+
 ---
 
 ### 4.2. Configuración Dinámica de la IA (Administradores)
@@ -123,39 +167,42 @@ Endpoints exclusivos para supervisar o intervenir la forma en la que la Intelige
     "hfUrl": "https://router.huggingface.co/zai-org/api/paas/v4/layout_parsing",
     "hfToken": "********",
     "ollamaBaseUrl": "http://localhost:11434",
-    "groqUrl": "https://api.groq.com/openai/v1/chat/completions",
+    "ollamaModel": "ocr-masivo",
+    "groqUrl": "https://api.groq.com/openai/v1",
     "groqToken": "********",
     "groqModel": "meta-llama/llama-4-scout-17b-16e-instruct"
 }
 ```
 
 #### B) Actualizar Proveedor o Modelos en Tiempo Real
-- **URL:** `POST /api/v1/planilla-service/ai-config`
+- **URL:** `PUT /api/v1/planilla-service/ai-config`
 - **Roles Permitidos:** `[Administrador]`
 - **Content-Type:** `application/json`
 
 Puedes enviar únicamente las llaves que deseas actualizar. Si quieres cambiar de `groq` a la nube de OpenAI (`cloud`) al instante porque se acabaron los créditos:
 
-**Ejemplo de Petición (Cambio a OpenAI):**
+**Ejemplo de Petición (Cambio a OpenAI/NVIDIA):**
 ```bash
-curl -X POST "http://localhost:8084/api/v1/planilla-service/ai-config" \
+curl -X PUT "http://localhost:8084/api/v1/planilla-service/ai-config" \
      -H "Authorization: Bearer <TU_TOKEN_JWT>" \
      -H "Content-Type: application/json" \
      -d '{
            "activeProvider": "cloud",
-           "cloudModelName": "gpt-4o",
-           "cloudApiKey": "sk-NUEVA_API_KEY"
+           "cloudBaseUrl": "https://integrate.api.nvidia.com",
+           "cloudModelName": "microsoft/phi-4-multimodal-instruct",
+           "cloudApiKey": "nvapi-NUEVA_API_KEY"
          }'
 ```
 
-**Ejemplo de Petición (Cambio de Modelo de Groq):**
+**Ejemplo de Petición (Cambio de Modelo de Ollama remoto):**
 ```bash
-curl -X POST "http://localhost:8084/api/v1/planilla-service/ai-config" \
+curl -X PUT "http://localhost:8084/api/v1/planilla-service/ai-config" \
      -H "Authorization: Bearer <TU_TOKEN_JWT>" \
      -H "Content-Type: application/json" \
      -d '{
-           "activeProvider": "groq",
-           "groqModel": "llama-3.2-90b-vision-preview"
+           "activeProvider": "ollama",
+           "ollamaBaseUrl": "https://tu-ngrok-url.ngrok-free.dev",
+           "ollamaModel": "glm-ocr"
          }'
 ```
 
@@ -190,19 +237,19 @@ Ideal para establecer el proveedor por defecto cada vez que el sistema se reinic
    `docker compose up -d --build planilla-service`
 
 ### Método 2: Cambio Dinámico (vía Endpoint REST)
-Ideal para cambiar de proveedor "en caliente" sin tener que reiniciar el servidor (por ejemplo, si te quedas sin créditos de Groq en medio de la operación y quieres pasar a OpenAI).
+Ideal para cambiar de proveedor "en caliente" sin tener que reiniciar el servidor (por ejemplo, si te quedas sin créditos de Groq en medio de la operación y quieres pasar a OpenAI u Ollama).
 
 1. Consigue tu token JWT con rol de **Administrador**.
-2. Haz una petición `POST` al endpoint `/api/v1/planilla-service/ai-config`.
+2. Haz una petición `PUT` al endpoint `/api/v1/planilla-service/ai-config`.
 3. En el body JSON, envía la propiedad `"activeProvider"` con el nombre del nuevo proveedor.
    
-**Ejemplo (Cambiando a OpenAI instantáneamente):**
+**Ejemplo (Cambiando a Cloud instantáneamente):**
 ```bash
-curl -X POST "http://localhost:8084/api/v1/planilla-service/ai-config" \
+curl -X PUT "http://localhost:8084/api/v1/planilla-service/ai-config" \
      -H "Authorization: Bearer <TU_TOKEN_JWT>" \
      -H "Content-Type: application/json" \
      -d '{
            "activeProvider": "cloud"
          }'
 ```
-*A partir de ese instante, la siguiente planilla será escaneada usando OpenAI (asumiendo que las credenciales de OpenAI ya estaban configuradas).*
+*A partir de ese instante, la siguiente planilla será escaneada usando Cloud/OpenAI (asumiendo que las credenciales ya estaban configuradas).*

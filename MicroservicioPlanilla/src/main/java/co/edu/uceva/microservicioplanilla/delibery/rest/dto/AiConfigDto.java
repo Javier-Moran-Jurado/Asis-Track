@@ -11,6 +11,7 @@ public class AiConfigDto {
     private String hfUrl;
     private String hfToken;
     private String ollamaBaseUrl;
+    private String ollamaModel;
     private String groqUrl;
     private String groqToken;
     private String groqModel;

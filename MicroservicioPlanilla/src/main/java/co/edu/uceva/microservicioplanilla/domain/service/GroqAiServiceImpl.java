@@ -32,28 +32,8 @@ public class GroqAiServiceImpl implements IAiModelService {
 
     @Override
     public String generateResponse(List<Resource> images) {
-        String baseUrl = configService.getGroqUrl();
-        String apiKey = configService.getGroqToken();
-        String modelName = configService.getGroqModel();
-
-        if (baseUrl == null || baseUrl.isEmpty()) {
-            throw new IllegalStateException("Groq URL is not configured.");
-        }
-        if (apiKey == null || apiKey.isEmpty()) {
-            throw new IllegalStateException("Groq API Key is not configured.");
-        }
-
-        try {
-            // Read first image and convert to Base64
-            Resource imageResource = images.get(0);
-            byte[] imageBytes;
-            try (InputStream is = imageResource.getInputStream()) {
-                imageBytes = is.readAllBytes();
-            }
-            String base64Image = Base64.getEncoder().encodeToString(imageBytes);
-
-            String promptText = """
-                                        Analiza la imagen de la planilla adjunta y extrae la información de la tabla fila por fila.
+        String promptText = """
+                    Analiza la imagen de la planilla adjunta y extrae la información de la tabla fila por fila.
 
                     Devuelve exclusivamente un arreglo JSON válido y sin formato adicional.
 
@@ -86,7 +66,71 @@ public class GroqAiServiceImpl implements IAiModelService {
                         "firma": ""
                       }
                     ]
-                                        """;
+                    """;
+        return callGroqApi(images, promptText);
+    }
+
+    @Override
+    public String extractStructure(List<Resource> images) {
+        String promptText = """
+                Analiza la imagen y detecta la estructura de la planilla, deduciendo además el tipo de campo digital ideal para cada columna o sección.
+
+                Devuelve exclusivamente un JSON válido y sin formato adicional.
+
+                Reglas:
+
+                - No extraigas valores de las filas.
+                - No inventes encabezados.
+                - Detecta los encabezados visibles.
+                - Conserva el orden de las columnas.
+                - Deduce el tipo de componente digital que se necesita para cada encabezado. Debes clasificar el "tipo_campo" utilizando ÚNICAMENTE los siguientes valores permitidos en nuestro catálogo de componentes:
+                    - "texto" (Para nombres, identificaciones, textos cortos)
+                    - "numerico" (Para cantidades, números fijos)
+                    - "fecha" (Para fechas en general)
+                    - "desplegable" (Para seleccionar una opción de una lista, como motivos o estados)
+                    - "checkbox" (Para aceptar términos o selecciones múltiples)
+                    - "radio" (Para selección única entre 2 o 3 opciones, ej. Sí/No)
+                    - "area_texto" (Para observaciones, descripciones largas o notas)
+                    - "archivo" (Para carga de documentos adjuntos, fotos o evidencias)
+                    - "firma" (Para firmas manuscritas táctiles)
+                - EXTRACCIÓN DE OPCIONES: Si el "tipo_campo" deducido es "checkbox", "radio" o "desplegable", y las opciones están visibles de forma explícita en la imagen (por ejemplo, "Sí" y "No", o una lista de motivos), extrae esas opciones y agrégalas a un arreglo llamado "opciones". Si no hay opciones visibles, el arreglo debe estar vacío.
+                - FORMATO ESTRICTO: La respuesta DEBE ser únicamente el objeto JSON. NO envuelvas la respuesta en bloques de código de Markdown (por ejemplo, no uses ```json o ```). No agregues texto antes ni después del JSON.
+
+                Formato exacto esperado:
+
+                {
+                  "encabezados": [
+                    {
+                      "nombre": "Nombre del encabezado detectado",
+                      "tipo_campo": "valor_del_catalogo",
+                      "opciones": ["Opción 1", "Opción 2"] 
+                    }
+                  ]
+                }
+                """;
+        return callGroqApi(images, promptText);
+    }
+
+    private String callGroqApi(List<Resource> images, String promptText) {
+        String baseUrl = configService.getGroqUrl();
+        String apiKey = configService.getGroqToken();
+        String modelName = configService.getGroqModel();
+
+        if (baseUrl == null || baseUrl.isEmpty()) {
+            throw new IllegalStateException("Groq URL is not configured.");
+        }
+        if (apiKey == null || apiKey.isEmpty()) {
+            throw new IllegalStateException("Groq API Key is not configured.");
+        }
+
+        try {
+            // Read first image and convert to Base64
+            Resource imageResource = images.get(0);
+            byte[] imageBytes;
+            try (InputStream is = imageResource.getInputStream()) {
+                imageBytes = is.readAllBytes();
+            }
+            String base64Image = Base64.getEncoder().encodeToString(imageBytes);
 
             // Construct exact JSON payload for Groq
             Map<String, Object> textContent = new HashMap<>();
@@ -119,7 +163,7 @@ public class GroqAiServiceImpl implements IAiModelService {
             String endpoint = baseUrl.endsWith("/chat/completions") ? baseUrl : baseUrl + "/chat/completions";
 
             String responseJson = restTemplate.postForObject(endpoint, requestEntity, String.class);
-
+            
             // Parse Groq response
             JsonNode rootNode = objectMapper.readTree(responseJson);
             JsonNode choices = rootNode.path("choices");

@@ -107,4 +107,41 @@ public class CompositeAiService {
             }
         }
     }
+
+    /**
+     * Procesa una lista de imágenes de forma paralela para extraer la ESTRUCTURA (campos).
+     */
+    public String processStructureBatch(List<Resource> images) {
+        List<CompletableFuture<String>> futures = images.stream()
+                .map(img -> CompletableFuture.supplyAsync(() -> processSingleImageStructureWithFallback(img)))
+                .collect(Collectors.toList());
+
+        return futures.stream()
+                .map(CompletableFuture::join)
+                .collect(Collectors.joining("\n\n"));
+    }
+
+    /**
+     * Procesa una sola imagen para extraer su estructura, intentando usar el caché primero.
+     */
+    @Cacheable(value = "ocrStructureCache", key = "target.generateCacheKey(#image)")
+    public String processSingleImageStructureWithFallback(Resource image) {
+        IAiModelService primaryService = getPrimaryService();
+        IAiModelService fallbackService = getFallbackService();
+        
+        try {
+            System.out.println("[*] Intentando Extracción de Estructura con modelo primario: " + primaryService.getProviderName());
+            return primaryService.extractStructure(List.of(image));
+        } catch (Exception e) {
+            System.err.println("[!] Error con el modelo primario (" + primaryService.getProviderName() + "): " + e.getMessage());
+            System.err.println("[*] Iniciando fallback de Estructura con modelo secundario: " + fallbackService.getProviderName());
+            
+            try {
+                return fallbackService.extractStructure(List.of(image));
+            } catch (Exception fallbackEx) {
+                System.err.println("[!] Error crítico en fallback de Estructura (" + fallbackService.getProviderName() + "): " + fallbackEx.getMessage());
+                return "[Error de OCR: Ambos modelos fallaron al extraer la estructura. " + fallbackEx.getMessage() + "]";
+            }
+        }
+    }
 }

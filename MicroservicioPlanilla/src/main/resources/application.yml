@@ -21,6 +21,8 @@ app:
     hf:
       url: ${HF_URL:https://router.huggingface.co/zai-org/api/paas/v4/layout_parsing}
       token: ${HF_TOKEN:}
+    ollama:
+      model: ${OLLAMA_MODEL:ocr-masivo}
     groq:
       url: ${GROQ_URL:https://api.groq.com/openai/v1}
       token: ${GROQ_TOKEN:}

@@ -27,6 +27,7 @@ public class AiConfigRestController {
         dto.setHfUrl(configService.getHfUrl());
         dto.setHfToken(configService.getHfToken() != null && !configService.getHfToken().isEmpty() ? "********" : "");
         dto.setOllamaBaseUrl(configService.getOllamaBaseUrl());
+        dto.setOllamaModel(configService.getOllamaModel());
         dto.setGroqUrl(configService.getGroqUrl());
         dto.setGroqToken(configService.getGroqToken() != null && !configService.getGroqToken().isEmpty() ? "********" : "");
         dto.setGroqModel(configService.getGroqModel());
@@ -54,6 +55,7 @@ public class AiConfigRestController {
             tokenToUpdate = hfToken;
         } else if ("ollama".equalsIgnoreCase(dto.getActiveProvider())) {
             baseUrlToUpdate = dto.getOllamaBaseUrl();
+            modelToUpdate = dto.getOllamaModel();
         } else if ("groq".equalsIgnoreCase(dto.getActiveProvider())) {
             baseUrlToUpdate = dto.getGroqUrl();
             tokenToUpdate = groqToken;
