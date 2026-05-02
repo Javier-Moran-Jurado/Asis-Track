@@ -34,6 +34,9 @@ public class DynamicAiConfigService {
     @Value("${spring.ai.ollama.base-url:http://localhost:11434}")
     private String ollamaBaseUrl;
 
+    @Value("${app.ai.ollama.model:ocr-masivo}")
+    private String ollamaModel;
+
     // Groq
     @Value("${app.ai.groq.url:https://api.groq.com/openai/v1}")
     private String groqUrl;
@@ -58,6 +61,7 @@ public class DynamicAiConfigService {
             if (token != null && !token.isEmpty()) this.hfToken = token;
         } else if ("ollama".equalsIgnoreCase(provider)) {
             if (baseUrl != null && !baseUrl.isEmpty()) this.ollamaBaseUrl = baseUrl;
+            if (modelName != null && !modelName.isEmpty()) this.ollamaModel = modelName;
         } else if ("groq".equalsIgnoreCase(provider)) {
             if (baseUrl != null && !baseUrl.isEmpty()) this.groqUrl = baseUrl;
             if (token != null && !token.isEmpty()) this.groqToken = token;
