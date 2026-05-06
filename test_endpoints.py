@@ -24,10 +24,7 @@ C_RESET   = "\033[0m"
 # ══════════════════════════════════════════════════════
 BASE_SEGURIDAD   = "http://localhost:8091"
 BASE_USUARIO     = "http://localhost:8080"
-BASE_ASISTENCIA  = "http://localhost:8082"
 BASE_PLANILLA    = "http://localhost:8084"
-BASE_REPORTE     = "http://localhost:8086"
-BASE_JUSTIFICACION = "http://localhost:8090"
 
 URL_SEGURIDAD     = f"{BASE_SEGURIDAD}/api/v1/security/keys/public"
 URL_ROTATE        = f"{BASE_SEGURIDAD}/api/v1/security/keys/rotate"
@@ -38,9 +35,9 @@ URL_USUARIOS      = f"{BASE_USUARIO}/api/v1/usuario-service/usuarios"
 
 URL_PLANILLAS     = f"{BASE_PLANILLA}/api/v1/planilla-service/planillas"
 URL_AI_CONFIG     = f"{BASE_PLANILLA}/api/v1/planilla-service/ai-config"
-URL_REPORTES      = f"{BASE_REPORTE}/api/v1/reporte-service/reportes"
-URL_ASISTENCIAS   = f"{BASE_ASISTENCIA}/api/v1/asistencias"
-URL_JUSTIFICACIONES = f"{BASE_JUSTIFICACION}/api/v1/justificaciones"
+URL_REPORTES      = f"{BASE_PLANILLA}/api/v1/planilla-service/reportes"
+URL_ASISTENCIAS   = f"{BASE_PLANILLA}/api/v1/planilla-service/asistencias"
+URL_JUSTIFICACIONES = f"{BASE_PLANILLA}/api/v1/planilla-service/justificaciones"
 
 # ══════════════════════════════════════════════════════
 #  CONTADOR GLOBAL DE PRUEBAS
@@ -678,48 +675,55 @@ def test_ai_config(session, headers_admin, client_key):
 
 
 # ══════════════════════════════════════════════════════
-#  BLOQUE 3 ─ MICROSERVICIO REPORTE
+#  BLOQUE 3 ─ REPORTES DERIVADOS EN PLANILLA
 # ══════════════════════════════════════════════════════
-def test_reporte(session, sn, se, ck, headers_admin):
-    section("MICROSERVICIO REPORTE")
+def test_reporte(session, sn, se, ck, headers_admin, planilla_id_seed=1):
+    section("REPORTES DERIVADOS EN PLANILLA")
 
-    # Listar
-    run_step(session, "GET", URL_REPORTES, {}, sn, se, ck,
-             headers=headers_admin, label="REPORTE ─ Listar todos")
+    run_step(session, "GET", f"{URL_REPORTES}/planilla/{planilla_id_seed}/resumen", {},
+             sn, se, ck, headers=headers_admin, label=f"REPORTE ─ Resumen por planilla ({planilla_id_seed})")
 
-    # Crear
-    created, _ = run_step(session, "POST", URL_REPORTES, {
-        "tipo":    "ASISTENCIA",
-        "datos":   '{"periodo":"2026-1","total":120}',
-        "formato": "PDF"
-    }, sn, se, ck, headers=headers_admin, label="REPORTE ─ Crear")
+    run_step(session, "GET", f"{URL_REPORTES}/justificaciones/resumen", {},
+             sn, se, ck, headers=headers_admin, label="REPORTE ─ Resumen de justificaciones")
 
-    reporte_id = None
-    if created and isinstance(created, dict):
-        reporte_id = created.get("id")
+    run_step(session, "GET",
+             f"{URL_REPORTES}/ausentismo/rango?inicio=2026-01-01T00:00:00&fin=2026-12-31T23:59:59",
+             {}, sn, se, ck, headers=headers_admin, label="REPORTE ─ Ausentismo por rango")
 
-    if reporte_id:
-        # Buscar por ID
-        run_step(session, "GET", f"{URL_REPORTES}/{reporte_id}", {}, sn, se, ck,
-                 headers=headers_admin, label=f"REPORTE ─ FindById ({reporte_id})")
+    run_step(session, "GET", f"{URL_REPORTES}/estudiante/2024117001/trazabilidad", {},
+             sn, se, ck, headers=headers_admin, label="REPORTE ─ Trazabilidad de estudiante")
 
-        # Actualizar
-        run_step(session, "PUT", URL_REPORTES, {
-            "id":      reporte_id,
-            "tipo":    "JUSTIFICACION",
-            "datos":   '{"periodo":"2026-1","total":45}',
-            "formato": "EXCEL"
-        }, sn, se, ck, headers=headers_admin, label=f"REPORTE ─ Actualizar ({reporte_id})")
 
-        # Eliminar
-        run_step(session, "DELETE", f"{URL_REPORTES}/{reporte_id}", {},
-                 sn, se, ck, headers=headers_admin,
-                 label=f"REPORTE ─ Eliminar ({reporte_id})",
-                 expected_statuses=(200, 201, 204))
-    else:
-        print(f"  {C_WARN}⚠ No se pudo obtener reporte_id, omitiendo pruebas dependientes.{C_RESET}")
+# ══════════════════════════════════════════════════════
+#  BLOQUE 3B ─ ESTADÍSTICAS DINÁMICAS DE PLANILLA
+# ══════════════════════════════════════════════════════
+def test_estadisticas_dinamicas(session, sn, se, ck, headers_admin, planilla_id_seed=1):
+    section("ESTADÍSTICAS DINÁMICAS DE PLANILLA")
 
-    return reporte_id
+    run_step(session, "GET", f"{URL_REPORTES}/planilla/{planilla_id_seed}/encabezado/Programa/estadisticas", {},
+             sn, se, ck, headers=headers_admin,
+             label=f"ESTADÍSTICAS ─ Por encabezado 'Programa' (desplegable)")
+
+    run_step(session, "GET", f"{URL_REPORTES}/planilla/{planilla_id_seed}/encabezado/Edad/estadisticas", {},
+             sn, se, ck, headers=headers_admin,
+             label=f"ESTADÍSTICAS ─ Por encabezado 'Edad' (numerico)")
+
+    run_step(session, "GET", f"{URL_REPORTES}/planilla/{planilla_id_seed}/encabezado/Nombres/estadisticas", {},
+             sn, se, ck, headers=headers_admin,
+             label=f"ESTADÍSTICAS ─ Por encabezado 'Nombres' (texto)")
+
+    run_step(session, "GET", f"{URL_REPORTES}/planilla/{planilla_id_seed}/encabezado/AceptaTerminos/estadisticas", {},
+             sn, se, ck, headers=headers_admin,
+             label=f"ESTADÍSTICAS ─ Por encabezado 'AceptaTerminos' (checkbox)")
+
+    run_step(session, "GET", f"{URL_REPORTES}/planilla/{planilla_id_seed}/estadisticas-completas", {},
+             sn, se, ck, headers=headers_admin,
+             label=f"ESTADÍSTICAS ─ Completas de planilla ({planilla_id_seed})")
+
+    run_step(session, "GET",
+             f"{URL_REPORTES}/planilla/{planilla_id_seed}/comparativa?encabezados=Programa,Modalidad,AceptaTerminos",
+             {}, sn, se, ck, headers=headers_admin,
+             label=f"ESTADÍSTICAS ─ Comparativa (Programa,Modalidad,AceptaTerminos)")
 
 
 # ══════════════════════════════════════════════════════
@@ -908,7 +912,7 @@ def test_justificacion(session, sn, se, ck, headers_estudiante, headers_decano):
         just_id = created.get("id")
 
     # ── Listar todas (Decano) ──
-    run_step(session, "GET", f"{URL_JUSTIFICACIONES}/justificaciones", {},
+    run_step(session, "GET", f"{URL_JUSTIFICACIONES}/all", {},
              sn, se, ck, headers=headers_decano, label="JUSTIFICACION ─ Listar todas")
 
     # ── Por usuarioCodigo (Estudiante) ──
@@ -1092,7 +1096,8 @@ if __name__ == "__main__":
     test_planilla(session, sn, se, ck, h_admin)
     test_digitalizar(session, h_admin, ck)
     test_ai_config(session, h_admin, ck)
-    test_reporte(session, sn, se, ck, h_admin)
+    test_reporte(session, sn, se, ck, h_admin, planilla_id_seed=1)
+    test_estadisticas_dinamicas(session, sn, se, ck, h_admin, planilla_id_seed=1)
     test_asistencia(session, sn, se, ck, h_est, h_admin, planilla_id_seed=1)
     test_justificacion(session, sn, se, ck, h_monitor, h_decano)
     test_rotacion(session, h_admin)
