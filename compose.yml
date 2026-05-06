@@ -74,6 +74,7 @@ services:
       - REDIS_PORT=6379
       - SECURITY_URL=http://seguridad-service:8085
       - INTERNAL_SECRET=${INTERNAL_SECRET}
+      - HF_TOKEN=${HF_TOKEN}
     networks:
       - mynetwork
 

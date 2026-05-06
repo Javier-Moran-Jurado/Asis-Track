@@ -5,6 +5,9 @@ target/
 !**/src/test/**/target/
 data/
 .env
+*.class
+*.out
+
 
 ### STS ###
 .apt_generated
