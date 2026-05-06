@@ -41,3 +41,5 @@ PyLibs/crops
 
 *.class
 *.out
+
+__pycache__
