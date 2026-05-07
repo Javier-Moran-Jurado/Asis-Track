@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+import '../../models/evento_qr.dart';
 import '../../services/asistencia_service.dart';
 
 /// Pantalla de la cámara QR con overlay de guía de escaneo.
@@ -63,7 +65,24 @@ class _QrScannerScreenState extends State<QrScannerScreen>
       if (!mounted) return;
       _showLoadingDialog();
 
-      final evento = await AsistenciaService.validarQr(code);
+      EventoQr evento;
+
+      if (code.startsWith('mock_token_')) {
+        // Manejo de tokens de prueba para modo independiente/sin conexión
+        await Future.delayed(const Duration(milliseconds: 800));
+        final ahora = DateTime.now();
+        evento = EventoQr(
+          tokenQr: code,
+          materia: 'Materia (Modo Offline)',
+          actividad: 'Asistencia Local',
+          fecha: DateFormat('yyyy-MM-dd').format(ahora),
+          hora: DateFormat('HH:mm').format(ahora),
+          lugar: 'Ubicación Local',
+          zonaNombre: 'Zona Demo',
+        );
+      } else {
+        evento = await AsistenciaService.validarQr(code);
+      }
 
       if (!mounted) return;
       Navigator.of(context).pop(); // cierra el loading
@@ -112,7 +131,9 @@ class _QrScannerScreenState extends State<QrScannerScreen>
           children: [
             const Icon(Icons.error_outline, color: Colors.white, size: 20),
             const SizedBox(width: 10),
-            Expanded(child: Text(message, style: const TextStyle(color: Colors.white))),
+            Expanded(
+                child:
+                    Text(message, style: const TextStyle(color: Colors.white))),
           ],
         ),
         backgroundColor: const Color(0xFFDC2626),
@@ -139,13 +160,15 @@ class _QrScannerScreenState extends State<QrScannerScreen>
               color: Colors.black45,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 18),
+            child: const Icon(Icons.arrow_back_ios_new,
+                color: Colors.white, size: 18),
           ),
           onPressed: () => context.pop(),
         ),
         title: const Text(
           'Apunta al código QR',
-          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+          style: TextStyle(
+              color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
         ),
         centerTitle: true,
         actions: [
@@ -236,7 +259,8 @@ class _ScanOverlay extends StatelessWidget {
         Center(
           child: AnimatedBuilder(
             animation: pulseAnim,
-            builder: (_, child) => Transform.scale(scale: pulseAnim.value, child: child),
+            builder: (_, child) =>
+                Transform.scale(scale: pulseAnim.value, child: child),
             child: SizedBox(
               width: cutSize,
               height: cutSize,
@@ -259,7 +283,8 @@ class _OverlayPainter extends CustomPainter {
     final paint = Paint()..color = Colors.black.withValues(alpha: 0.62);
     final cx = size.width / 2;
     final cy = size.height / 2;
-    final rect = Rect.fromCenter(center: Offset(cx, cy), width: cutSize, height: cutSize);
+    final rect = Rect.fromCenter(
+        center: Offset(cx, cy), width: cutSize, height: cutSize);
 
     final path = Path()
       ..addRect(Rect.fromLTWH(0, 0, size.width, size.height))

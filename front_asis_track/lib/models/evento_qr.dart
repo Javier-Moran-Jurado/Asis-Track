@@ -7,6 +7,7 @@ class EventoQr {
   final String fecha;
   final String hora;
   final String lugar;
+  final String? zonaNombre;
 
   const EventoQr({
     required this.tokenQr,
@@ -15,6 +16,7 @@ class EventoQr {
     required this.fecha,
     required this.hora,
     required this.lugar,
+    this.zonaNombre,
   });
 
   factory EventoQr.fromJson(Map<String, dynamic> json) {
@@ -25,6 +27,7 @@ class EventoQr {
       fecha: json['fecha'] as String? ?? '',
       hora: json['hora'] as String? ?? '',
       lugar: json['lugar'] as String? ?? '',
+      zonaNombre: json['zonaNombre'] as String?,
     );
   }
 
@@ -35,5 +38,6 @@ class EventoQr {
         'fecha': fecha,
         'hora': hora,
         'lugar': lugar,
+        'zonaNombre': zonaNombre,
       };
 }

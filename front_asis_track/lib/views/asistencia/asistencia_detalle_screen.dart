@@ -12,7 +12,8 @@ class AsistenciaDetalleScreen extends StatefulWidget {
   const AsistenciaDetalleScreen({super.key, required this.evento});
 
   @override
-  State<AsistenciaDetalleScreen> createState() => _AsistenciaDetalleScreenState();
+  State<AsistenciaDetalleScreen> createState() =>
+      _AsistenciaDetalleScreenState();
 }
 
 class _AsistenciaDetalleScreenState extends State<AsistenciaDetalleScreen>
@@ -65,7 +66,8 @@ class _AsistenciaDetalleScreenState extends State<AsistenciaDetalleScreen>
       }
 
       final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.medium),
+        locationSettings:
+            const LocationSettings(accuracy: LocationAccuracy.medium),
       );
       if (mounted) {
         setState(() {
@@ -85,12 +87,20 @@ class _AsistenciaDetalleScreenState extends State<AsistenciaDetalleScreen>
     setState(() => _registrando = true);
 
     try {
-      final mensaje = await AsistenciaService.registrarAsistencia(
-        tokenQr: widget.evento.tokenQr,
-        estudianteId: 'estudiante-demo-001', // Reemplazar con el ID real del usuario autenticado
-        latitud: _latitud,
-        longitud: _longitud,
-      );
+      String mensaje;
+      if (widget.evento.tokenQr.startsWith('mock_token_')) {
+        // Simular registro exitoso en modo offline/demo
+        await Future.delayed(const Duration(seconds: 2));
+        mensaje = 'Asistencia registrada localmente (Modo Demo)';
+      } else {
+        mensaje = await AsistenciaService.registrarAsistencia(
+          tokenQr: widget.evento.tokenQr,
+          estudianteId:
+              'estudiante-demo-001', // Reemplazar con el ID real del usuario autenticado
+          latitud: _latitud,
+          longitud: _longitud,
+        );
+      }
       if (!mounted) return;
       setState(() {
         _resultadoMensaje = mensaje;
@@ -116,12 +126,14 @@ class _AsistenciaDetalleScreenState extends State<AsistenciaDetalleScreen>
         backgroundColor: _bgCard,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: _textLight, size: 20),
+          icon:
+              const Icon(Icons.arrow_back_ios_new, color: _textLight, size: 20),
           onPressed: () => context.pop(),
         ),
         title: const Text(
           'Detalles del Evento',
-          style: TextStyle(color: _textLight, fontSize: 18, fontWeight: FontWeight.w600),
+          style: TextStyle(
+              color: _textLight, fontSize: 18, fontWeight: FontWeight.w600),
         ),
         centerTitle: true,
       ),
@@ -131,7 +143,9 @@ class _AsistenciaDetalleScreenState extends State<AsistenciaDetalleScreen>
               esExito: _esExito,
               checkScale: _checkScale,
               onVolver: () => context.go('/asistencia'),
-              onReintentar: _esExito ? null : () => setState(() => _resultadoMensaje = null),
+              onReintentar: _esExito
+                  ? null
+                  : () => setState(() => _resultadoMensaje = null),
             )
           : _DetalleContent(
               evento: widget.evento,
@@ -180,7 +194,8 @@ class _DetalleContent extends StatelessWidget {
               decoration: BoxDecoration(
                 color: const Color(0xFF16A34A).withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFF16A34A).withValues(alpha: 0.5)),
+                border: Border.all(
+                    color: const Color(0xFF16A34A).withValues(alpha: 0.5)),
               ),
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
@@ -190,7 +205,9 @@ class _DetalleContent extends StatelessWidget {
                   Text(
                     'QR Válido',
                     style: TextStyle(
-                        color: Color(0xFF4ADE80), fontSize: 13, fontWeight: FontWeight.w600),
+                        color: Color(0xFF4ADE80),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600),
                   ),
                 ],
               ),
@@ -213,18 +230,34 @@ class _DetalleContent extends StatelessWidget {
                 const Text(
                   'Información del Evento',
                   style: TextStyle(
-                      color: _textMuted, fontSize: 12, fontWeight: FontWeight.w500, letterSpacing: 0.8),
+                      color: _textMuted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 0.8),
                 ),
                 const SizedBox(height: 16),
-                _InfoRow(icon: Icons.school, label: 'Materia', value: evento.materia),
+                _InfoRow(
+                    icon: Icons.school,
+                    label: 'Materia',
+                    value: evento.materia),
                 _Divider(),
-                _InfoRow(icon: Icons.event, label: 'Actividad', value: evento.actividad),
+                _InfoRow(
+                    icon: Icons.event,
+                    label: 'Actividad',
+                    value: evento.actividad),
                 _Divider(),
-                _InfoRow(icon: Icons.calendar_today, label: 'Fecha', value: evento.fecha),
+                _InfoRow(
+                    icon: Icons.calendar_today,
+                    label: 'Fecha',
+                    value: evento.fecha),
                 _Divider(),
-                _InfoRow(icon: Icons.access_time, label: 'Hora', value: evento.hora),
+                _InfoRow(
+                    icon: Icons.access_time, label: 'Hora', value: evento.hora),
                 _Divider(),
-                _InfoRow(icon: Icons.location_on, label: 'Lugar', value: evento.lugar),
+                _InfoRow(
+                    icon: Icons.location_on,
+                    label: 'Lugar',
+                    value: evento.lugar),
               ],
             ),
           ),
@@ -273,7 +306,8 @@ class _DetalleContent extends StatelessWidget {
                       child: CircularProgressIndicator(color: _primary),
                     ),
                   )
-                : _RegisterButton(key: const ValueKey('button'), onTap: onRegistrar),
+                : _RegisterButton(
+                    key: const ValueKey('button'), onTap: onRegistrar),
           ),
 
           const SizedBox(height: 12),
@@ -298,7 +332,8 @@ class _InfoRow extends StatelessWidget {
   static const Color _textLight = Color(0xFFE2E8F0);
   static const Color _textMuted = Color(0xFF94A3B8);
 
-  const _InfoRow({required this.icon, required this.label, required this.value});
+  const _InfoRow(
+      {required this.icon, required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -321,12 +356,17 @@ class _InfoRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label,
-                    style: const TextStyle(color: _textMuted, fontSize: 11, fontWeight: FontWeight.w500)),
+                    style: const TextStyle(
+                        color: _textMuted,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500)),
                 const SizedBox(height: 2),
                 Text(
                   value.isEmpty ? '—' : value,
                   style: const TextStyle(
-                      color: _textLight, fontSize: 15, fontWeight: FontWeight.w600),
+                      color: _textLight,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600),
                 ),
               ],
             ),
@@ -379,7 +419,10 @@ class _RegisterButton extends StatelessWidget {
             Text(
               'Registrar asistencia',
               style: TextStyle(
-                  color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 0.4),
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.4),
             ),
           ],
         ),
@@ -440,7 +483,8 @@ class _ResultadoView extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               mensaje,
-              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14, height: 1.5),
+              style: const TextStyle(
+                  color: Color(0xFF94A3B8), fontSize: 14, height: 1.5),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 36),
@@ -453,8 +497,10 @@ class _ResultadoView extends StatelessWidget {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2563EB),
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  textStyle: const TextStyle(
+                      fontSize: 15, fontWeight: FontWeight.w600),
                 ),
                 onPressed: onVolver,
               ),
@@ -464,7 +510,8 @@ class _ResultadoView extends StatelessWidget {
               TextButton.icon(
                 icon: const Icon(Icons.refresh),
                 label: const Text('Intentar de nuevo'),
-                style: TextButton.styleFrom(foregroundColor: const Color(0xFF94A3B8)),
+                style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF94A3B8)),
                 onPressed: onReintentar,
               ),
             ],
