@@ -1,6 +1,7 @@
 package co.edu.uceva.microservicioplanilla.domain.model;
 //solucionerror
 import co.edu.uceva.microservicioplanilla.domain.converters.PlanillaHomomorphicConverter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -8,6 +9,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Getter
@@ -30,6 +32,13 @@ public class Planilla {
     @Column(columnDefinition = "TEXT")
     @Convert(converter = PlanillaHomomorphicConverter.class)
     private String metadatos;
+
+    @Column(columnDefinition = "TEXT")
+    private String estructuraMetadata;
+
+    @JsonIgnore
+    @OneToMany(mappedBy = "planilla")
+    private List<Asistencia> asistencias;
 
     private LocalDateTime fechaCreacion;
 }

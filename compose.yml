@@ -23,29 +23,6 @@ services:
     networks:
       - mynetwork
 
-  asistenciaservice:
-    build: ./MicroservicioAsistencia
-    container_name: asistencia-app
-    restart: unless-stopped
-    depends_on:
-      - db
-      - redis
-    ports:
-      - "${ASISTENCIA_PORT}:8081"
-      - "${ASISTENCIA_ACTUATOR_PORT}:8082"
-    environment:
-      - SECRET_KEY=${SECRET_KEY}
-      - DB_USER=${DB_USER}
-      - DB_PASS=${DB_PASS}
-      - JPA_DDL=${JPA_DDL}
-      - DB_HOST=jdbc:postgresql://db:5432/${DB_NAME}
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - SECURITY_URL=http://seguridad-service:8085
-      - INTERNAL_SECRET=${INTERNAL_SECRET}
-    networks:
-      - mynetwork
-
   planilla-service:
     build: ./MicroservicioPlanilla
     container_name: planilla-service
@@ -74,59 +51,15 @@ services:
       - REDIS_PORT=6379
       - SECURITY_URL=http://seguridad-service:8085
       - INTERNAL_SECRET=${INTERNAL_SECRET}
+      - AI_PRIMARY_PROVIDER=${AI_PRIMARY_PROVIDER}
+      - AI_CLOUD_MODEL=${AI_CLOUD_MODEL}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - HF_URL=${HF_URL}
       - HF_TOKEN=${HF_TOKEN}
-    networks:
-      - mynetwork
-
-  reporte-service:
-    build: ./MicroservicioReporte
-    container_name: reporte-service
-    restart: always
-    ports:
-      - "${REPORTE_PORT}:8080"
-      - "${REPORTE_PORT_ACTUATOR}:8081"
-    depends_on:
-      - db
-      - redis
-    environment:
-      - SECRET_KEY=${SECRET_KEY}
-      - DB_USER=${DB_USER}
-      - DB_PASS=${DB_PASS}
-      - DB_NAME=${DB_NAME}
-      - DB_HOST=jdbc:postgresql://db:5432/${DB_NAME}
-      - JPA_DDL=${JPA_DDL}
-      - PORT=8080
-      - REPORTE_PORT_ACTUATOR=${REPORTE_PORT_ACTUATOR}
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - SECURITY_URL=http://seguridad-service:8085
-      - INTERNAL_SECRET=${INTERNAL_SECRET}
-    networks:
-      - mynetwork
-
-  justificacion-service:
-    build: ./MicroServicioJustificacion
-    container_name: justificacion-service
-    restart: always
-    ports:
-      - "${JUSTIFICACION_PORT}:8080"
-      - "${JUSTIFICACION_PORT_ACTUATOR}:8081"
-    depends_on:
-      - db
-      - redis
-    environment:
-      - SECRET_KEY=${SECRET_KEY}
-      - DB_USER=${DB_USER}
-      - DB_PASS=${DB_PASS}
-      - DB_NAME=${DB_NAME}
-      - DB_HOST=jdbc:postgresql://db:5432/${DB_NAME}
-      - JPA_DDL=${JPA_DDL}
-      - PORT=8080
-      - JUSTIFICACION_PORT_ACTUATOR=${JUSTIFICACION_PORT_ACTUATOR}
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - SECURITY_URL=http://seguridad-service:8085
-      - INTERNAL_SECRET=${INTERNAL_SECRET}
+      - GROQ_URL=${GROQ_URL}
+      - GROQ_TOKEN=${GROQ_TOKEN}
+      - GROQ_MODEL=${GROQ_MODEL}
     networks:
       - mynetwork
 

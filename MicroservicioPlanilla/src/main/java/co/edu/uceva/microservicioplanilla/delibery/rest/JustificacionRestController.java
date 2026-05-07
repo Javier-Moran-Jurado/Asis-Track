@@ -1,0 +1,160 @@
+package co.edu.uceva.microservicioplanilla.delibery.rest;
+
+import co.edu.uceva.microservicioplanilla.delibery.rest.dto.JustificacionDTO;
+import co.edu.uceva.microservicioplanilla.delibery.rest.dto.JustificacionRequest;
+import co.edu.uceva.microservicioplanilla.delibery.rest.dto.RevisionRequest;
+import co.edu.uceva.microservicioplanilla.domain.model.Justificacion;
+import co.edu.uceva.microservicioplanilla.domain.service.IJustificacionService;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@RestController
+@RequestMapping("/api/v1/planilla-service/justificaciones")
+public class JustificacionRestController {
+
+    private final IJustificacionService justificacionService;
+
+    public JustificacionRestController(IJustificacionService justificacionService) {
+        this.justificacionService = justificacionService;
+    }
+
+    @PreAuthorize("isAuthenticated() and hasAnyRole('Estudiante', 'Monitor', 'Docente', 'Administrador', 'Administrativo')")
+    @PostMapping("/solicitar")
+    public ResponseEntity<JustificacionDTO> solicitarJustificacion(@RequestBody JustificacionRequest requestBody) {
+        Justificacion saved = justificacionService.solicitarJustificacion(
+                requestBody.getRegistroId(),
+                requestBody.getUsuarioCodigo(),
+                requestBody.getMotivo(),
+                requestBody.getDocumentoUrl()
+        );
+        return new ResponseEntity<>(convertToDTO(saved), HttpStatus.CREATED);
+    }
+
+    @PreAuthorize("isAuthenticated() and hasAnyRole('Docente', 'Administrador', 'Administrativo')")
+    @PostMapping("/{id}/aprobar")
+    public ResponseEntity<JustificacionDTO> aprobarJustificacion(@PathVariable Long id, @RequestBody RevisionRequest requestBody) {
+        Justificacion updated = justificacionService.aprobarJustificacion(id, requestBody.getRevisadoPor(), requestBody.getObservaciones());
+        return ResponseEntity.ok(convertToDTO(updated));
+    }
+
+    @PreAuthorize("isAuthenticated() and hasAnyRole('Docente', 'Administrador', 'Administrativo')")
+    @PostMapping("/{id}/rechazar")
+    public ResponseEntity<JustificacionDTO> rechazarJustificacion(@PathVariable Long id, @RequestBody RevisionRequest requestBody) {
+        Justificacion updated = justificacionService.rechazarJustificacion(id, requestBody.getRevisadoPor(), requestBody.getObservaciones());
+        return ResponseEntity.ok(convertToDTO(updated));
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/{id}")
+    public ResponseEntity<JustificacionDTO> findById(@PathVariable Long id) {
+        return ResponseEntity.ok(convertToDTO(justificacionService.findById(id)));
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/usuario/{usuarioCodigo}")
+    public ResponseEntity<List<JustificacionDTO>> findByUsuarioCodigo(@PathVariable String usuarioCodigo) {
+        List<JustificacionDTO> response = justificacionService.findByUsuarioCodigo(usuarioCodigo)
+                .stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(response);
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/registro/{registroId}")
+    public ResponseEntity<List<JustificacionDTO>> findByRegistroId(@PathVariable Long registroId) {
+        List<JustificacionDTO> response = justificacionService.findByRegistroId(registroId)
+                .stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(response);
+    }
+
+    @PreAuthorize("isAuthenticated() and hasAnyRole('Docente', 'Administrador', 'Administrativo')")
+    @GetMapping("/estado/{estado}")
+    public ResponseEntity<List<JustificacionDTO>> findByEstado(@PathVariable String estado) {
+        List<JustificacionDTO> response = justificacionService.findByEstado(estado)
+                .stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(response);
+    }
+
+    @PreAuthorize("isAuthenticated() and hasAnyRole('Docente', 'Administrador', 'Administrativo')")
+    @GetMapping("/all")
+    public ResponseEntity<List<JustificacionDTO>> findAll() {
+        List<JustificacionDTO> response = justificacionService.findAll()
+                .stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(response);
+    }
+
+    @PreAuthorize("isAuthenticated() and hasAnyRole('Docente', 'Administrador', 'Administrativo')")
+    @PutMapping("/{id}")
+    public ResponseEntity<JustificacionDTO> update(@PathVariable Long id, @RequestBody JustificacionDTO dto) {
+        Justificacion justificacion = convertToEntity(dto);
+        justificacion.setId(id);
+        Justificacion updated = justificacionService.update(justificacion);
+        return ResponseEntity.ok(convertToDTO(updated));
+    }
+
+    @PreAuthorize("isAuthenticated() and hasAnyRole('Docente', 'Administrador', 'Administrativo')")
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteById(@PathVariable Long id) {
+        justificacionService.deleteById(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    private JustificacionDTO convertToDTO(Justificacion entity) {
+        if (entity == null) {
+            return null;
+        }
+        JustificacionDTO dto = new JustificacionDTO();
+        dto.setId(entity.getId() != null ? entity.getId().toString() : null);
+        dto.setRegistroId(entity.getRegistroId() != null ? entity.getRegistroId().toString() : null);
+        dto.setMotivo(entity.getMotivo());
+        dto.setDocumentoUrl(entity.getDocumentoUrl());
+        dto.setEstado(entity.getEstado());
+        dto.setUsuarioCodigo(entity.getUsuarioCodigo());
+        dto.setFechaSolicitud(entity.getFechaSolicitud());
+        dto.setFechaRevision(entity.getFechaRevision());
+        dto.setRevisadoPor(entity.getRevisadoPor());
+        dto.setObservaciones(entity.getObservaciones());
+        return dto;
+    }
+
+    private Justificacion convertToEntity(JustificacionDTO dto) {
+        if (dto == null) {
+            return null;
+        }
+        Justificacion entity = new Justificacion();
+        if (dto.getId() != null && !dto.getId().isEmpty()) {
+            entity.setId(Long.parseLong(dto.getId()));
+        }
+        if (dto.getRegistroId() != null && !dto.getRegistroId().isEmpty()) {
+            entity.setRegistroId(Long.parseLong(dto.getRegistroId()));
+        }
+        entity.setMotivo(dto.getMotivo());
+        entity.setDocumentoUrl(dto.getDocumentoUrl());
+        entity.setEstado(dto.getEstado());
+        entity.setUsuarioCodigo(dto.getUsuarioCodigo());
+        entity.setFechaSolicitud(dto.getFechaSolicitud());
+        entity.setFechaRevision(dto.getFechaRevision());
+        entity.setRevisadoPor(dto.getRevisadoPor());
+        entity.setObservaciones(dto.getObservaciones());
+        return entity;
+    }
+}

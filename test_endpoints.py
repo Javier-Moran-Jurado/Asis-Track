@@ -24,10 +24,7 @@ C_RESET   = "\033[0m"
 # ══════════════════════════════════════════════════════
 BASE_SEGURIDAD   = "http://localhost:8091"
 BASE_USUARIO     = "http://localhost:8080"
-BASE_ASISTENCIA  = "http://localhost:8082"
 BASE_PLANILLA    = "http://localhost:8084"
-BASE_REPORTE     = "http://localhost:8086"
-BASE_JUSTIFICACION = "http://localhost:8090"
 
 URL_SEGURIDAD     = f"{BASE_SEGURIDAD}/api/v1/security/keys/public"
 URL_ROTATE        = f"{BASE_SEGURIDAD}/api/v1/security/keys/rotate"
@@ -37,9 +34,10 @@ URL_LOGIN         = f"{BASE_USUARIO}/api/v1/auth/login"
 URL_USUARIOS      = f"{BASE_USUARIO}/api/v1/usuario-service/usuarios"
 
 URL_PLANILLAS     = f"{BASE_PLANILLA}/api/v1/planilla-service/planillas"
-URL_REPORTES      = f"{BASE_REPORTE}/api/v1/reporte-service/reportes"
-URL_ASISTENCIAS   = f"{BASE_ASISTENCIA}/api/v1/asistencias"
-URL_JUSTIFICACIONES = f"{BASE_JUSTIFICACION}/api/v1/justificaciones"
+URL_AI_CONFIG     = f"{BASE_PLANILLA}/api/v1/planilla-service/ai-config"
+URL_REPORTES      = f"{BASE_PLANILLA}/api/v1/planilla-service/reportes"
+URL_ASISTENCIAS   = f"{BASE_PLANILLA}/api/v1/planilla-service/asistencias"
+URL_JUSTIFICACIONES = f"{BASE_PLANILLA}/api/v1/planilla-service/justificaciones"
 
 # ══════════════════════════════════════════════════════
 #  CONTADOR GLOBAL DE PRUEBAS
@@ -345,7 +343,7 @@ def test_planilla(session, sn, se, ck, headers_admin):
 def test_digitalizar(session, headers_admin, client_key):
     section("PLANILLA ─ DIGITALIZAR")
     url = f"{URL_PLANILLAS}/digitalizar"
-    file_path = r"c:\Users\david\OneDrive\Escritorio\Universidad\repos\Asis-Track\MicroservicioPlanilla\testImages\2026-04-14_082294-4.jpg"
+    file_path = "/home/nicoguti/Almacenamiento/PROYECTO/Asis-Track/MicroservicioPlanilla/testImages/2026-04-14_082294-4.jpg"
 
     print(f"\n{C_TITLE}▶  PLANILLA ─ Digitalizar imagen{C_RESET}")
     try:
@@ -384,50 +382,348 @@ def test_digitalizar(session, headers_admin, client_key):
         print(f"  {C_ERROR}✗ Error en la prueba: {exc}{C_RESET}")
         _register(False, "PLANILLA ─ Digitalizar")
 
+    url_campos = f"{URL_PLANILLAS}/campos"
+    print(f"\n{C_TITLE}▶  PLANILLA ─ Obtener Campos (Estructura){C_RESET}")
+    try:
+        import os
+        if not os.path.exists(file_path):
+            print(f"  {C_ERROR}✗ Archivo no encontrado: {file_path}{C_RESET}")
+            _register(False, "PLANILLA ─ Obtener Campos")
+            return
+
+        with open(file_path, "rb") as f:
+            files = {"file": ("2026-04-14_082294-4.jpg", f, "image/jpeg")}
+            resp = session.post(url_campos, files=files, headers=headers_admin)
+
+        success = resp.status_code in (200, 201)
+        icon = f"{C_SUCCESS}✔" if success else f"{C_ERROR}✗"
+        print(f"  {icon} Status {resp.status_code}{C_RESET}")
+
+        if resp.text.strip():
+            try:
+                resp_json = resp.json()
+            except:
+                resp_json = {"raw": resp.text}
+
+            decrypted = decrypt_server_response(resp_json, client_key)
+            print(f"  {C_DIM}Resultado OCR/IA Estructura (Desencriptado):{C_RESET}")
+            try:
+                print(f"  {C_VAL}{pretty_json(decrypted)}{C_RESET}")
+            except:
+                print(f"  {C_VAL}{decrypted}{C_RESET}")
+
+        _register(success, "PLANILLA ─ Obtener Campos")
+    except Exception as exc:
+        print(f"  {C_ERROR}✗ Error en la prueba: {exc}{C_RESET}")
+        _register(False, "PLANILLA ─ Obtener Campos")
+
+
+def test_ai_config(session, headers_admin, client_key):
+    """Pruebas del endpoint /ai-config y ciclo completo por proveedor."""
+    section("CONFIGURACIÓN DE IA (AI-CONFIG)")
+    file_path = "/home/nicoguti/Almacenamiento/PROYECTO/Asis-Track/MicroservicioPlanilla/testImages/2026-04-14_082294-4.jpg"
+
+    import os
+    if not os.path.exists(file_path):
+        print(f"  {C_ERROR}✗ Imagen de prueba no encontrada: {file_path}{C_RESET}")
+        _register(False, "AI-CONFIG ─ Prerequisito")
+        return
+
+    def _show_current_config(label):
+        """Helper: GET y mostrar config desencriptada."""
+        print(f"\n{C_TITLE}▶  AI-CONFIG ─ GET config ({label}){C_RESET}")
+        try:
+            r = session.get(URL_AI_CONFIG, headers=headers_admin)
+            if r.status_code == 200 and r.text.strip():
+                try:
+                    rj = r.json()
+                except:
+                    rj = {"raw": r.text}
+                d = decrypt_server_response(rj, client_key)
+                print(f"  {C_SUCCESS}✔{C_RESET} Status 200")
+                print(f"  {pretty_json(d)}")
+            else:
+                print(f"  {C_ERROR}✗{C_RESET} Status {r.status_code}")
+        except Exception as e:
+            print(f"  {C_ERROR}✗ {e}{C_RESET}")
+
+    # ── GET config actual ──
+    _show_current_config("inicial")
+
+    # Cargar tokens del .env para no exponerlos en el código fuente
+    groq_token = ""
+    cloud_api_key = ""
+    env_path = os.path.join(os.path.dirname(__file__), ".env")
+    if os.path.exists(env_path):
+        with open(env_path, "r") as f:
+            for line in f:
+                if line.startswith("GROQ_TOKEN="):
+                    groq_token = line.split("=", 1)[1].strip()
+                elif line.startswith("OPENAI_API_KEY="): # o NVIDIA_API_KEY si usaras una distinta
+                    cloud_api_key = line.split("=", 1)[1].strip()
+
+
+    # ── PUT cambiar a GROQ ──
+    payload_groq = {
+        "activeProvider": "groq",
+        "groqUrl": "https://api.groq.com/openai/v1",
+        "groqToken": groq_token,
+        "groqModel": "meta-llama/llama-4-scout-17b-16e-instruct"
+    }
+    print(f"\n{C_TITLE}▶  AI-CONFIG ─ Cambiar a GROQ{C_RESET}")
+    try:
+        resp = session.put(URL_AI_CONFIG, json=payload_groq, headers=headers_admin)
+        success = resp.status_code == 200
+        icon = f"{C_SUCCESS}✔" if success else f"{C_ERROR}✗"
+        print(f"  {icon} Status {resp.status_code}{C_RESET}")
+        if resp.text.strip():
+            print(f"  {C_VAL}{resp.text}{C_RESET}")
+        _register(success, "AI-CONFIG ─ PUT Groq")
+    except Exception as exc:
+        print(f"  {C_ERROR}✗ Error: {exc}{C_RESET}")
+        _register(False, "AI-CONFIG ─ PUT Groq")
+
+    # ── Probar /digitalizar con GROQ ──
+    print(f"\n{C_TITLE}▶  AI-CONFIG ─ Digitalizar con GROQ{C_RESET}")
+    try:
+        with open(file_path, "rb") as f:
+            files = {"file": ("test.jpg", f, "image/jpeg")}
+            resp = session.post(f"{URL_PLANILLAS}/digitalizar", files=files, headers=headers_admin)
+        success = resp.status_code in (200, 201)
+        icon = f"{C_SUCCESS}✔" if success else f"{C_ERROR}✗"
+        print(f"  {icon} Status {resp.status_code}{C_RESET}")
+        if resp.text.strip():
+            try:
+                resp_json = resp.json()
+            except:
+                resp_json = {"raw": resp.text}
+            decrypted = decrypt_server_response(resp_json, client_key)
+            print(f"  {C_DIM}Resultado GROQ digitalizar:{C_RESET}")
+            print(f"  {C_VAL}{pretty_json(decrypted)}{C_RESET}")
+        _register(success, "AI-CONFIG ─ Digitalizar Groq")
+    except Exception as exc:
+        print(f"  {C_ERROR}✗ Error: {exc}{C_RESET}")
+        _register(False, "AI-CONFIG ─ Digitalizar Groq")
+
+    # ── Probar /campos con GROQ ──
+    print(f"\n{C_TITLE}▶  AI-CONFIG ─ Campos con GROQ{C_RESET}")
+    try:
+        with open(file_path, "rb") as f:
+            files = {"file": ("test.jpg", f, "image/jpeg")}
+            resp = session.post(f"{URL_PLANILLAS}/campos", files=files, headers=headers_admin)
+        success = resp.status_code in (200, 201)
+        icon = f"{C_SUCCESS}✔" if success else f"{C_ERROR}✗"
+        print(f"  {icon} Status {resp.status_code}{C_RESET}")
+        if resp.text.strip():
+            try:
+                resp_json = resp.json()
+            except:
+                resp_json = {"raw": resp.text}
+            decrypted = decrypt_server_response(resp_json, client_key)
+            print(f"  {C_DIM}Resultado GROQ campos:{C_RESET}")
+            print(f"  {C_VAL}{pretty_json(decrypted)}{C_RESET}")
+        _register(success, "AI-CONFIG ─ Campos Groq")
+    except Exception as exc:
+        print(f"  {C_ERROR}✗ Error: {exc}{C_RESET}")
+        _register(False, "AI-CONFIG ─ Campos Groq")
+
+    _show_current_config("tras Groq")
+
+    # ── PUT cambiar a CLOUD (OpenAI-compatible) ──
+    payload_cloud = {
+        "activeProvider": "cloud",
+        "cloudBaseUrl": "https://integrate.api.nvidia.com",
+        "cloudApiKey": cloud_api_key,
+        "cloudModelName": "microsoft/phi-4-multimodal-instruct"
+    }
+    print(f"\n{C_TITLE}▶  AI-CONFIG ─ Cambiar a CLOUD (NVIDIA/OpenAI){C_RESET}")
+    try:
+        resp = session.put(URL_AI_CONFIG, json=payload_cloud, headers=headers_admin)
+        success = resp.status_code == 200
+        icon = f"{C_SUCCESS}✔" if success else f"{C_ERROR}✗"
+        print(f"  {icon} Status {resp.status_code}{C_RESET}")
+        if resp.text.strip():
+            print(f"  {C_VAL}{resp.text}{C_RESET}")
+        _register(success, "AI-CONFIG ─ PUT Cloud")
+    except Exception as exc:
+        print(f"  {C_ERROR}✗ Error: {exc}{C_RESET}")
+        _register(False, "AI-CONFIG ─ PUT Cloud")
+
+    # ── Probar /digitalizar con CLOUD ──
+    print(f"\n{C_TITLE}▶  AI-CONFIG ─ Digitalizar con CLOUD{C_RESET}")
+    try:
+        with open(file_path, "rb") as f:
+            files = {"file": ("test.jpg", f, "image/jpeg")}
+            resp = session.post(f"{URL_PLANILLAS}/digitalizar", files=files, headers=headers_admin)
+        success = resp.status_code in (200, 201)
+        icon = f"{C_SUCCESS}✔" if success else f"{C_ERROR}✗"
+        print(f"  {icon} Status {resp.status_code}{C_RESET}")
+        if resp.text.strip():
+            try:
+                resp_json = resp.json()
+            except:
+                resp_json = {"raw": resp.text}
+            decrypted = decrypt_server_response(resp_json, client_key)
+            print(f"  {C_DIM}Resultado CLOUD digitalizar:{C_RESET}")
+            print(f"  {C_VAL}{pretty_json(decrypted)}{C_RESET}")
+        _register(success, "AI-CONFIG ─ Digitalizar Cloud")
+    except Exception as exc:
+        print(f"  {C_ERROR}✗ Error: {exc}{C_RESET}")
+        _register(False, "AI-CONFIG ─ Digitalizar Cloud")
+
+    # ── Probar /campos con CLOUD ──
+    print(f"\n{C_TITLE}▶  AI-CONFIG ─ Campos con CLOUD{C_RESET}")
+    try:
+        with open(file_path, "rb") as f:
+            files = {"file": ("test.jpg", f, "image/jpeg")}
+            resp = session.post(f"{URL_PLANILLAS}/campos", files=files, headers=headers_admin)
+        success = resp.status_code in (200, 201)
+        icon = f"{C_SUCCESS}✔" if success else f"{C_ERROR}✗"
+        print(f"  {icon} Status {resp.status_code}{C_RESET}")
+        if resp.text.strip():
+            try:
+                resp_json = resp.json()
+            except:
+                resp_json = {"raw": resp.text}
+            decrypted = decrypt_server_response(resp_json, client_key)
+            print(f"  {C_DIM}Resultado CLOUD campos:{C_RESET}")
+            print(f"  {C_VAL}{pretty_json(decrypted)}{C_RESET}")
+        _register(success, "AI-CONFIG ─ Campos Cloud")
+    except Exception as exc:
+        print(f"  {C_ERROR}✗ Error: {exc}{C_RESET}")
+        _register(False, "AI-CONFIG ─ Campos Cloud")
+
+    _show_current_config("tras Cloud")
+
+    # ── PUT cambiar a OLLAMA (ngrok) ──
+    payload_ollama = {
+        "activeProvider": "ollama",
+        "ollamaBaseUrl": "https://echoless-vashti-flauntingly.ngrok-free.dev/"
+    }
+    print(f"\n{C_TITLE}▶  AI-CONFIG ─ Cambiar a OLLAMA{C_RESET}")
+    try:
+        resp = session.put(URL_AI_CONFIG, json=payload_ollama, headers=headers_admin)
+        success = resp.status_code == 200
+        icon = f"{C_SUCCESS}✔" if success else f"{C_ERROR}✗"
+        print(f"  {icon} Status {resp.status_code}{C_RESET}")
+        if resp.text.strip():
+            print(f"  {C_VAL}{resp.text}{C_RESET}")
+        _register(success, "AI-CONFIG ─ PUT Ollama")
+    except Exception as exc:
+        print(f"  {C_ERROR}✗ Error: {exc}{C_RESET}")
+        _register(False, "AI-CONFIG ─ PUT Ollama")
+
+    # ── Probar /digitalizar con OLLAMA ──
+    print(f"\n{C_TITLE}▶  AI-CONFIG ─ Digitalizar con OLLAMA{C_RESET}")
+    try:
+        with open(file_path, "rb") as f:
+            files = {"file": ("test.jpg", f, "image/jpeg")}
+            resp = session.post(f"{URL_PLANILLAS}/digitalizar", files=files, headers=headers_admin)
+        success = resp.status_code in (200, 201)
+        icon = f"{C_SUCCESS}✔" if success else f"{C_ERROR}✗"
+        print(f"  {icon} Status {resp.status_code}{C_RESET}")
+        if resp.text.strip():
+            try:
+                resp_json = resp.json()
+            except:
+                resp_json = {"raw": resp.text}
+            decrypted = decrypt_server_response(resp_json, client_key)
+            print(f"  {C_DIM}Resultado OLLAMA digitalizar:{C_RESET}")
+            print(f"  {C_VAL}{pretty_json(decrypted)}{C_RESET}")
+        _register(success, "AI-CONFIG ─ Digitalizar Ollama")
+    except Exception as exc:
+        print(f"  {C_ERROR}✗ Error: {exc}{C_RESET}")
+        _register(False, "AI-CONFIG ─ Digitalizar Ollama")
+
+    # ── Probar /campos con OLLAMA ──
+    print(f"\n{C_TITLE}▶  AI-CONFIG ─ Campos con OLLAMA{C_RESET}")
+    try:
+        with open(file_path, "rb") as f:
+            files = {"file": ("test.jpg", f, "image/jpeg")}
+            resp = session.post(f"{URL_PLANILLAS}/campos", files=files, headers=headers_admin)
+        success = resp.status_code in (200, 201)
+        icon = f"{C_SUCCESS}✔" if success else f"{C_ERROR}✗"
+        print(f"  {icon} Status {resp.status_code}{C_RESET}")
+        if resp.text.strip():
+            try:
+                resp_json = resp.json()
+            except:
+                resp_json = {"raw": resp.text}
+            decrypted = decrypt_server_response(resp_json, client_key)
+            print(f"  {C_DIM}Resultado OLLAMA campos:{C_RESET}")
+            print(f"  {C_VAL}{pretty_json(decrypted)}{C_RESET}")
+        _register(success, "AI-CONFIG ─ Campos Ollama")
+    except Exception as exc:
+        print(f"  {C_ERROR}✗ Error: {exc}{C_RESET}")
+        _register(False, "AI-CONFIG ─ Campos Ollama")
+
+    _show_current_config("tras Ollama")
+
+    # ── Restaurar proveedor original (groq) ──
+    print(f"\n{C_TITLE}▶  AI-CONFIG ─ Restaurar a GROQ{C_RESET}")
+    try:
+        resp = session.put(URL_AI_CONFIG, json=payload_groq, headers=headers_admin)
+        success = resp.status_code == 200
+        icon = f"{C_SUCCESS}✔" if success else f"{C_ERROR}✗"
+        print(f"  {icon} Status {resp.status_code}{C_RESET}")
+        _register(success, "AI-CONFIG ─ Restaurar Groq")
+    except Exception as exc:
+        print(f"  {C_ERROR}✗ Error: {exc}{C_RESET}")
+        _register(False, "AI-CONFIG ─ Restaurar Groq")
+
+    _show_current_config("restaurado")
+
 
 # ══════════════════════════════════════════════════════
-#  BLOQUE 3 ─ MICROSERVICIO REPORTE
+#  BLOQUE 3 ─ REPORTES DERIVADOS EN PLANILLA
 # ══════════════════════════════════════════════════════
-def test_reporte(session, sn, se, ck, headers_admin):
-    section("MICROSERVICIO REPORTE")
+def test_reporte(session, sn, se, ck, headers_admin, planilla_id_seed=1):
+    section("REPORTES DERIVADOS EN PLANILLA")
 
-    # Listar
-    run_step(session, "GET", URL_REPORTES, {}, sn, se, ck,
-             headers=headers_admin, label="REPORTE ─ Listar todos")
+    run_step(session, "GET", f"{URL_REPORTES}/planilla/{planilla_id_seed}/resumen", {},
+             sn, se, ck, headers=headers_admin, label=f"REPORTE ─ Resumen por planilla ({planilla_id_seed})")
 
-    # Crear
-    created, _ = run_step(session, "POST", URL_REPORTES, {
-        "tipo":    "ASISTENCIA",
-        "datos":   '{"periodo":"2026-1","total":120}',
-        "formato": "PDF"
-    }, sn, se, ck, headers=headers_admin, label="REPORTE ─ Crear")
+    run_step(session, "GET", f"{URL_REPORTES}/justificaciones/resumen", {},
+             sn, se, ck, headers=headers_admin, label="REPORTE ─ Resumen de justificaciones")
 
-    reporte_id = None
-    if created and isinstance(created, dict):
-        reporte_id = created.get("id")
+    run_step(session, "GET",
+             f"{URL_REPORTES}/ausentismo/rango?inicio=2026-01-01T00:00:00&fin=2026-12-31T23:59:59",
+             {}, sn, se, ck, headers=headers_admin, label="REPORTE ─ Ausentismo por rango")
 
-    if reporte_id:
-        # Buscar por ID
-        run_step(session, "GET", f"{URL_REPORTES}/{reporte_id}", {}, sn, se, ck,
-                 headers=headers_admin, label=f"REPORTE ─ FindById ({reporte_id})")
+    run_step(session, "GET", f"{URL_REPORTES}/estudiante/2024117001/trazabilidad", {},
+             sn, se, ck, headers=headers_admin, label="REPORTE ─ Trazabilidad de estudiante")
 
-        # Actualizar
-        run_step(session, "PUT", URL_REPORTES, {
-            "id":      reporte_id,
-            "tipo":    "JUSTIFICACION",
-            "datos":   '{"periodo":"2026-1","total":45}',
-            "formato": "EXCEL"
-        }, sn, se, ck, headers=headers_admin, label=f"REPORTE ─ Actualizar ({reporte_id})")
 
-        # Eliminar
-        run_step(session, "DELETE", f"{URL_REPORTES}/{reporte_id}", {},
-                 sn, se, ck, headers=headers_admin,
-                 label=f"REPORTE ─ Eliminar ({reporte_id})",
-                 expected_statuses=(200, 201, 204))
-    else:
-        print(f"  {C_WARN}⚠ No se pudo obtener reporte_id, omitiendo pruebas dependientes.{C_RESET}")
+# ══════════════════════════════════════════════════════
+#  BLOQUE 3B ─ ESTADÍSTICAS DINÁMICAS DE PLANILLA
+# ══════════════════════════════════════════════════════
+def test_estadisticas_dinamicas(session, sn, se, ck, headers_admin, planilla_id_seed=1):
+    section("ESTADÍSTICAS DINÁMICAS DE PLANILLA")
 
-    return reporte_id
+    run_step(session, "GET", f"{URL_REPORTES}/planilla/{planilla_id_seed}/encabezado/Programa/estadisticas", {},
+             sn, se, ck, headers=headers_admin,
+             label=f"ESTADÍSTICAS ─ Por encabezado 'Programa' (desplegable)")
+
+    run_step(session, "GET", f"{URL_REPORTES}/planilla/{planilla_id_seed}/encabezado/Edad/estadisticas", {},
+             sn, se, ck, headers=headers_admin,
+             label=f"ESTADÍSTICAS ─ Por encabezado 'Edad' (numerico)")
+
+    run_step(session, "GET", f"{URL_REPORTES}/planilla/{planilla_id_seed}/encabezado/Nombres/estadisticas", {},
+             sn, se, ck, headers=headers_admin,
+             label=f"ESTADÍSTICAS ─ Por encabezado 'Nombres' (texto)")
+
+    run_step(session, "GET", f"{URL_REPORTES}/planilla/{planilla_id_seed}/encabezado/AceptaTerminos/estadisticas", {},
+             sn, se, ck, headers=headers_admin,
+             label=f"ESTADÍSTICAS ─ Por encabezado 'AceptaTerminos' (checkbox)")
+
+    run_step(session, "GET", f"{URL_REPORTES}/planilla/{planilla_id_seed}/estadisticas-completas", {},
+             sn, se, ck, headers=headers_admin,
+             label=f"ESTADÍSTICAS ─ Completas de planilla ({planilla_id_seed})")
+
+    run_step(session, "GET",
+             f"{URL_REPORTES}/planilla/{planilla_id_seed}/comparativa?encabezados=Programa,Modalidad,AceptaTerminos",
+             {}, sn, se, ck, headers=headers_admin,
+             label=f"ESTADÍSTICAS ─ Comparativa (Programa,Modalidad,AceptaTerminos)")
 
 
 # ══════════════════════════════════════════════════════
@@ -616,7 +912,7 @@ def test_justificacion(session, sn, se, ck, headers_estudiante, headers_decano):
         just_id = created.get("id")
 
     # ── Listar todas (Decano) ──
-    run_step(session, "GET", f"{URL_JUSTIFICACIONES}/justificaciones", {},
+    run_step(session, "GET", f"{URL_JUSTIFICACIONES}/all", {},
              sn, se, ck, headers=headers_decano, label="JUSTIFICACION ─ Listar todas")
 
     # ── Por usuarioCodigo (Estudiante) ──
@@ -799,7 +1095,9 @@ if __name__ == "__main__":
     test_usuario(session, sn, se, ck, h_admin, ts)
     test_planilla(session, sn, se, ck, h_admin)
     test_digitalizar(session, h_admin, ck)
-    test_reporte(session, sn, se, ck, h_admin)
+    test_ai_config(session, h_admin, ck)
+    test_reporte(session, sn, se, ck, h_admin, planilla_id_seed=1)
+    test_estadisticas_dinamicas(session, sn, se, ck, h_admin, planilla_id_seed=1)
     test_asistencia(session, sn, se, ck, h_est, h_admin, planilla_id_seed=1)
     test_justificacion(session, sn, se, ck, h_monitor, h_decano)
     test_rotacion(session, h_admin)
