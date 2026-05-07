@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:intl/intl.dart';
 import '../../models/evento_qr.dart';
 import '../../models/zona.dart';
 import '../../services/asistencia_service.dart';
@@ -15,7 +16,7 @@ class QrGeneratorScreen extends StatefulWidget {
 
 class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
   final _formKey = GlobalKey<FormState>();
-  
+
   // State for zones
   List<Zona> _zonas = [];
   Zona? _zonaSeleccionada;
@@ -67,10 +68,26 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
         setState(() {
           _modoDemo = true;
           _zonas = const [
-            Zona(id: 'demo1', nombre: 'Auditorio Principal', latitud: 4.6097, longitud: -74.0817),
-            Zona(id: 'demo2', nombre: 'Biblioteca Central', latitud: 4.6098, longitud: -74.0818),
-            Zona(id: 'demo3', nombre: 'Laboratorio de Sistemas', latitud: 4.6100, longitud: -74.0820),
-            Zona(id: 'demo4', nombre: 'Canchas Deportivas', latitud: 4.6105, longitud: -74.0825),
+            Zona(
+                id: 'demo1',
+                nombre: 'Auditorio Principal',
+                latitud: 4.6097,
+                longitud: -74.0817),
+            Zona(
+                id: 'demo2',
+                nombre: 'Biblioteca Central',
+                latitud: 4.6098,
+                longitud: -74.0818),
+            Zona(
+                id: 'demo3',
+                nombre: 'Laboratorio de Sistemas',
+                latitud: 4.6100,
+                longitud: -74.0820),
+            Zona(
+                id: 'demo4',
+                nombre: 'Canchas Deportivas',
+                latitud: 4.6105,
+                longitud: -74.0825),
           ];
           _cargandoZonas = false;
         });
@@ -82,7 +99,8 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
     if (!_formKey.currentState!.validate()) return;
     if (_zonaSeleccionada == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor, seleccione una zona geográfica')),
+        const SnackBar(
+            content: Text('Por favor, seleccione una zona geográfica')),
       );
       return;
     }
@@ -108,26 +126,28 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _creandoEvento = false);
-        showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: Row(
-              children: [
-                Icon(Icons.info_outline, color: AppTheme.primaryColor),
-                const SizedBox(width: 8),
-                Text('Integración Pendiente', style: TextStyle(color: AppTheme.gray900, fontSize: 18)),
-              ],
-            ),
-            content: const Text(
-              'La interfaz está lista, pero se espera la integración con el backend para guardar el evento y generar el QR real.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Entendido', style: TextStyle(color: AppTheme.primaryColor)),
-              ),
-            ],
+        // Generar evento local (Mock) si el backend no responde o no hay conexión
+        final ahora = DateTime.now();
+        final eventoLocal = EventoQr(
+          tokenQr: 'mock_token_${ahora.millisecondsSinceEpoch}',
+          materia: _materiaCtrl.text,
+          actividad: _actividadCtrl.text,
+          fecha: DateFormat('yyyy-MM-dd').format(ahora),
+          hora: DateFormat('HH:mm').format(ahora),
+          lugar: _lugarCtrl.text,
+          zonaNombre: _zonaSeleccionada?.nombre,
+        );
+
+        setState(() {
+          _evento = eventoLocal;
+          _creandoEvento = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'Generando QR en modo independiente (Backend no disponible)'),
+            backgroundColor: Colors.orange,
           ),
         );
       }
@@ -137,7 +157,9 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
   Future<void> _probarUbicacion() async {
     if (_zonaSeleccionada == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor, seleccione una zona geográfica primero.')),
+        const SnackBar(
+            content:
+                Text('Por favor, seleccione una zona geográfica primero.')),
       );
       return;
     }
@@ -157,14 +179,16 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
           throw Exception('Los permisos de ubicación fueron denegados.');
         }
       }
-      
+
       if (permission == LocationPermission.deniedForever) {
-        throw Exception('Los permisos de ubicación están permanentemente denegados.');
+        throw Exception(
+            'Los permisos de ubicación están permanentemente denegados.');
       }
 
       // Obtener posición actual
       Position position = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(accuracy: LocationAccuracy.high));
+          locationSettings:
+              const LocationSettings(accuracy: LocationAccuracy.high));
 
       // Calcular distancia en metros
       double distanceInMeters = Geolocator.distanceBetween(
@@ -181,7 +205,8 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
         showDialog(
           context: context,
           builder: (ctx) => Dialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             elevation: 0,
             backgroundColor: Colors.transparent,
             child: Container(
@@ -191,7 +216,10 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
                 shape: BoxShape.rectangle,
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: const [
-                  BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 10)),
+                  BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 10,
+                      offset: Offset(0, 10)),
                 ],
               ),
               child: Column(
@@ -200,12 +228,19 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: (isInside ? AppTheme.secondaryColor : AppTheme.warningColor).withValues(alpha: 0.1),
+                      color: (isInside
+                              ? AppTheme.secondaryColor
+                              : AppTheme.warningColor)
+                          .withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      isInside ? Icons.check_circle_outline : Icons.location_off_outlined,
-                      color: isInside ? AppTheme.secondaryColor : AppTheme.warningColor,
+                      isInside
+                          ? Icons.check_circle_outline
+                          : Icons.location_off_outlined,
+                      color: isInside
+                          ? AppTheme.secondaryColor
+                          : AppTheme.warningColor,
                       size: 48,
                     ),
                   ),
@@ -223,7 +258,9 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
                     'Distancia: ${distanceInMeters.toStringAsFixed(1)} metros',
                     style: TextStyle(
                       fontSize: 16,
-                      color: isInside ? AppTheme.secondaryColor : AppTheme.warningColor,
+                      color: isInside
+                          ? AppTheme.secondaryColor
+                          : AppTheme.warningColor,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -238,13 +275,19 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
                     ),
                     child: Column(
                       children: [
-                        Text('Zona: ${_zonaSeleccionada!.nombre}', style: const TextStyle(fontWeight: FontWeight.w600), textAlign: TextAlign.center),
+                        Text('Zona: ${_zonaSeleccionada!.nombre}',
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                            textAlign: TextAlign.center),
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 8.0),
                           child: Divider(height: 1),
                         ),
-                        Text('Lat: ${position.latitude.toStringAsFixed(5)}', style: const TextStyle(fontSize: 13, color: Colors.grey)),
-                        Text('Lng: ${position.longitude.toStringAsFixed(5)}', style: const TextStyle(fontSize: 13, color: Colors.grey)),
+                        Text('Lat: ${position.latitude.toStringAsFixed(5)}',
+                            style: const TextStyle(
+                                fontSize: 13, color: Colors.grey)),
+                        Text('Lng: ${position.longitude.toStringAsFixed(5)}',
+                            style: const TextStyle(
+                                fontSize: 13, color: Colors.grey)),
                       ],
                     ),
                   ),
@@ -254,11 +297,15 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
                     child: ElevatedButton(
                       onPressed: () => Navigator.pop(ctx),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: isInside ? AppTheme.secondaryColor : AppTheme.primaryColor,
+                        backgroundColor: isInside
+                            ? AppTheme.secondaryColor
+                            : AppTheme.primaryColor,
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: const Text('Entendido', style: TextStyle(color: Colors.white, fontSize: 16)),
+                      child: const Text('Entendido',
+                          style: TextStyle(color: Colors.white, fontSize: 16)),
                     ),
                   ),
                 ],
@@ -270,7 +317,9 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error GPS: ${e.toString().replaceFirst('Exception: ', '')}')),
+          SnackBar(
+              content: Text(
+                  'Error GPS: ${e.toString().replaceFirst('Exception: ', '')}')),
         );
       }
     } finally {
@@ -284,7 +333,9 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_evento == null ? 'Crear Evento de Asistencia' : 'Código QR Generado'),
+        title: Text(_evento == null
+            ? 'Crear Evento de Asistencia'
+            : 'Código QR Generado'),
       ),
       body: _evento != null ? _buildQrView() : _buildFormView(),
     );
@@ -292,7 +343,8 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
 
   Widget _buildFormView() {
     if (_cargandoZonas) {
-      return Center(child: CircularProgressIndicator(color: AppTheme.primaryColor));
+      return Center(
+          child: CircularProgressIndicator(color: AppTheme.primaryColor));
     }
 
     if (_errorZonas != null) {
@@ -306,7 +358,8 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
               const SizedBox(height: 16),
               Text(_errorZonas!, textAlign: TextAlign.center),
               const SizedBox(height: 16),
-              ElevatedButton(onPressed: _cargarZonas, child: const Text('Reintentar')),
+              ElevatedButton(
+                  onPressed: _cargarZonas, child: const Text('Reintentar')),
             ],
           ),
         ),
@@ -333,16 +386,19 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
                 decoration: BoxDecoration(
                   color: AppTheme.warningColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppTheme.warningColor.withValues(alpha: 0.3)),
+                  border: Border.all(
+                      color: AppTheme.warningColor.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.warning_amber_rounded, color: AppTheme.warningColor, size: 20),
+                    Icon(Icons.warning_amber_rounded,
+                        color: AppTheme.warningColor, size: 20),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'Modo Demo: Sin conexión al backend. Mostrando zonas de prueba.',
-                        style: TextStyle(color: AppTheme.warningColor, fontSize: 13),
+                        style: TextStyle(
+                            color: AppTheme.warningColor, fontSize: 13),
                       ),
                     ),
                   ],
@@ -350,7 +406,10 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
               ),
             Text(
               'Detalles del Evento',
-              style: TextStyle(color: AppTheme.gray900, fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                  color: AppTheme.gray900,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 24),
             _buildFieldLabel('Materia'),
@@ -365,7 +424,8 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
             _buildFieldLabel('Zona Geográfica (Requerido)'),
             DropdownButtonFormField<Zona>(
               initialValue: _zonaSeleccionada,
-              decoration: const InputDecoration(hintText: 'Seleccione una zona'),
+              decoration:
+                  const InputDecoration(hintText: 'Seleccione una zona'),
               items: _zonas.map((zona) {
                 return DropdownMenuItem(
                   value: zona,
@@ -380,10 +440,19 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
               height: 48,
               child: ElevatedButton.icon(
                 onPressed: _verificandoUbicacion ? null : _probarUbicacion,
-                icon: _verificandoUbicacion 
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Icon(Icons.my_location, color: Colors.white),
-                label: Text(_verificandoUbicacion ? 'Verificando...' : 'Probar mi ubicación GPS', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                icon: _verificandoUbicacion
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.my_location, color: Colors.white),
+                label: Text(
+                    _verificandoUbicacion
+                        ? 'Verificando...'
+                        : 'Probar mi ubicación GPS',
+                    style: const TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.secondaryColor,
                 ),
@@ -410,7 +479,10 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
           children: [
             Text(
               _evento!.materia,
-              style: TextStyle(color: AppTheme.gray900, fontSize: 24, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                  color: AppTheme.gray900,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
@@ -418,28 +490,32 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
               style: const TextStyle(color: Colors.grey, fontSize: 16),
             ),
             const SizedBox(height: 24),
-            
+
             // --- MOSTRAR ZONA ---
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: AppTheme.primaryColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.3)),
+                border: Border.all(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.3)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.location_on, color: AppTheme.primaryColor, size: 18),
+                  const Icon(Icons.location_on,
+                      color: AppTheme.primaryColor, size: 18),
                   const SizedBox(width: 8),
                   Text(
                     'Zona: ${_evento!.zonaNombre ?? 'No asignada'}',
-                    style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                        color: AppTheme.primaryColor,
+                        fontWeight: FontWeight.w600),
                   ),
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 32),
             Container(
               padding: const EdgeInsets.all(24),
@@ -457,12 +533,16 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
             const SizedBox(height: 32),
             Text(
               'Válido por 5:00 min',
-              style: TextStyle(color: AppTheme.errorColor, fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                  color: AppTheme.errorColor,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 40),
             TextButton(
               onPressed: () => setState(() => _evento = null),
-              child: const Text('Crear otro evento', style: TextStyle(color: AppTheme.primaryColor)),
+              child: const Text('Crear otro evento',
+                  style: TextStyle(color: AppTheme.primaryColor)),
             ),
           ],
         ),
@@ -475,7 +555,8 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
       padding: const EdgeInsets.only(bottom: 8.0),
       child: Text(
         label,
-        style: TextStyle(color: AppTheme.gray900, fontSize: 14, fontWeight: FontWeight.w500),
+        style: TextStyle(
+            color: AppTheme.gray900, fontSize: 14, fontWeight: FontWeight.w500),
       ),
     );
   }
@@ -484,8 +565,8 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
     return TextFormField(
       controller: controller,
       decoration: InputDecoration(hintText: hint),
-      validator: (val) => val == null || val.isEmpty ? 'Este campo es requerido' : null,
+      validator: (val) =>
+          val == null || val.isEmpty ? 'Este campo es requerido' : null,
     );
   }
 }
-

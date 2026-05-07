@@ -27,11 +27,13 @@ class AsistenciaService {
   // ─────────────────────────────────────────────────────────────────────────
   static Future<EventoQr> validarQr(String tokenQr) async {
     final uri = Uri.parse('$_baseUrl/asistencia/qr/validar');
-    final response = await http.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'tokenQr': tokenQr}),
-    );
+    final response = await http
+        .post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'tokenQr': tokenQr}),
+        )
+        .timeout(const Duration(seconds: 5));
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -64,21 +66,25 @@ class AsistenciaService {
       body['longitud'] = longitud;
     }
 
-    final response = await http.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(body),
-    );
+    final response = await http
+        .post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(body),
+        )
+        .timeout(const Duration(seconds: 5));
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
-      return data['mensaje'] as String? ?? 'Asistencia registrada exitosamente.';
+      return data['mensaje'] as String? ??
+          'Asistencia registrada exitosamente.';
     } else if (response.statusCode == 409) {
       throw Exception('Ya registraste tu asistencia para este evento.');
     } else if (response.statusCode == 410) {
       throw Exception('El código QR ha expirado.');
     } else {
-      throw Exception('Error al registrar asistencia (${response.statusCode}).');
+      throw Exception(
+          'Error al registrar asistencia (${response.statusCode}).');
     }
   }
 
@@ -88,7 +94,7 @@ class AsistenciaService {
   static Future<List<Zona>> fetchZonas() async {
     final uri = Uri.parse('$_baseUrl/asistencia/zonas');
     try {
-      final response = await http.get(uri);
+      final response = await http.get(uri).timeout(const Duration(seconds: 5));
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         return data.map((z) => Zona.fromJson(z)).toList();
@@ -105,11 +111,13 @@ class AsistenciaService {
   // ─────────────────────────────────────────────────────────────────────────
   static Future<EventoQr> crearEvento(Map<String, dynamic> payload) async {
     final uri = Uri.parse('$_baseUrl/asistencia/crear');
-    final response = await http.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(payload),
-    );
+    final response = await http
+        .post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(payload),
+        )
+        .timeout(const Duration(seconds: 5));
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
