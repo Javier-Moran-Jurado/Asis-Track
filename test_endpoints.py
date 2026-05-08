@@ -5,6 +5,7 @@ from Crypto.Util.number import getPrime, inverse
 import sys
 import time
 import re
+import os
 
 # ══════════════════════════════════════════════════════
 #  PALETA DE COLORES ANSI
@@ -45,6 +46,14 @@ URL_JUSTIFICACIONES = f"{BASE_PLANILLA}/api/v1/planilla-service/justificaciones"
 _tests_total  = 0
 _tests_ok     = 0
 _tests_failed = 0
+
+
+def resolve_test_image_path() -> str:
+    """
+    Resuelve la imagen de prueba sin depender del cwd actual.
+    """
+    root_dir = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(root_dir, "MicroservicioPlanilla", "testImages", "test1.jpg")
 
 def _register(success: bool, label: str):
     global _tests_total, _tests_ok, _tests_failed
@@ -343,11 +352,10 @@ def test_planilla(session, sn, se, ck, headers_admin):
 def test_digitalizar(session, headers_admin, client_key):
     section("PLANILLA ─ DIGITALIZAR")
     url = f"{URL_PLANILLAS}/digitalizar"
-    file_path = "/home/nicoguti/Almacenamiento/PROYECTO/Asis-Track/MicroservicioPlanilla/testImages/2026-04-14_082294-4.jpg"
+    file_path = resolve_test_image_path()
 
     print(f"\n{C_TITLE}▶  PLANILLA ─ Digitalizar imagen{C_RESET}")
     try:
-        import os
         if not os.path.exists(file_path):
             print(f"  {C_ERROR}✗ Archivo no encontrado: {file_path}{C_RESET}")
             _register(False, "PLANILLA ─ Digitalizar")
@@ -385,7 +393,6 @@ def test_digitalizar(session, headers_admin, client_key):
     url_campos = f"{URL_PLANILLAS}/campos"
     print(f"\n{C_TITLE}▶  PLANILLA ─ Obtener Campos (Estructura){C_RESET}")
     try:
-        import os
         if not os.path.exists(file_path):
             print(f"  {C_ERROR}✗ Archivo no encontrado: {file_path}{C_RESET}")
             _register(False, "PLANILLA ─ Obtener Campos")
@@ -421,9 +428,8 @@ def test_digitalizar(session, headers_admin, client_key):
 def test_ai_config(session, headers_admin, client_key):
     """Pruebas del endpoint /ai-config y ciclo completo por proveedor."""
     section("CONFIGURACIÓN DE IA (AI-CONFIG)")
-    file_path = "/home/nicoguti/Almacenamiento/PROYECTO/Asis-Track/MicroservicioPlanilla/testImages/2026-04-14_082294-4.jpg"
+    file_path = resolve_test_image_path()
 
-    import os
     if not os.path.exists(file_path):
         print(f"  {C_ERROR}✗ Imagen de prueba no encontrada: {file_path}{C_RESET}")
         _register(False, "AI-CONFIG ─ Prerequisito")

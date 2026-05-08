@@ -3,6 +3,7 @@ package co.edu.uceva.microservicioplanilla.delibery.rest;
 import co.edu.uceva.microservicioplanilla.domain.model.Planilla;
 import co.edu.uceva.microservicioplanilla.domain.service.IPlanillaService;
 import co.edu.uceva.microservicioplanilla.domain.service.CompositeAiService;
+import co.edu.uceva.microservicioplanilla.service.PlanillaProcessingService;
 import co.edu.uceva.microservicioplanilla.utils.FileHandlerUtil;
 import lombok.SneakyThrows;
 import org.springframework.core.io.Resource;
@@ -18,10 +19,12 @@ public class PlanillaRestController {
 
     private final IPlanillaService planillaService;
     private final CompositeAiService compositeAiService;
+    private final PlanillaProcessingService planillaProcessingService;
 
-    public PlanillaRestController(IPlanillaService planillaService, CompositeAiService compositeAiService) {
+    public PlanillaRestController(IPlanillaService planillaService, CompositeAiService compositeAiService, PlanillaProcessingService planillaProcessingService) {
         this.planillaService = planillaService;
         this.compositeAiService = compositeAiService;
+        this.planillaProcessingService = planillaProcessingService;
     }
 
     @PreAuthorize("isAuthenticated() and hasAnyRole('Administrativo', 'Administrador')")
@@ -40,20 +43,8 @@ public class PlanillaRestController {
     @PostMapping("/planillas/digitalizar")
     public String digitalizar(@RequestParam("file") MultipartFile file) {
         try {
-            String text = "";
-            System.out.println("[*] Digitalizar - Tipo de contenido: " + file.getContentType());
-            if (file.getContentType().equals("application/pdf")) {
-                List<Resource> resources = FileHandlerUtil.pdfToImages(file);
-                text = compositeAiService.processBatch(resources);
-            } else if (file.getContentType().equals("application/zip")) {
-                List<Resource> resources = FileHandlerUtil.extractZip(file);
-                text = compositeAiService.processBatch(resources);
-            } else if (file.getContentType().equals("image/jpeg")) {
-                text = compositeAiService.processBatch(List.of(file.getResource()));
-            } else {
-                return "Error: Tipo de archivo no soportado: " + file.getContentType();
-            }
-            return text;
+            // Delegate to PlanillaProcessingService which uploads sources/signatures to S3
+            return planillaProcessingService.processAndUpload(file);
         } catch (Exception e) {
             System.err.println("[!] Error en digitalizar: " + e.getMessage());
             e.printStackTrace();
