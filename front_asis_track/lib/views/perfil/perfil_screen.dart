@@ -1,194 +1,371 @@
 import 'package:flutter/material.dart';
-import '../../themes/app_theme.dart';
-import '../../widgets/custom_button.dart';
-import '../../widgets/custom_text_field.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../services/role_service.dart';
+import '../../themes/app_theme.dart';
 
-class PerfilScreen extends StatefulWidget {
+class PerfilScreen extends StatelessWidget {
   const PerfilScreen({super.key});
 
   @override
-  State<PerfilScreen> createState() => _PerfilScreenState();
-}
-
-class _PerfilScreenState extends State<PerfilScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController(text: 'Juan Pérez');
-  final _emailController = TextEditingController(text: 'juan.perez@universidad.edu.co');
-  final _studentIdController = TextEditingController(text: '2024117801');
-  final _phoneController = TextEditingController(text: '3123456789');
-  bool _isLoading = false;
-
-  void _saveChanges() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
-      
-      // Simulate API call
-      await Future.delayed(const Duration(seconds: 1));
-      
-      setState(() => _isLoading = false);
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Cambios guardados exitosamente'),
-            backgroundColor: AppTheme.secondaryColor,
-          ),
-        );
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
-    _studentIdController.dispose();
-    _phoneController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+    final user = auth.currentUser;
+
+    final nombre = user?.nombreCompleto ?? '—';
+    final correo = user?.correo ?? '—';
+    final codigo = user?.codigo ?? '—';
+    final rol = user?.rol ?? '';
+
+    // Iniciales para el avatar
+    final partes = nombre.trim().split(' ');
+    final iniciales = partes.length >= 2
+        ? '${partes[0][0]}${partes[1][0]}'.toUpperCase()
+        : nombre.isNotEmpty
+            ? nombre[0].toUpperCase()
+            : '?';
+
     return Scaffold(
-      appBar: _buildAppBar(context, 'Perfil'),
+      appBar: AppBar(
+        titleSpacing: 16,
+        title: const Text(
+          'AsisTrack - Perfil',
+          style: TextStyle(
+            color: AppTheme.primaryColor,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        automaticallyImplyLeading: false,
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(height: 16),
-                ValueListenableBuilder<String>(
-                  valueListenable: RoleService.currentRole,
-                  builder: (context, role, child) {
-                    return DropdownButton<String>(
-                      value: role,
-                      isExpanded: true,
-                      underline: const SizedBox(),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'estudiante',
-                          child: Text('Estudiante'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'profesor/monitor',
-                          child: Text('Profesor / Monitor'),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        if (value != null) {
-                          RoleService.currentRole.value = value;
-                        }
-                      },
-                    );
-                  },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const SizedBox(height: 16),
+
+              // ── Avatar ──────────────────────────────────────────────────
+              Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.primaryColor.withValues(alpha: 0.3),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                const CircleAvatar(
-                  radius: 40,
+                child: CircleAvatar(
+                  radius: 48,
                   backgroundColor: AppTheme.primaryColor,
                   child: Text(
-                    'JP',
-                    style: TextStyle(
+                    iniciales,
+                    style: const TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Juan Pérez',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.gray900,
-                  ),
+              ),
+              const SizedBox(height: 16),
+
+              // ── Nombre ───────────────────────────────────────────────────
+              Text(
+                nombre,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.gray900,
                 ),
-                const SizedBox(height: 4),
-                const Text(
-                  'juan.perez@universidad.edu.co',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
-                ),
-                const SizedBox(height: 32),
-                CustomTextField(
-                  label: 'Nombre completo',
-                  controller: _nameController,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Por favor ingresa tu nombre';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                CustomTextField(
-                  label: 'Correo electrónico',
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Por favor ingresa tu correo';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                CustomTextField(
-                  label: 'Código estudiantil',
-                  controller: _studentIdController,
-                  keyboardType: TextInputType.number,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Por favor ingresa tu código';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                CustomTextField(
-                  label: 'Teléfono',
-                  controller: _phoneController,
-                  keyboardType: TextInputType.phone,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Por favor ingresa tu teléfono';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 32),
-                CustomButton(
-                  text: 'Guardar cambios',
-                  onPressed: _saveChanges,
-                  isLoading: _isLoading,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                correo,
+                style: const TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+              const SizedBox(height: 12),
+
+              // ── Badge de Rol ────────────────────────────────────────────
+              _RolBadge(rol: rol),
+
+              const SizedBox(height: 32),
+
+              // ── Tarjetas de info ────────────────────────────────────────
+              _InfoCard(
+                icon: Icons.badge_outlined,
+                label: 'Código',
+                value: codigo,
+              ),
+              const SizedBox(height: 12),
+              _InfoCard(
+                icon: Icons.email_outlined,
+                label: 'Correo electrónico',
+                value: correo,
+              ),
+              const SizedBox(height: 12),
+              _InfoCard(
+                icon: Icons.school_outlined,
+                label: 'Rol en el sistema',
+                value: RoleService.displayLabel(rol),
+              ),
+
+              const SizedBox(height: 32),
+
+              // ── Acceso rápido: solo si puede generar QR ─────────────────
+              if (RoleService.canGenerateQr(rol)) ...[
+                _QuickAccessCard(
+                  icon: Icons.qr_code_2,
+                  title: 'Generar asistencia',
+                  subtitle: 'Crea un evento y comparte el código QR',
+                  color: const Color(0xFF10B981),
+                  onTap: () => context.push('/a-generador'),
                 ),
                 const SizedBox(height: 24),
               ],
-            ),
+
+              // ── Evidencia JWT ───────────────────────────────────────────
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => context.push('/evidence'),
+                  icon: const Icon(Icons.security_outlined, size: 18),
+                  label: const Text('Ver evidencia de sesión JWT'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.primaryColor,
+                    side: const BorderSide(color: AppTheme.primaryColor),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // ── Cerrar sesión ───────────────────────────────────────────
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    await auth.logout();
+                    if (context.mounted) context.go('/login');
+                  },
+                  icon: const Icon(Icons.logout, size: 18),
+                  label: const Text('Cerrar sesión'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red,
+                    side: const BorderSide(color: Colors.red),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
           ),
         ),
       ),
     );
   }
+}
 
-  PreferredSizeWidget _buildAppBar(BuildContext context, String currentRoute) {
-    return AppBar(
-      titleSpacing: 16,
-      title: const Text(
-        'AsisTrack - Perfil',
-        style: TextStyle(
-          color: AppTheme.primaryColor,
-          fontWeight: FontWeight.bold,
+// ─────────────────────────────────────────────────────────────────────────────
+// Badge de Rol
+// ─────────────────────────────────────────────────────────────────────────────
+class _RolBadge extends StatelessWidget {
+  final String rol;
+  const _RolBadge({required this.rol});
+
+  Color get _color {
+    final r = rol.toLowerCase();
+    if (r == 'administrador') return const Color(0xFF7C3AED);
+    if (r == 'docente') return const Color(0xFF2563EB);
+    if (r == 'monitor') return const Color(0xFF0891B2);
+    return const Color(0xFF10B981); // estudiante
+  }
+
+  IconData get _icon {
+    final r = rol.toLowerCase();
+    if (r == 'administrador') return Icons.admin_panel_settings;
+    if (r == 'docente') return Icons.person_pin;
+    if (r == 'monitor') return Icons.supervised_user_circle;
+    return Icons.school;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _color;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(_icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Text(
+            RoleService.displayLabel(rol),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tarjeta de información (solo lectura)
+// ─────────────────────────────────────────────────────────────────────────────
+class _InfoCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _InfoCard({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: AppTheme.primaryColor, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: AppTheme.gray900,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tarjeta de acceso rápido
+// ─────────────────────────────────────────────────────────────────────────────
+class _QuickAccessCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _QuickAccessCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [color, color.withValues(alpha: 0.75)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.35),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: Colors.white, size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.8),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: Colors.white),
+          ],
         ),
       ),
-      automaticallyImplyLeading: false,
     );
   }
 }

@@ -1,25 +1,16 @@
 import 'dart:convert';
+import 'dart:async' show TimeoutException;
+import 'dart:io' show SocketException;
 import 'package:http/http.dart' as http;
 import '../models/evento_qr.dart';
 import '../models/zona.dart';
-
-import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb;
 
 /// Servicio que se comunica con el microservicio de asistencia.
 /// BASE_URL apunta al gateway/backend real; ajústala según el entorno.
 class AsistenciaService {
   // Ajustado para funcionar en dispositivo físico (moto g52), web o escritorio.
-  static String get _baseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:8080';
-    } else if (Platform.isAndroid || Platform.isIOS) {
-      // Para un dispositivo físico en la misma red wifi, debes usar la IP de tu máquina (ej. 10.10.93.35)
-      return 'http://10.10.93.35:8080';
-    } else {
-      return 'http://localhost:8080'; // Linux, Windows, macOS (escritorio)
-    }
-  }
+  static String get _baseUrl => 'https://ambush-goal-narrow.ngrok-free.dev';
+
 
   // ─────────────────────────────────────────────────────────────────────────
   // Valida el token del QR contra el backend y devuelve los detalles del evento.
@@ -27,21 +18,29 @@ class AsistenciaService {
   // ─────────────────────────────────────────────────────────────────────────
   static Future<EventoQr> validarQr(String tokenQr) async {
     final uri = Uri.parse('$_baseUrl/asistencia/qr/validar');
-    final response = await http
-        .post(
-          uri,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'tokenQr': tokenQr}),
-        )
-        .timeout(const Duration(seconds: 5));
+    try {
+      final response = await http
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'tokenQr': tokenQr}),
+          )
+          .timeout(const Duration(seconds: 30));
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
-      return EventoQr.fromJson({...data, 'tokenQr': tokenQr});
-    } else if (response.statusCode == 410) {
-      throw Exception('El código QR ha expirado.');
-    } else {
-      throw Exception('QR inválido (código ${response.statusCode}).');
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return EventoQr.fromJson({...data, 'tokenQr': tokenQr});
+      } else if (response.statusCode == 410) {
+        throw Exception('El código QR ha expirado.');
+      } else {
+        throw Exception('QR inválido (código ${response.statusCode}).');
+      }
+    } on TimeoutException {
+      throw Exception(
+          'Sin respuesta del servidor. Verifica tu conexión e inténtalo de nuevo.');
+    } on SocketException {
+      throw Exception(
+          'No se puede conectar al servidor. Verifica tu red.');
     }
   }
 
@@ -66,25 +65,33 @@ class AsistenciaService {
       body['longitud'] = longitud;
     }
 
-    final response = await http
-        .post(
-          uri,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode(body),
-        )
-        .timeout(const Duration(seconds: 5));
+    try {
+      final response = await http
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 30));
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
-      return data['mensaje'] as String? ??
-          'Asistencia registrada exitosamente.';
-    } else if (response.statusCode == 409) {
-      throw Exception('Ya registraste tu asistencia para este evento.');
-    } else if (response.statusCode == 410) {
-      throw Exception('El código QR ha expirado.');
-    } else {
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return data['mensaje'] as String? ??
+            'Asistencia registrada exitosamente.';
+      } else if (response.statusCode == 409) {
+        throw Exception('Ya registraste tu asistencia para este evento.');
+      } else if (response.statusCode == 410) {
+        throw Exception('El código QR ha expirado.');
+      } else {
+        throw Exception(
+            'Error al registrar asistencia (${response.statusCode}).');
+      }
+    } on TimeoutException {
       throw Exception(
-          'Error al registrar asistencia (${response.statusCode}).');
+          'Sin respuesta del servidor. Verifica tu conexión e inténtalo de nuevo.');
+    } on SocketException {
+      throw Exception(
+          'No se puede conectar al servidor. Verifica tu red.');
     }
   }
 
@@ -94,15 +101,21 @@ class AsistenciaService {
   static Future<List<Zona>> fetchZonas() async {
     final uri = Uri.parse('$_baseUrl/asistencia/zonas');
     try {
-      final response = await http.get(uri).timeout(const Duration(seconds: 5));
+      final response = await http.get(uri).timeout(const Duration(seconds: 30));
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         return data.map((z) => Zona.fromJson(z)).toList();
       } else {
         throw Exception('Error al cargar zonas (${response.statusCode})');
       }
+    } on TimeoutException {
+      throw Exception(
+          'Sin respuesta del servidor. Verifica tu conexión e inténtalo de nuevo.');
+    } on SocketException {
+      throw Exception(
+          'No se puede conectar al servidor. Verifica tu red.');
     } catch (e) {
-      throw Exception('Error de conexión al cargar zonas: $e');
+      rethrow;
     }
   }
 
@@ -111,19 +124,27 @@ class AsistenciaService {
   // ─────────────────────────────────────────────────────────────────────────
   static Future<EventoQr> crearEvento(Map<String, dynamic> payload) async {
     final uri = Uri.parse('$_baseUrl/asistencia/crear');
-    final response = await http
-        .post(
-          uri,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode(payload),
-        )
-        .timeout(const Duration(seconds: 5));
+    try {
+      final response = await http
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 30));
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
-      return EventoQr.fromJson(data);
-    } else {
-      throw Exception('Error al crear el evento (${response.statusCode})');
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return EventoQr.fromJson(data);
+      } else {
+        throw Exception('Error al crear el evento (${response.statusCode})');
+      }
+    } on TimeoutException {
+      throw Exception(
+          'Sin respuesta del servidor. Verifica tu conexión e inténtalo de nuevo.');
+    } on SocketException {
+      throw Exception(
+          'No se puede conectar al servidor. Verifica tu red.');
     }
   }
 }
