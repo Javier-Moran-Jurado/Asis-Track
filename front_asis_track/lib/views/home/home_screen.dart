@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../themes/app_theme.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -15,13 +17,18 @@ class HomeScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Bienvenido/a, Juan Pérez',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.gray900,
-                ),
+              Builder(
+                builder: (context) {
+                  final nombre = context.watch<AuthProvider>().currentUser?.nombreCompleto ?? 'Usuario';
+                  return Text(
+                    'Bienvenido/a, $nombre',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.gray900,
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: 8),
               const Text(

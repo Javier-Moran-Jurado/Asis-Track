@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../services/role_service.dart';
 import '../../themes/app_theme.dart';
 
@@ -67,16 +69,16 @@ class AsistenciaHomeScreen extends StatelessWidget {
             const SizedBox(height: 36),
 
             // ── Botones principales ───────────────────────────────────────────
-            ValueListenableBuilder<String>(
-              valueListenable: RoleService.currentRole,
-              builder: (context, role, child) {
+            Builder(
+              builder: (context) {
+                final rol = context.watch<AuthProvider>().currentUser?.rol ?? '';
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _ScanButton(
                       onTap: () => context.push('/a-escaner'),
                     ),
-                    if (RoleService.isProfesorOrMonitor) ...[
+                    if (RoleService.canGenerateQr(rol)) ...[
                       const SizedBox(height: 16),
                       _GenerateQRButton(
                         onTap: () => context.push('/a-generador'),
