@@ -2,8 +2,6 @@ package co.edu.uceva.microservicioplanilla.utils;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.web.multipart.MultipartFile;
-
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
@@ -17,27 +15,42 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import org.springframework.web.multipart.MultipartFile;
 
 public class PythonSignatureUtil {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Duration DEFAULT_TIMEOUT = Duration.ofMinutes(2);
 
-    private PythonSignatureUtil() {
+    private PythonSignatureUtil() {}
+
+    public static List<String> extractSignatures(
+        MultipartFile imageFile,
+        Path outputDir
+    ) throws IOException, InterruptedException {
+        return extractSignatures(
+            imageFile.getBytes(),
+            outputDir,
+            locateDefaultScriptPath()
+        );
     }
 
-    public static List<String> extractSignatures(MultipartFile imageFile, Path outputDir)
-            throws IOException, InterruptedException {
-        return extractSignatures(imageFile.getBytes(), outputDir, locateDefaultScriptPath());
+    public static List<String> extractSignatures(
+        byte[] imageBytes,
+        Path outputDir
+    ) throws IOException, InterruptedException {
+        return extractSignatures(
+            imageBytes,
+            outputDir,
+            locateDefaultScriptPath()
+        );
     }
 
-    public static List<String> extractSignatures(byte[] imageBytes, Path outputDir)
-            throws IOException, InterruptedException {
-        return extractSignatures(imageBytes, outputDir, locateDefaultScriptPath());
-    }
-
-    public static List<String> extractSignatures(byte[] imageBytes, Path outputDir, Path scriptPath)
-            throws IOException, InterruptedException {
+    public static List<String> extractSignatures(
+        byte[] imageBytes,
+        Path outputDir,
+        Path scriptPath
+    ) throws IOException, InterruptedException {
         Objects.requireNonNull(imageBytes, "imageBytes no puede ser nulo");
         Objects.requireNonNull(scriptPath, "scriptPath no puede ser nulo");
 
@@ -66,23 +79,36 @@ public class PythonSignatureUtil {
         } catch (IOException writeException) {
             String earlyOutput = readProcessOutputSafely(process);
             process.destroyForcibly();
-            throw new IllegalStateException(buildBrokenPipeMessage(earlyOutput), writeException);
+            throw new IllegalStateException(
+                buildBrokenPipeMessage(earlyOutput),
+                writeException
+            );
         }
 
-        boolean finished = process.waitFor(DEFAULT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+        boolean finished = process.waitFor(
+            DEFAULT_TIMEOUT.toMillis(),
+            TimeUnit.MILLISECONDS
+        );
         if (!finished) {
             process.destroyForcibly();
-            throw new IllegalStateException("El extractor de firmas excedio el tiempo limite");
+            throw new IllegalStateException(
+                "El extractor de firmas excedio el tiempo limite"
+            );
         }
 
-        String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();
+        String output = new String(
+            process.getInputStream().readAllBytes(),
+            StandardCharsets.UTF_8
+        ).trim();
 
         if (process.exitValue() != 0) {
             throw new IllegalStateException(buildPythonErrorMessage(output));
         }
 
         if (output.isBlank()) {
-            throw new IllegalStateException("El extractor de firmas no devolvio salida JSON");
+            throw new IllegalStateException(
+                "El extractor de firmas no devolvio salida JSON"
+            );
         }
 
         JsonNode rootNode = OBJECT_MAPPER.readTree(output);
@@ -101,15 +127,110 @@ public class PythonSignatureUtil {
         return signaturePaths;
     }
 
+    public static String cropSignature(
+        String base64Image,
+        int x,
+        int y,
+        int w,
+        int h,
+        Path outputDir
+    ) throws IOException, InterruptedException {
+        Objects.requireNonNull(base64Image, "base64Image no puede ser nulo");
+        Path scriptPath = locateDefaultScriptPath();
+        Objects.requireNonNull(scriptPath, "scriptPath no puede ser nulo");
+
+        Path normalizedOutputDir = resolveOutputDir(outputDir);
+        Files.createDirectories(normalizedOutputDir);
+
+        String pureBase64 = base64Image;
+        if (base64Image.contains(",")) {
+            pureBase64 = base64Image.split(",")[1];
+        }
+
+        List<String> command = new ArrayList<>();
+        command.add("python");
+        command.add(scriptPath.toString());
+        command.add("--image-base64");
+        command.add("-");
+        command.add("--crop-coordinates");
+        command.add(x + "," + y + "," + w + "," + h);
+        command.add("--output-dir");
+        command.add(normalizedOutputDir.toString());
+        command.add("--no-overlay");
+
+        ProcessBuilder processBuilder = new ProcessBuilder(command);
+        processBuilder.redirectErrorStream(true);
+        processBuilder.directory(scriptPath.getParent().toFile());
+
+        Process process = processBuilder.start();
+        try (OutputStream stdin = process.getOutputStream()) {
+            stdin.write(pureBase64.getBytes(StandardCharsets.UTF_8));
+            stdin.flush();
+        } catch (IOException writeException) {
+            String earlyOutput = readProcessOutputSafely(process);
+            process.destroyForcibly();
+            throw new IllegalStateException(
+                buildBrokenPipeMessage(earlyOutput),
+                writeException
+            );
+        }
+
+        boolean finished = process.waitFor(
+            DEFAULT_TIMEOUT.toMillis(),
+            TimeUnit.MILLISECONDS
+        );
+        if (!finished) {
+            process.destroyForcibly();
+            throw new IllegalStateException(
+                "El extractor de firmas excedio el tiempo limite"
+            );
+        }
+
+        String output = new String(
+            process.getInputStream().readAllBytes(),
+            StandardCharsets.UTF_8
+        ).trim();
+
+        if (process.exitValue() != 0) {
+            throw new IllegalStateException(buildPythonErrorMessage(output));
+        }
+
+        if (output.isBlank()) {
+            throw new IllegalStateException(
+                "El extractor de firmas no devolvio salida JSON"
+            );
+        }
+
+        JsonNode rootNode = OBJECT_MAPPER.readTree(output);
+        if (rootNode.hasNonNull("error")) {
+            throw new IllegalStateException(rootNode.get("error").asText());
+        }
+
+        JsonNode signaturePathsNode = rootNode.path("signature_paths");
+        if (signaturePathsNode.isArray() && signaturePathsNode.size() > 0) {
+            return signaturePathsNode.get(0).asText();
+        }
+
+        throw new IllegalStateException(
+            "El extractor no devolvio la ruta de la firma recortada"
+        );
+    }
+
     public static Path locateDefaultScriptPath() {
-        Path directPath = Paths.get("PyLibs", "SignatureExtractor.py").toAbsolutePath().normalize();
+        Path directPath = Paths.get("PyLibs", "SignatureExtractor.py")
+            .toAbsolutePath()
+            .normalize();
         if (Files.exists(directPath)) {
             return directPath;
         }
 
-        Path nestedPath = Paths.get("MicroservicioPlanilla", "PyLibs", "SignatureExtractor.py")
-                .toAbsolutePath()
-                .normalize();
+        Path nestedPath = Paths.get(
+            "MicroservicioPlanilla",
+            "PyLibs",
+            "SignatureExtractor.py"
+        )
+            .toAbsolutePath()
+            .normalize();
         if (Files.exists(nestedPath)) {
             return nestedPath;
         }
@@ -119,7 +240,9 @@ public class PythonSignatureUtil {
 
     private static Path resolveOutputDir(Path outputDir) {
         if (outputDir == null) {
-            return Paths.get("target", "signature-output").toAbsolutePath().normalize();
+            return Paths.get("target", "signature-output")
+                .toAbsolutePath()
+                .normalize();
         }
         return outputDir.toAbsolutePath().normalize();
     }
@@ -128,12 +251,19 @@ public class PythonSignatureUtil {
         if (output == null || output.isBlank()) {
             return "No se pudo ejecutar el extractor de firmas";
         }
-        return String.format(Locale.ROOT, "Error al ejecutar el extractor de firmas: %s", output);
+        return String.format(
+            Locale.ROOT,
+            "Error al ejecutar el extractor de firmas: %s",
+            output
+        );
     }
 
     private static String readProcessOutputSafely(Process process) {
         try {
-            return new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();
+            return new String(
+                process.getInputStream().readAllBytes(),
+                StandardCharsets.UTF_8
+            ).trim();
         } catch (Exception ignored) {
             return "";
         }
@@ -143,6 +273,9 @@ public class PythonSignatureUtil {
         if (processOutput == null || processOutput.isBlank()) {
             return "El proceso Python cerro stdin prematuramente (Broken pipe)";
         }
-        return "El proceso Python cerro stdin prematuramente (Broken pipe). Salida: " + processOutput;
+        return (
+            "El proceso Python cerro stdin prematuramente (Broken pipe). Salida: " +
+            processOutput
+        );
     }
 }

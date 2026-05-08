@@ -82,12 +82,19 @@ def extract_firma_column(
         _log("  'Firma' no encontrada", verbose)
         return None
 
-    _log(f"  '{firma['text']}' pos=({firma['x']},{firma['y']}) conf={firma['conf']}", verbose)
+    _log(
+        f"  '{firma['text']}' pos=({firma['x']},{firma['y']}) conf={firma['conf']}",
+        verbose,
+    )
     bounds = find_cell_bounds(img_orig_scaled, firma)
 
     if save_debug_img:
         tag = os.path.splitext(image_name)[0]
-        dbg_dir = Path(debug_dir) if debug_dir is not None else Path(__file__).resolve().parent / "output"
+        dbg_dir = (
+            Path(debug_dir)
+            if debug_dir is not None
+            else Path(__file__).resolve().parent / "output"
+        )
         os.makedirs(dbg_dir, exist_ok=True)
         save_debug(img_pre, firma, bounds, os.path.join(dbg_dir, f"{tag}_debug.jpg"))
 
@@ -138,7 +145,11 @@ def extract_signatures(
         verbose=verbose,
     )
     if firma_col is None:
-        return {"base_name": base_name, "signature_paths": [], "output_dir": str(output_dir)}
+        return {
+            "base_name": base_name,
+            "signature_paths": [],
+            "output_dir": str(output_dir),
+        }
 
     row_bounds = refine_rows(detect_rows_in_column(firma_col))
     enhanced = enhance_for_detection(firma_col)
@@ -176,10 +187,17 @@ def main():
         help="Imagen codificada en base64. Usa '-' para leerla desde stdin.",
     )
     parser.add_argument("--output-dir", help="Directorio de salida", default=None)
-    parser.add_argument("--base-name", help="Nombre base para los archivos de salida", default=None)
+    parser.add_argument(
+        "--base-name", help="Nombre base para los archivos de salida", default=None
+    )
     parser.add_argument("--target-width", type=int, default=1800)
     parser.add_argument("--no-debug", action="store_true")
     parser.add_argument("--no-overlay", action="store_true")
+    parser.add_argument(
+        "--crop-coordinates",
+        help="Coordenadas para recorte manual en formato x,y,w,h",
+        default=None,
+    )
     args = parser.parse_args()
 
     if args.image_path or args.image_base64:
@@ -187,8 +205,42 @@ def main():
             if args.image_path:
                 image_source = args.image_path
             else:
-                image_b64 = sys.stdin.read() if args.image_base64 == "-" else args.image_base64
+                image_b64 = (
+                    sys.stdin.read() if args.image_base64 == "-" else args.image_base64
+                )
                 image_source = base64.b64decode(image_b64)
+
+            if args.crop_coordinates:
+                x, y, w, h = map(int, args.crop_coordinates.split(","))
+                img_orig, _ = _load_image(image_source)
+                if img_orig is None:
+                    raise ValueError(
+                        "No se pudo leer la imagen de entrada para recortar"
+                    )
+
+                crop = img_orig[y : y + h, x : x + w]
+                if crop.size == 0:
+                    raise ValueError("El recorte resulto vacio")
+
+                out_dir_path = (
+                    Path(args.output_dir)
+                    if args.output_dir
+                    else Path(__file__).resolve().parent / "output"
+                )
+                os.makedirs(out_dir_path, exist_ok=True)
+
+                base = args.base_name if args.base_name else "custom_crop"
+                out_path = out_dir_path / f"{base}.png"
+                cv2.imwrite(str(out_path), crop)
+
+                result = {
+                    "base_name": base,
+                    "output_dir": str(out_dir_path),
+                    "signature_paths": [str(out_path)],
+                    "signature_count": 1,
+                }
+                print(json.dumps(result, ensure_ascii=False))
+                return 0
 
             # Fuerza salida limpia en stdout para integración con Java:
             # solo se imprime el JSON final.
@@ -245,7 +297,9 @@ def main():
             )
             final_signature_boxes = merge_split_signatures(final_signature_boxes)
 
-            out_img, _ = save_signature_crops(base_name, firma_col, final_signature_boxes, output_dir=out_dir)
+            out_img, _ = save_signature_crops(
+                base_name, firma_col, final_signature_boxes, output_dir=out_dir
+            )
             cv2.imwrite(os.path.join(paddle_out, base_name), out_img)
             print(f"  Encontradas {len(final_signature_boxes)} firmas")
     except Exception as e:
