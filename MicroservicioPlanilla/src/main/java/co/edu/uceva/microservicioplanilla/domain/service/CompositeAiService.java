@@ -75,7 +75,10 @@ public class CompositeAiService {
     /**
      * Genera un hash MD5 del recurso para usarlo como clave de caché.
      */
-    private String generateCacheKey(Resource image) {
+    public String generateCacheKey(Resource image) {
+        if (image == null) {
+            return "null-image";
+        }
         try (InputStream is = image.getInputStream()) {
             return DigestUtils.md5DigestAsHex(is);
         } catch (IOException e) {

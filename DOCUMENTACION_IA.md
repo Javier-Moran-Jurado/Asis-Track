@@ -107,6 +107,13 @@ curl -X POST "http://localhost:8084/api/v1/planilla-service/planillas/digitaliza
 ]
 ```
 
+Nota: A partir de la integración S3, el endpoint `POST /api/v1/planilla-service/planillas/digitalizar` añadirá dos campos a cada objeto fila en el arreglo JSON de respuesta:
+
+- `source`: URL pre-firmada (presigned) hacia la imagen digitalizada (página) almacenada en el bucket privado.
+- `firma`: URL pre-firmada hacia la firma recortada (si existe) almacenada en el bucket privado; si no existe, seguirá siendo una cadena vacía `""`.
+
+Las URLs son privadas y tienen un TTL configurable (por defecto 1 hora).
+
 ### 4.2. Obtener Campos/Estructura (OCR Semántico)
 Endpoint especializado para extraer no los datos, sino la estructura del documento y el tipo de componente digital ideal para cada columna.
 

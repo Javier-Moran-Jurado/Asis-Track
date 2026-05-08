@@ -43,3 +43,51 @@ Para lograr un ambiente de producción robusto y elevar la tasa de aciertos por 
 
 ### 4. Upgrade Tecnológico
 * Probar y desplegar modelos base de OCR más especializados en manuscritos (Vision-Language Models como `LLaVA` con una cuantización superior o usar APIs cloud como Google Cloud Vision / Amazon Textract) si Ollama se queda corto en casos de caligrafía extrema.
+
+---
+
+## Ejecutar SignatureExtractor (PyLibs)
+
+### Instalación
+
+```bash
+cd MicroservicioPlanilla
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+### Variables de entorno (Windows)
+
+Configura estas variables antes de ejecutar:
+
+```powershell
+$env:HF_TOKEN="tu_token_de_huggingface"
+$env:TESSERACT_CMD="C:\Program Files\Tesseract-OCR\tesseract.exe"
+```
+
+Persistir para futuras terminales:
+
+```powershell
+setx HF_TOKEN "tu_token_de_huggingface"
+setx TESSERACT_CMD "C:\Program Files\Tesseract-OCR\tesseract.exe"
+```
+
+### Ejecutar como script directo
+
+```bash
+cd MicroservicioPlanilla\PyLibs
+python SignatureExtractor.py
+```
+
+### Ejecutar como módulo (recomendado)
+
+```bash
+cd MicroservicioPlanilla
+python -m PyLibs.SignatureExtractor
+```
+
+### Salidas esperadas
+
+- Imágenes debug y resultados en `MicroservicioPlanilla/PyLibs/output`.
+- Recortes de firmas en `MicroservicioPlanilla/PyLibs/output/crops`.

@@ -1,0 +1,30 @@
+.git
+.gitignore
+.gitattributes
+.idea
+.vscode
+.mvn
+mvnw
+mvnw.cmd
+
+# Ignorar la carpeta target pero permitir los archivos .jar construidos
+target/*
+!target/*.jar
+
+# Ignorar cachés y entornos virtuales de Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.venv/
+
+# Ignorar salidas locales de pruebas y logs
+testImages/
+output/
+cols/
+*.log
+
+# Omitir el propio Dockerfile y dockerignore
+Dockerfile
+.dockerignore
