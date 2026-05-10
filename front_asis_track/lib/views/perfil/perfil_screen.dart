@@ -128,25 +128,6 @@ class PerfilScreen extends StatelessWidget {
                 const SizedBox(height: 24),
               ],
 
-              // ── Evidencia JWT ───────────────────────────────────────────
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () => context.push('/evidence'),
-                  icon: const Icon(Icons.security_outlined, size: 18),
-                  label: const Text('Ver evidencia de sesión JWT'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.primaryColor,
-                    side: const BorderSide(color: AppTheme.primaryColor),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-
               // ── Cerrar sesión ───────────────────────────────────────────
               SizedBox(
                 width: double.infinity,

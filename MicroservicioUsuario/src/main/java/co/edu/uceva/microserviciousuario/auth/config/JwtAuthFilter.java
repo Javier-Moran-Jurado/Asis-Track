@@ -1,6 +1,6 @@
 package co.edu.uceva.microserviciousuario.auth.config;
 
-import co.edu.uceva.microserviciousuario.auth.repository.ITokenRepository;
+
 import co.edu.uceva.microserviciousuario.auth.service.JwtService;
 import co.edu.uceva.microserviciousuario.domain.model.Usuario;
 import co.edu.uceva.microserviciousuario.domain.repository.IUsuarioRepository;
@@ -31,7 +31,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
-    private final ITokenRepository tokenRepository;
+
     private final IUsuarioRepository usuarioRepository;
 
     @Override
@@ -60,15 +60,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         final UserDetails userDetails = this.userDetailsService.loadUserByUsername(codigoUsuario.toString());
-        final boolean isTokenExpiredOrRevoked = tokenRepository.findByToken(jwt)
-                .map(token -> !token.isExpired() && !token.isRevoked())
-                .orElse(false);
+        final Optional<Usuario> user = usuarioRepository.findById(codigoUsuario);
 
-
-        if (isTokenExpiredOrRevoked) {
-            final Optional<Usuario> user = usuarioRepository.findById(codigoUsuario);
-
-            if (user.isPresent()) {
+        if (user.isPresent()) {
                 final boolean isTokenValid = jwtService.isTokenValid(jwt, user.get());
 
                 if (isTokenValid) {
@@ -87,7 +81,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
             }
-        }
 
         filterChain.doFilter(request, response);
     }
