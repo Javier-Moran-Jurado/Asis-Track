@@ -14,7 +14,6 @@ import 'package:front_asis_track/views/main_layout.dart';
 import 'package:front_asis_track/views/justificaciones/justificaciones_screen.dart';
 import 'package:front_asis_track/views/perfil/perfil_screen.dart';
 import 'package:front_asis_track/models/evento_qr.dart';
-import 'package:front_asis_track/views/auth/evidence_screen.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey =
     GlobalKey<NavigatorState>(debugLabel: 'root');
@@ -33,15 +32,6 @@ final GoRouter appRouter = GoRouter(
       path: '/register',
       builder: (context, state) => const RegisterScreen(),
     ),
-    GoRoute(
-      path: '/evidence',
-      parentNavigatorKey: _rootNavigatorKey,
-      pageBuilder: (context, state) => const MaterialPage(
-        key: ValueKey('key_evidence'),
-        child: EvidenceScreen(),
-      ),
-    ),
-
     // ── DETALLES (FUERA DEL SHELL) ──
     GoRoute(
       name: 'h_detalle',
