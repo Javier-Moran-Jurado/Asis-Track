@@ -4,17 +4,13 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.List;
+
 @Getter
 @Setter
-public class DatoRequest {
-    @NotNull
-    private Long filaId;
+public class ConfirmarPropuestaRequest {
+    private EventoConfirmadoRequest evento;
 
     @NotNull
-    private Long campoId;
-
-    @NotNull
-    private Integer posicion;
-
-    private String informacion;
+    private List<CampoRequest> campos;
 }

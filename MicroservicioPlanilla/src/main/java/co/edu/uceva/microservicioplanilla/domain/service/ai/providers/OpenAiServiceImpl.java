@@ -45,6 +45,12 @@ public class OpenAiServiceImpl implements IAiModelService {
         return callOpenAiApi(images, promptText);
     }
 
+    @Override
+    public String extractStructureFromImage(List<Resource> images, String tiposPermitidos) {
+        String promptText = promptFactory.buildStructureFromImagePrompt(tiposPermitidos);
+        return callOpenAiApi(images, promptText);
+    }
+
     private String callOpenAiApi(List<Resource> images, String promptText) {
         String baseUrl = configService.getCloudBaseUrl();
         String apiKey = configService.getCloudApiKey();

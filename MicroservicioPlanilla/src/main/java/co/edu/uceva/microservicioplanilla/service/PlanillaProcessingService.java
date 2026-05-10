@@ -1,9 +1,9 @@
 package co.edu.uceva.microservicioplanilla.service;
 
+import co.edu.uceva.microservicioplanilla.domain.model.TipoCampo;
+import co.edu.uceva.microservicioplanilla.domain.repository.ITipoCampoRepository;
 import co.edu.uceva.microservicioplanilla.domain.service.ai.CompositeAiService;
-import co.edu.uceva.microservicioplanilla.delivery.rest.dto.PlanillaDigitalizadaResponse;
-import co.edu.uceva.microservicioplanilla.delivery.rest.dto.FilaDigitalizadaResponse;
-import co.edu.uceva.microservicioplanilla.delivery.rest.dto.ValorCeldaResponse;
+import co.edu.uceva.microservicioplanilla.delivery.rest.dto.*;
 import co.edu.uceva.microservicioplanilla.utils.FileHandlerUtil;
 import co.edu.uceva.microservicioplanilla.utils.PythonSignatureUtil;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -21,6 +21,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 public class PlanillaProcessingService {
@@ -28,6 +31,7 @@ public class PlanillaProcessingService {
     private final S3StorageService s3StorageService;
     private final CompositeAiService compositeAiService;
     private final ObjectMapper objectMapper;
+    private final ITipoCampoRepository tipoCampoRepository;
 
     @Value("${s3.presign-ttl-seconds:3600}")
     private String presignTtlSecondsRaw;
@@ -38,11 +42,13 @@ public class PlanillaProcessingService {
     public PlanillaProcessingService(
         S3StorageService s3StorageService,
         CompositeAiService compositeAiService,
-        ObjectMapper objectMapper
+        ObjectMapper objectMapper,
+        ITipoCampoRepository tipoCampoRepository
     ) {
         this.s3StorageService = s3StorageService;
         this.compositeAiService = compositeAiService;
         this.objectMapper = objectMapper;
+        this.tipoCampoRepository = tipoCampoRepository;
     }
 
     public List<PlanillaDigitalizadaResponse> processAndUpload(MultipartFile file, String estructuraJson) throws Exception {
@@ -193,6 +199,92 @@ public class PlanillaProcessingService {
             return Long.parseLong(presignTtlSecondsRaw);
         } catch (NumberFormatException ex) {
             return 3600L;
+        }
+    }
+
+    public EstructuraPropuestaResponse proposeStructureFromImage(Long planillaId, MultipartFile file) {
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Solo se aceptan imágenes (JPEG, PNG, WebP).");
+        }
+
+        String rawResponse = compositeAiService.processSingleImageStructureFromImageWithFallback(file.getResource());
+        String json = extraerJson(rawResponse);
+
+        List<CampoPropuestoResponse> campos = new ArrayList<>();
+        try {
+            JsonNode arr = objectMapper.readTree(json);
+            if (arr.isArray()) {
+                for (JsonNode nodo : arr) {
+                    CampoPropuestoResponse c = new CampoPropuestoResponse();
+                    c.setNombreCampo(optText(nodo, "nombre_campo"));
+                    c.setTipoCampo(optText(nodo, "tipo_campo"));
+                    c.setObligatorio(nodo.path("obligatorio").asBoolean(false));
+                    JsonNode opcionesNode = nodo.path("opciones");
+                    if (opcionesNode.isArray()) {
+                        List<String> opciones = new ArrayList<>();
+                        for (JsonNode op : opcionesNode) {
+                            opciones.add(op.asText());
+                        }
+                        c.setOpciones(opciones);
+                    }
+                    campos.add(c);
+                }
+            }
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "Respuesta de IA no parseable: " + e.getMessage());
+        }
+
+        validarTipos(campos);
+
+        EstructuraPropuestaResponse resp = new EstructuraPropuestaResponse();
+        resp.setPlanillaId(planillaId);
+        resp.setCampos(campos);
+        return resp;
+    }
+
+    private String extraerJson(String raw) {
+        if (raw == null) return "[]";
+        raw = raw.trim();
+        Pattern pattern = Pattern.compile("```(?:json)?\\s*([\\s\\S]*?)\\s*```");
+        Matcher matcher = pattern.matcher(raw);
+        if (matcher.find()) {
+            return matcher.group(1).trim();
+        }
+        if (raw.startsWith("{") || raw.startsWith("[")) {
+            return raw;
+        }
+        int firstObj = raw.indexOf('{');
+        int firstArr = raw.indexOf('[');
+        int start = -1;
+        if (firstObj >= 0 && firstArr >= 0) {
+            start = Math.min(firstObj, firstArr);
+        } else if (firstObj >= 0) {
+            start = firstObj;
+        } else if (firstArr >= 0) {
+            start = firstArr;
+        }
+        if (start >= 0) {
+            return raw.substring(start);
+        }
+        return "[]";
+    }
+
+    private String optText(JsonNode node, String field) {
+        JsonNode n = node.path(field);
+        return n.isMissingNode() || n.isNull() ? null : n.asText();
+    }
+
+    private void validarTipos(List<CampoPropuestoResponse> campos) {
+        if (campos == null || campos.isEmpty()) return;
+        Set<String> tiposValidos = tipoCampoRepository.findAll().stream()
+                .map(TipoCampo::getTipo)
+                .collect(Collectors.toSet());
+        for (CampoPropuestoResponse c : campos) {
+            if (c.getTipoCampo() != null && !tiposValidos.contains(c.getTipoCampo())) {
+                throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                        "Tipo de campo no válido propuesto por IA: " + c.getTipoCampo());
+            }
         }
     }
 }

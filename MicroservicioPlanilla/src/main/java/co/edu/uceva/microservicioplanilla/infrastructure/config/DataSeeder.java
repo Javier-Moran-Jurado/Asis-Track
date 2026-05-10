@@ -23,6 +23,7 @@ public class DataSeeder implements CommandLineRunner {
     private final IEventoRepository eventoRepository;
     private final ICampoRepository campoRepository;
     private final IDatoRepository datoRepository;
+    private final IFilaRepository filaRepository;
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final Random random = new Random();
@@ -93,16 +94,18 @@ public class DataSeeder implements CommandLineRunner {
 
         String[] nombresCampos = {"Cédula", "Nombres", "Apellidos"};
         TipoCampo[] tiposPorCampo = {tipoNumeric, tipoText, tipoText};
+        boolean[] obligatoriosPorCampo = {true, true, false};
         Campo[] campos = new Campo[nombresCampos.length];
         for (int i = 0; i < nombresCampos.length; i++) {
             Campo campo = new Campo();
             campo.setPlanilla(planilla);
             campo.setTipoCampo(tiposPorCampo[i]);
             campo.setNombreCampo(nombresCampos[i]);
+            campo.setObligatorio(obligatoriosPorCampo[i]);
             campos[i] = campoRepository.save(campo);
         }
 
-        // Paso 7: Datos (30 filas)
+        // Paso 7: Filas y Datos (30 filas anónimas + 5 filas de usuario)
         String[] nombres = {"Juan", "Maria", "Pedro", "Ana", "Luis"};
         String[] apellidos = {"Garcia", "Rodriguez", "Martinez", "Lopez", "Gonzalez"};
 
@@ -112,21 +115,53 @@ public class DataSeeder implements CommandLineRunner {
                 String nombre = nombres[random.nextInt(nombres.length)];
                 String apellido = apellidos[random.nextInt(apellidos.length)];
 
+                Fila fila = new Fila();
+                fila.setPlanilla(planilla);
+                fila.setIndice(i);
+                fila.setCodigoUsuario(null);
+                fila = filaRepository.save(fila);
+
                 String[] valores = {numDoc, nombre, apellido};
                 for (int j = 0; j < campos.length; j++) {
                     Dato dato = new Dato();
                     dato.setCampo(campos[j]);
-                    dato.setIndice(i);
+                    dato.setFila(fila);
                     dato.setPosicion(0);
                     dato.setInformacion(valores[j]);
                     datoRepository.save(dato);
                 }
             } catch (Exception e) {
-                logger.error("Error al insertar fila {}: {}", i, e.getMessage());
+                logger.error("Error al insertar fila anónima {}: {}", i, e.getMessage());
             }
         }
 
-        logger.info("Seed completado: {} tipos de campo + 2 orígenes + 1 lugar + 1 evento + 1 planilla + 3 campos + 30 filas.",
+        for (int i = 30; i < 35; i++) {
+            try {
+                String numDoc = String.valueOf(10000000 + random.nextInt(90000000));
+                String nombre = nombres[random.nextInt(nombres.length)];
+                String apellido = apellidos[random.nextInt(apellidos.length)];
+
+                Fila fila = new Fila();
+                fila.setPlanilla(planilla);
+                fila.setIndice(i);
+                fila.setCodigoUsuario(1L);
+                fila = filaRepository.save(fila);
+
+                String[] valores = {numDoc, nombre, apellido};
+                for (int j = 0; j < campos.length; j++) {
+                    Dato dato = new Dato();
+                    dato.setCampo(campos[j]);
+                    dato.setFila(fila);
+                    dato.setPosicion(0);
+                    dato.setInformacion(valores[j]);
+                    datoRepository.save(dato);
+                }
+            } catch (Exception e) {
+                logger.error("Error al insertar fila de usuario {}: {}", i, e.getMessage());
+            }
+        }
+
+        logger.info("Seed completado: {} tipos de campo + 2 orígenes + 1 lugar + 1 evento + 1 planilla + 3 campos + 35 filas.",
                 tiposCampo.size());
     }
 }

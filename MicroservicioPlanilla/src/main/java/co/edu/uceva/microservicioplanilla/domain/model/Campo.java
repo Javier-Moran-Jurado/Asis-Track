@@ -31,6 +31,9 @@ public class Campo {
     @Column(name = "nombre_campo", nullable = false)
     private String nombreCampo;
 
+    @Column(nullable = false)
+    private boolean obligatorio = false;
+
     @JsonIgnore
     @OneToMany(mappedBy = "campo", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Dato> datos;

@@ -8,11 +8,10 @@ import java.util.List;
 public interface IDatoService {
     List<Dato> findAll();
     Dato findById(Long id);
-    Dato save(Dato dato);
-    Dato update(Dato dato);
+    Dato save(DatoRequest request);
+    Dato update(Long id, DatoRequest request);
     void deleteById(Long id);
     List<Dato> findByPlanillaId(Long planillaId);
-    List<Dato> findByPlanillaIdAndIndice(Long planillaId, Integer indice);
     List<Dato> findByCampoId(Long campoId);
     List<Dato> saveAll(List<DatoRequest> requests);
 }

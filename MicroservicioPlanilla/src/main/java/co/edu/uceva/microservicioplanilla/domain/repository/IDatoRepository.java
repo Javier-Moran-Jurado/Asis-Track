@@ -4,21 +4,23 @@ import co.edu.uceva.microservicioplanilla.domain.model.Dato;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
 
+@Repository
 public interface IDatoRepository extends JpaRepository<Dato, Long> {
 
     List<Dato> findByCampoId(Long campoId);
 
-    @Query("SELECT d FROM Dato d WHERE d.campo.planilla.id = :planillaId")
+    @Query("SELECT d FROM Dato d WHERE d.fila.planilla.id = :planillaId")
     List<Dato> findByPlanillaId(@Param("planillaId") Long planillaId);
 
-    @Query("SELECT d FROM Dato d WHERE d.campo.planilla.id = :planillaId AND d.indice = :indice")
+    @Query("SELECT d FROM Dato d WHERE d.fila.planilla.id = :planillaId AND d.fila.indice = :indice")
     List<Dato> findByPlanillaIdAndIndice(@Param("planillaId") Long planillaId, @Param("indice") Integer indice);
 
-    Optional<Dato> findByCampoIdAndIndiceAndPosicion(Long campoId, Integer indice, Integer posicion);
+    Optional<Dato> findByCampoIdAndFilaIdAndPosicion(Long campoId, Long filaId, Integer posicion);
 
-    boolean existsByCampoIdAndIndiceAndPosicion(Long campoId, Integer indice, Integer posicion);
+    boolean existsByCampoIdAndFilaIdAndPosicion(Long campoId, Long filaId, Integer posicion);
 }

@@ -45,4 +45,62 @@ public class AiPromptFactory {
             - Respetar el número de filas exacto visible en la imagen.
             """;
     }
+
+    public String buildStructureFromImagePrompt(String tiposPermitidos) {
+        return """
+            Analiza la imagen de una planilla. Detecta únicamente los encabezados / columnas visibles.
+            No extraigas datos de las filas, solo la estructura de la cabecera.
+            Devuelve ÚNICAMENTE un JSON con el siguiente formato, sin texto adicional:
+            [
+              {
+                "nombre_campo": "Nombre de la columna",
+                "tipo_campo": "tipo_según_catálogo",
+                "obligatorio": true/false,
+                "opciones": ["opción1", "opción2"]
+              }
+            ]
+            Reglas:
+            - "opciones" solo se incluye para tipos: combo, radio, multivaluecheckbox. Para el resto, omitir el campo.
+            - Deduce el tipo usando ÚNICAMENTE estos valores: """ + tiposPermitidos + """
+            - "obligatorio": true si visualmente se identifica como requerido (*, negrita, marcador rojo, etc.), false por defecto.
+            - Si la imagen no contiene una tabla o planilla clara, devolver un array vacío [].
+            """;
+    }
+
+    public String buildPlanillaFromDescriptionPrompt(String descripcion, boolean crearEvento, String tiposPermitidos) {
+        String eventoInstruccion = crearEvento ? """
+            1. Propón un evento con los siguientes campos:
+               - nombre_evento
+               - descripcion_evento
+               - fecha_hora_inicio (ISO-8601 o null)
+               - fecha_hora_fin (ISO-8601 o null)
+               - lugar_nombre (String o null)
+            """ : """
+            1. NO propongas un evento. Omitir toda la sección de evento.
+            """;
+
+        return """
+            Basado en la siguiente descripción de un usuario, genera una propuesta de planilla.
+
+            Descripción del usuario: """ + descripcion + """
+
+            Instrucciones:
+            """ + eventoInstruccion + """
+            2. Propón la estructura de campos de la planilla como JSON:
+            [
+              {
+                "nombre_campo": "...",
+                "tipo_campo": "tipo_según_catálogo",
+                "obligatorio": true/false,
+                "opciones": ["..."]
+              }
+            ]
+
+            Reglas:
+            - Usa ÚNICAMENTE estos tipos: """ + tiposPermitidos + """
+            - "opciones" solo para combo, radio, multivaluecheckbox. Omitir para otros tipos.
+            - Campos comunes de asistencia/eventos: nombre, cédula, correo, firma, fecha, etc.
+            - Devuelve ÚNICAMENTE el JSON solicitado, sin texto adicional.
+            """;
+    }
 }

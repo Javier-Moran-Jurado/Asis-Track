@@ -29,7 +29,15 @@ public class JwtService {
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
-        return Long.parseLong(jwtToken.getId());
+        return Long.parseLong(jwtToken.getSubject());
+    }
+
+    public String extractCorreo(final String token){
+        return Jwts.parser()
+                .verifyWith(getSingInKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload().get("correo").toString();
     }
 
     public String extractRol(final String token){

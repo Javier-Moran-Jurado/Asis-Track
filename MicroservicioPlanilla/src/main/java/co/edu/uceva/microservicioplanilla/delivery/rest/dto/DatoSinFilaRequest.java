@@ -6,10 +6,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class DatoRequest {
-    @NotNull
-    private Long filaId;
-
+public class DatoSinFilaRequest {
     @NotNull
     private Long campoId;
 

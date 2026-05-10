@@ -65,6 +65,13 @@ public class OllamaAiServiceImpl implements IAiModelService {
         return callOllamaApi(images, ollamaPrompt);
     }
 
+    @Override
+    public String extractStructureFromImage(List<Resource> images, String tiposPermitidos) {
+        String basePrompt = promptFactory.buildStructureFromImagePrompt(tiposPermitidos);
+        String ollamaPrompt = "请按下列JSON格式输出图中信息:\n" + basePrompt;
+        return callOllamaApi(images, ollamaPrompt);
+    }
+
     private String callOllamaApi(List<Resource> images, String promptText) {
         String baseUrl = configService.getOllamaBaseUrl();
 

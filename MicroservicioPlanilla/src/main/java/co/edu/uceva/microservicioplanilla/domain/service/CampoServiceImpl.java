@@ -87,6 +87,7 @@ public class CampoServiceImpl implements ICampoService {
             c.setPlanilla(planillaRepository.getReferenceById(req.getPlanillaId()));
             c.setTipoCampo(tipoCampoRepository.getReferenceById(req.getTipoCampoId()));
             c.setNombreCampo(req.getNombreCampo());
+            c.setObligatorio(Boolean.TRUE.equals(req.getObligatorio()));
             return c;
         }).toList();
 

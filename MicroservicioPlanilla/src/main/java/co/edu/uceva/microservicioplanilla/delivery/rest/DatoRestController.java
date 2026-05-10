@@ -3,6 +3,8 @@ package co.edu.uceva.microservicioplanilla.delivery.rest;
 import co.edu.uceva.microservicioplanilla.domain.model.Dato;
 import co.edu.uceva.microservicioplanilla.domain.service.IDatoService;
 import co.edu.uceva.microservicioplanilla.delivery.rest.dto.DatoRequest;
+import co.edu.uceva.microservicioplanilla.delivery.rest.dto.DatoResponse;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -23,41 +25,33 @@ public class DatoRestController {
     private final IDatoService datoService;
 
     @GetMapping
-    public ResponseEntity<List<Dato>> findAll() {
-        return ResponseEntity.ok(datoService.findAll());
+    public ResponseEntity<List<DatoResponse>> findAll() {
+        return ResponseEntity.ok(toResponse(datoService.findAll()));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Dato> findById(@PathVariable Long id) {
-        return ResponseEntity.ok(datoService.findById(id));
+    public ResponseEntity<DatoResponse> findById(@PathVariable Long id) {
+        return ResponseEntity.ok(toResponse(datoService.findById(id)));
     }
 
     @GetMapping("/planilla/{planillaId}")
-    public ResponseEntity<List<Dato>> findByPlanillaId(@PathVariable Long planillaId) {
-        return ResponseEntity.ok(datoService.findByPlanillaId(planillaId));
-    }
-
-    @GetMapping("/planilla/{planillaId}/fila/{indice}")
-    public ResponseEntity<List<Dato>> findByPlanillaIdAndIndice(
-            @PathVariable Long planillaId,
-            @PathVariable Integer indice) {
-        return ResponseEntity.ok(datoService.findByPlanillaIdAndIndice(planillaId, indice));
+    public ResponseEntity<List<DatoResponse>> findByPlanillaId(@PathVariable Long planillaId) {
+        return ResponseEntity.ok(toResponse(datoService.findByPlanillaId(planillaId)));
     }
 
     @GetMapping("/campo/{campoId}")
-    public ResponseEntity<List<Dato>> findByCampoId(@PathVariable Long campoId) {
-        return ResponseEntity.ok(datoService.findByCampoId(campoId));
+    public ResponseEntity<List<DatoResponse>> findByCampoId(@PathVariable Long campoId) {
+        return ResponseEntity.ok(toResponse(datoService.findByCampoId(campoId)));
     }
 
     @PostMapping
-    public ResponseEntity<Dato> save(@RequestBody Dato dato) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(datoService.save(dato));
+    public ResponseEntity<DatoResponse> save(@RequestBody @Valid DatoRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(datoService.save(request)));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Dato> update(@PathVariable Long id, @RequestBody Dato dato) {
-        dato.setId(id);
-        return ResponseEntity.ok(datoService.update(dato));
+    public ResponseEntity<DatoResponse> update(@PathVariable Long id, @RequestBody @Valid DatoRequest request) {
+        return ResponseEntity.ok(toResponse(datoService.update(id, request)));
     }
 
     @DeleteMapping("/{id}")
@@ -70,9 +64,23 @@ public class DatoRestController {
     @PostMapping("/batch")
     public ResponseEntity<?> saveAll(@RequestBody @Size(max = 1000) List<DatoRequest> requests) {
         try {
-            return ResponseEntity.status(HttpStatus.CREATED).body(datoService.saveAll(requests));
+            return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(datoService.saveAll(requests)));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("status", 400, "message", e.getMessage()));
         }
+    }
+
+    private List<DatoResponse> toResponse(List<Dato> datos) {
+        return datos.stream().map(this::toResponse).toList();
+    }
+
+    private DatoResponse toResponse(Dato d) {
+        DatoResponse resp = new DatoResponse();
+        resp.setId(d.getId());
+        resp.setCampoId(d.getCampo() != null ? d.getCampo().getId() : null);
+        resp.setFilaId(d.getFila() != null ? d.getFila().getId() : null);
+        resp.setPosicion(d.getPosicion());
+        resp.setInformacion(d.getInformacion());
+        return resp;
     }
 }

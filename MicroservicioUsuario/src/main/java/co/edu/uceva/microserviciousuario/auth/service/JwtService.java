@@ -29,7 +29,7 @@ public class JwtService {
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
-        return Long.parseLong(jwtToken.getId());
+        return Long.parseLong(jwtToken.getSubject());
     }
 
     public String extractRol(final String token){
@@ -68,9 +68,10 @@ public class JwtService {
 
     private String buildToken (final Usuario usuario, final long expiration){
         return Jwts.builder()
-                .id(usuario.getCodigo().toString())
+                .subject(usuario.getCodigo().toString())
                 .claims(Map.of(
                 "nombre_completo", usuario.getNombreCompleto(),
+                "correo", usuario.getCorreo(),
                 "rol", usuario.getRol().getNombre()
                 ))
                 .issuedAt(new Date(System.currentTimeMillis()))

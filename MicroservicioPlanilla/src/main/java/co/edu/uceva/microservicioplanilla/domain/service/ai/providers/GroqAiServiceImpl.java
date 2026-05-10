@@ -47,6 +47,12 @@ public class GroqAiServiceImpl implements IAiModelService {
         return callGroqApi(images, promptText);
     }
 
+    @Override
+    public String extractStructureFromImage(List<Resource> images, String tiposPermitidos) {
+        String promptText = promptFactory.buildStructureFromImagePrompt(tiposPermitidos);
+        return callGroqApi(images, promptText);
+    }
+
     private String callGroqApi(List<Resource> images, String promptText) {
         String baseUrl = configService.getGroqUrl();
         String apiKey = configService.getGroqToken();

@@ -2,11 +2,14 @@ package co.edu.uceva.microservicioplanilla.delivery.rest;
 
 import co.edu.uceva.microservicioplanilla.domain.model.Planilla;
 import co.edu.uceva.microservicioplanilla.domain.service.ai.CompositeAiService;
+import co.edu.uceva.microservicioplanilla.domain.service.GeneradorPlanillaService;
+import co.edu.uceva.microservicioplanilla.domain.service.ICampoService;
 import co.edu.uceva.microservicioplanilla.domain.service.IPlanillaService;
 import co.edu.uceva.microservicioplanilla.service.PlanillaProcessingService;
-import co.edu.uceva.microservicioplanilla.delivery.rest.dto.PlanillaDigitalizadaResponse;
+import co.edu.uceva.microservicioplanilla.delivery.rest.dto.*;
 import co.edu.uceva.microservicioplanilla.utils.FileHandlerUtil;
 import co.edu.uceva.microservicioplanilla.utils.PythonSignatureUtil;
+import jakarta.validation.Valid;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -27,15 +30,21 @@ public class PlanillaRestController {
     private final IPlanillaService planillaService;
     private final CompositeAiService compositeAiService;
     private final PlanillaProcessingService planillaProcessingService;
+    private final GeneradorPlanillaService generadorPlanillaService;
+    private final ICampoService campoService;
 
     public PlanillaRestController(
         IPlanillaService planillaService,
         CompositeAiService compositeAiService,
-        PlanillaProcessingService planillaProcessingService
+        PlanillaProcessingService planillaProcessingService,
+        GeneradorPlanillaService generadorPlanillaService,
+        ICampoService campoService
     ) {
         this.planillaService = planillaService;
         this.compositeAiService = compositeAiService;
         this.planillaProcessingService = planillaProcessingService;
+        this.generadorPlanillaService = generadorPlanillaService;
+        this.campoService = campoService;
     }
 
     @PreAuthorize(
@@ -186,5 +195,58 @@ public class PlanillaRestController {
     @GetMapping("/planillas/{id}")
     public Planilla findById(@PathVariable Long id) {
         return planillaService.findById(id);
+    }
+
+    @PreAuthorize(
+        "isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Monitor')"
+    )
+    @PostMapping("/planillas/{planillaId}/proponer-estructura")
+    public EstructuraPropuestaResponse proponerEstructura(
+            @PathVariable Long planillaId,
+            @RequestParam("imagen") MultipartFile imagen) {
+        try {
+            return planillaProcessingService.proposeStructureFromImage(planillaId, imagen);
+        } catch (ResponseStatusException rse) {
+            throw rse;
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error proponiendo estructura: " + e.getMessage());
+        }
+    }
+
+    @PreAuthorize(
+        "isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Monitor')"
+    )
+    @PostMapping("/planillas/{planillaId}/confirmar-estructura")
+    public List<co.edu.uceva.microservicioplanilla.domain.model.Campo> confirmarEstructura(
+            @PathVariable Long planillaId,
+            @Valid @RequestBody List<CampoRequest> campos) {
+        for (CampoRequest cr : campos) {
+            cr.setPlanillaId(planillaId);
+        }
+        return campoService.saveAll(campos);
+    }
+
+    @PreAuthorize(
+        "isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Monitor')"
+    )
+    @PostMapping("/planillas/generar-propuesta")
+    public PlanillaPropuestaResponse generarPropuesta(@Valid @RequestBody GenerarPropuestaRequest request) {
+        try {
+            return generadorPlanillaService.generarPropuesta(request);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error generando propuesta: " + e.getMessage());
+        }
+    }
+
+    @PreAuthorize(
+        "isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Monitor')"
+    )
+    @PostMapping("/planillas/generar-propuesta/confirmar")
+    public Planilla confirmarPropuesta(@Valid @RequestBody ConfirmarPropuestaRequest request) {
+        try {
+            return generadorPlanillaService.confirmarPropuesta(request);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error confirmando propuesta: " + e.getMessage());
+        }
     }
 }

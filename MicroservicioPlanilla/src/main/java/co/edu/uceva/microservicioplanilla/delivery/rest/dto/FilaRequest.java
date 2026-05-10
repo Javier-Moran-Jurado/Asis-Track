@@ -1,6 +1,6 @@
 package co.edu.uceva.microservicioplanilla.delivery.rest.dto;
 
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
@@ -9,17 +9,15 @@ import java.util.List;
 
 @Getter
 @Setter
-public class CampoRequest {
+public class FilaRequest {
     @NotNull
     private Long planillaId;
 
+    private Long codigoUsuario;
+
     @NotNull
-    private Long tipoCampoId;
+    private Integer indice;
 
-    @NotBlank
-    private String nombreCampo;
-
-    private Boolean obligatorio = false;
-
-    private List<String> opciones;
+    @Valid
+    private List<DatoSinFilaRequest> datos;
 }

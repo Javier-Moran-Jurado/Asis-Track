@@ -41,6 +41,13 @@ public class HuggingFaceAiServiceImpl implements IAiModelService {
     }
 
     @Override
+    public String extractStructureFromImage(List<Resource> images, String tiposPermitidos) {
+        String basePrompt = promptFactory.buildStructureFromImagePrompt(tiposPermitidos);
+        String promptText = "请按下列JSON格式输出图中信息:\n" + basePrompt;
+        return callHfApi(images, promptText);
+    }
+
+    @Override
     public String extractText(List<Resource> images, String estructuraJson) {
         String basePrompt = promptFactory.buildTextRecognitionPrompt(estructuraJson);
         String promptText = "请按下列JSON格式输出图中信息:\n" + basePrompt;
