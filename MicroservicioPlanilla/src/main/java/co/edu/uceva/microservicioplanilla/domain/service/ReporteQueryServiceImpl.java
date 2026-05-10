@@ -147,7 +147,7 @@ public class ReporteQueryServiceImpl implements IReporteQueryService {
                 }
                 break;
             case "text":
-            case "e-mail":
+            case "email":
                 stats.put("valoresUnicos", valores.stream().distinct().count());
                 stats.put("valorMasComun", valores.stream()
                         .collect(Collectors.groupingBy(v -> v, Collectors.counting()))

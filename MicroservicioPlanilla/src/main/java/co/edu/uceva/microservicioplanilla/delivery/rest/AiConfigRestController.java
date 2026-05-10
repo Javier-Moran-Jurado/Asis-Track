@@ -1,7 +1,7 @@
 package co.edu.uceva.microservicioplanilla.delivery.rest;
 
 import co.edu.uceva.microservicioplanilla.delivery.rest.dto.AiConfigDto;
-import co.edu.uceva.microservicioplanilla.domain.service.DynamicAiConfigService;
+import co.edu.uceva.microservicioplanilla.domain.service.ai.DynamicAiConfigService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 

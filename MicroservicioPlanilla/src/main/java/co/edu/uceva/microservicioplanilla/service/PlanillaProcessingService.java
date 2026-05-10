@@ -1,24 +1,26 @@
 package co.edu.uceva.microservicioplanilla.service;
 
-import co.edu.uceva.microservicioplanilla.domain.service.CompositeAiService;
+import co.edu.uceva.microservicioplanilla.domain.service.ai.CompositeAiService;
+import co.edu.uceva.microservicioplanilla.delivery.rest.dto.PlanillaDigitalizadaResponse;
+import co.edu.uceva.microservicioplanilla.delivery.rest.dto.FilaDigitalizadaResponse;
+import co.edu.uceva.microservicioplanilla.delivery.rest.dto.ValorCeldaResponse;
 import co.edu.uceva.microservicioplanilla.utils.FileHandlerUtil;
 import co.edu.uceva.microservicioplanilla.utils.PythonSignatureUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.Resource;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
+import java.util.*;
 
 @Service
 public class PlanillaProcessingService {
@@ -43,165 +45,144 @@ public class PlanillaProcessingService {
         this.objectMapper = objectMapper;
     }
 
-    public String processAndUpload(MultipartFile file) throws Exception {
+    public List<PlanillaDigitalizadaResponse> processAndUpload(MultipartFile file, String estructuraJson) throws Exception {
         List<Resource> resources;
         String contentType = file.getContentType();
 
         if ("application/pdf".equals(contentType)) {
             resources = FileHandlerUtil.pdfToImages(file);
-        } else if ("application/zip".equals(contentType)) {
+        } else if ("application/zip".equals(contentType) || "application/x-zip-compressed".equals(contentType)) {
             resources = FileHandlerUtil.extractZip(file);
-        } else if (contentType != null && (contentType.startsWith("image/"))) {
+        } else if (contentType != null && contentType.startsWith("image/")) {
             resources = List.of(file.getResource());
         } else {
-            throw new IllegalArgumentException(
-                "Unsupported file type: " + contentType
-            );
+            throw new IllegalArgumentException("Unsupported file type: " + contentType);
         }
 
         String requestId = UUID.randomUUID().toString();
-        ArrayNode merged = objectMapper.createArrayNode();
-
+        List<PlanillaDigitalizadaResponse> responses = new ArrayList<>();
         Path tmpDir = Files.createTempDirectory("sign-extract-" + requestId);
 
         try {
-            int pageIndex = 0;
+            int pageIndex = 1;
             for (Resource res : resources) {
                 byte[] imageBytes = res.getInputStream().readAllBytes();
 
-                String filename =
-                    res.getFilename() == null
-                        ? ("page_" + (pageIndex + 1) + ".jpg")
-                        : res.getFilename();
-                String sourceData = "";
-                if (uploadSourceImages) {
-                    sourceData =
-                        "data:image/jpeg;base64," +
-                        java.util.Base64.getEncoder().encodeToString(
-                            imageBytes
-                        );
-                }
-
-                // Run OCR for this single image
-                String pageJson =
-                    compositeAiService.processSingleImageWithFallback(res);
+                // 1. LLamada a la IA
+                String pageJson = compositeAiService.processSingleImageWithFallback(res, estructuraJson);
+                
+                // Parse AI response
                 JsonNode arr = objectMapper.readTree(pageJson);
                 if (!arr.isArray()) {
-                    throw new IllegalStateException(
-                        "AI returned non-array JSON for a page"
-                    );
+                    throw new IllegalStateException("AI returned non-array JSON for a page");
                 }
 
-                // Extract signatures for this page
-                List<String> signatureLocalPaths =
-                    PythonSignatureUtil.extractSignatures(imageBytes, tmpDir);
+                // 2. Extracción de firmas con Python
+                List<String> signatureLocalPaths = PythonSignatureUtil.extractSignatures(imageBytes, tmpDir);
                 List<String> signatureData = new ArrayList<>();
                 for (String localPath : signatureLocalPaths) {
                     byte[] sigBytes = Files.readAllBytes(Paths.get(localPath));
-                    String b64 =
-                        "data:image/png;base64," +
-                        java.util.Base64.getEncoder().encodeToString(sigBytes);
+                    String b64 = "data:image/png;base64," + java.util.Base64.getEncoder().encodeToString(sigBytes);
                     signatureData.add(b64);
                 }
 
-                // Map signatures to rows by index and add source
-                int rowIndex = 0;
-                for (JsonNode rowNode : arr) {
-                    if (!rowNode.isObject()) continue;
-                    ObjectNode obj = (ObjectNode) rowNode;
-                    String firmaB64 = "";
-                    if (rowIndex < signatureData.size()) {
-                        firmaB64 = signatureData.get(rowIndex);
-                    }
-                    obj.put("firma", firmaB64);
-                    if (uploadSourceImages) {
-                        obj.put("source", sourceData);
-                    }
-                    merged.add(obj);
-                    rowIndex++;
+                // 3. Mapeo a DTOs
+                Map<Integer, List<ValorCeldaResponse>> filaMap = new TreeMap<>();
+                
+                for (JsonNode cellNode : arr) {
+                    String colName = cellNode.path("columna").asText();
+                    int fila = cellNode.path("fila").asInt();
+                    String val = cellNode.hasNonNull("valor") ? cellNode.path("valor").asText() : "";
+                    
+                    String tipoCampo = getTipoCampoFromEstructura(estructuraJson, colName);
+                    
+                    ValorCeldaResponse vcr = new ValorCeldaResponse(colName, tipoCampo, val);
+                    filaMap.computeIfAbsent(fila, k -> new ArrayList<>()).add(vcr);
                 }
 
-                pageIndex++;
+                List<FilaDigitalizadaResponse> filas = new ArrayList<>();
+                int signatureIndex = 0;
+                
+                for (Map.Entry<Integer, List<ValorCeldaResponse>> entry : filaMap.entrySet()) {
+                    List<ValorCeldaResponse> celdas = entry.getValue();
+                    
+                    // Inyectar firma si existe el tipo "signature_file"
+                    for (ValorCeldaResponse celda : celdas) {
+                        if ("signature_file".equals(celda.getTipoCampo())) {
+                            if (signatureIndex < signatureData.size()) {
+                                celda.setValor(signatureData.get(signatureIndex));
+                                signatureIndex++;
+                            }
+                        }
+                    }
+                    
+                    filas.add(new FilaDigitalizadaResponse(entry.getKey(), celdas));
+                }
+
+                responses.add(new PlanillaDigitalizadaResponse(pageIndex++, filas));
             }
 
-            return objectMapper.writeValueAsString(merged);
+            return responses;
         } finally {
-            // cleanup temporary extraction directory
             try {
                 Files.walk(tmpDir)
+                    .sorted(Comparator.reverseOrder())
                     .map(Path::toFile)
-                    .sorted((a, b) -> -a.compareTo(b))
                     .forEach(java.io.File::delete);
             } catch (IOException ignored) {}
         }
     }
 
-    public String saveCorrectedData(String jsonData) throws Exception {
-        JsonNode root = objectMapper.readTree(jsonData);
-        if (!root.isArray()) {
-            throw new IllegalArgumentException("Expected a JSON array");
-        }
-
+    public List<PlanillaDigitalizadaResponse> saveCorrectedData(List<PlanillaDigitalizadaResponse> hojas) throws Exception {
         String requestId = UUID.randomUUID().toString();
-        ArrayNode merged = objectMapper.createArrayNode();
         long presignTtlSeconds = resolvePresignTtlSeconds();
 
-        int rowIndex = 0;
-        for (JsonNode rowNode : root) {
-            if (!rowNode.isObject()) continue;
-            ObjectNode obj = (ObjectNode) rowNode;
-
-            // Upload signature if present and is base64
-            if (obj.has("firma") && obj.get("firma").isTextual()) {
-                String firmaData = obj.get("firma").asText();
-                if (firmaData.startsWith("data:image/png;base64,")) {
-                    byte[] sigBytes = java.util.Base64.getDecoder().decode(
-                        firmaData.substring("data:image/png;base64,".length())
-                    );
-                    String sigKey = String.format(
-                        "planillas/%s/signatures/row_%d_firma.png",
-                        requestId,
-                        rowIndex
-                    );
-                    s3StorageService.upload(sigBytes, sigKey, "image/png");
-                    String sigUrl = s3StorageService.presignedGetUrl(
-                        sigKey,
-                        Duration.ofSeconds(presignTtlSeconds)
-                    );
-                    obj.put("firma", sigUrl);
+        for (int i = 0; i < hojas.size(); i++) {
+            PlanillaDigitalizadaResponse hoja = hojas.get(i);
+            
+            for (int j = 0; j < hoja.getFilas().size(); j++) {
+                FilaDigitalizadaResponse fila = hoja.getFilas().get(j);
+                
+                for (ValorCeldaResponse celda : fila.getValores()) {
+                    if (("signature_file".equals(celda.getTipoCampo()) || "file".equals(celda.getTipoCampo())) 
+                        && celda.getValor() != null && celda.getValor().startsWith("data:image/png;base64,")) {
+                        
+                        try {
+                            byte[] fileBytes = java.util.Base64.getDecoder().decode(
+                                celda.getValor().substring("data:image/png;base64,".length())
+                            );
+                            String s3Key = String.format("planillas/%s/page_%d/row_%d_%s.png", 
+                                requestId, hoja.getPaginaNumero(), fila.getIndice(), celda.getNombreCampo().replaceAll("[^a-zA-Z0-9.-]", "_"));
+                            
+                            s3StorageService.upload(fileBytes, s3Key, "image/png");
+                            String url = s3StorageService.presignedGetUrl(s3Key, Duration.ofSeconds(presignTtlSeconds));
+                            celda.setValor(url);
+                        } catch (Exception e) {
+                            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, 
+                                "Error subiendo archivo en hoja " + hoja.getPaginaNumero() + ", fila " + fila.getIndice(), e);
+                        }
+                    }
                 }
             }
-
-            // Upload source if present and is base64
-            if (obj.has("source") && obj.get("source").isTextual()) {
-                String sourceData = obj.get("source").asText();
-                if (sourceData.startsWith("data:image/jpeg;base64,")) {
-                    byte[] sourceBytes = java.util.Base64.getDecoder().decode(
-                        sourceData.substring("data:image/jpeg;base64,".length())
-                    );
-                    String sourceKey = String.format(
-                        "planillas/%s/sources/row_%d_source.jpg",
-                        requestId,
-                        rowIndex
-                    );
-                    s3StorageService.upload(
-                        sourceBytes,
-                        sourceKey,
-                        "image/jpeg"
-                    );
-                    String sourceUrl = s3StorageService.presignedGetUrl(
-                        sourceKey,
-                        Duration.ofSeconds(presignTtlSeconds)
-                    );
-                    obj.put("source", sourceUrl);
-                }
-            }
-
-            merged.add(obj);
-            rowIndex++;
         }
+        
+        return hojas;
+    }
 
-        return objectMapper.writeValueAsString(merged);
+    private String getTipoCampoFromEstructura(String estructuraJson, String colName) {
+        if (estructuraJson == null || estructuraJson.isEmpty()) return "text";
+        try {
+            JsonNode root = objectMapper.readTree(estructuraJson);
+            JsonNode encabezados = root.path("encabezados");
+            if (encabezados.isArray()) {
+                for (JsonNode enc : encabezados) {
+                    if (enc.path("nombre").asText().equalsIgnoreCase(colName)) {
+                        return enc.path("tipo_campo").asText();
+                    }
+                }
+            }
+        } catch (Exception e) {}
+        return "text";
     }
 
     private long resolvePresignTtlSeconds() {

@@ -1,4 +1,4 @@
-package co.edu.uceva.microservicioplanilla.domain.service;
+package co.edu.uceva.microservicioplanilla.domain.service.ai;
 
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Value;

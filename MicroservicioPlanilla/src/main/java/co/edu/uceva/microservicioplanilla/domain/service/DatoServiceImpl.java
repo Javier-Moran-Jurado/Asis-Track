@@ -2,8 +2,11 @@ package co.edu.uceva.microservicioplanilla.domain.service;
 
 import co.edu.uceva.microservicioplanilla.domain.model.Dato;
 import co.edu.uceva.microservicioplanilla.domain.repository.IDatoRepository;
+import co.edu.uceva.microservicioplanilla.domain.repository.ICampoRepository;
+import co.edu.uceva.microservicioplanilla.delivery.rest.dto.DatoRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -12,6 +15,8 @@ import java.util.List;
 public class DatoServiceImpl implements IDatoService {
 
     private final IDatoRepository repository;
+    private final ICampoService campoService;
+    private final ICampoRepository campoRepository;
 
     @Override public List<Dato> findAll() { return repository.findAll(); }
 
@@ -52,5 +57,32 @@ public class DatoServiceImpl implements IDatoService {
     @Override
     public List<Dato> findByCampoId(Long campoId) {
         return repository.findByCampoId(campoId);
+    }
+
+    @Override
+    @Transactional
+    public List<Dato> saveAll(List<DatoRequest> requests) {
+        // 1. Validar que todos los campoId existen
+        List<Long> idsInvalidos = requests.stream()
+            .map(DatoRequest::getCampoId)
+            .filter(id -> !campoService.existsById(id))
+            .distinct().toList();
+
+        if (!idsInvalidos.isEmpty()) {
+            throw new IllegalArgumentException("IDs de campo inválidos: " + idsInvalidos);
+        }
+
+        // 2. Mapear DTO a entidad
+        List<Dato> datos = requests.stream().map(req -> {
+            Dato d = new Dato();
+            d.setCampo(campoRepository.getReferenceById(req.getCampoId()));
+            d.setIndice(req.getIndice());
+            d.setPosicion(req.getPosicion());
+            d.setInformacion(req.getInformacion());
+            return d;
+        }).toList();
+
+        // 3. Guardar en lote
+        return repository.saveAll(datos);
     }
 }

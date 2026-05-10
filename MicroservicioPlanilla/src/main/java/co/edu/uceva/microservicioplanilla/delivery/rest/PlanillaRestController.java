@@ -1,9 +1,10 @@
 package co.edu.uceva.microservicioplanilla.delivery.rest;
 
 import co.edu.uceva.microservicioplanilla.domain.model.Planilla;
-import co.edu.uceva.microservicioplanilla.domain.service.CompositeAiService;
+import co.edu.uceva.microservicioplanilla.domain.service.ai.CompositeAiService;
 import co.edu.uceva.microservicioplanilla.domain.service.IPlanillaService;
 import co.edu.uceva.microservicioplanilla.service.PlanillaProcessingService;
+import co.edu.uceva.microservicioplanilla.delivery.rest.dto.PlanillaDigitalizadaResponse;
 import co.edu.uceva.microservicioplanilla.utils.FileHandlerUtil;
 import co.edu.uceva.microservicioplanilla.utils.PythonSignatureUtil;
 import java.nio.file.Files;
@@ -13,9 +14,11 @@ import java.util.Base64;
 import java.util.List;
 import lombok.SneakyThrows;
 import org.springframework.core.io.Resource;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/v1/planilla-service")
@@ -55,14 +58,16 @@ public class PlanillaRestController {
         "isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Monitor')"
     )
     @PostMapping("/planillas/digitalizar")
-    public String digitalizar(@RequestParam("file") MultipartFile file) {
+    public List<PlanillaDigitalizadaResponse> digitalizar(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("estructuraJson") String estructuraJson) {
         try {
-            // Retorna los datos y las imagenes en Base64 temporalmente
-            return planillaProcessingService.processAndUpload(file);
+            return planillaProcessingService.processAndUpload(file, estructuraJson);
+        } catch (IllegalArgumentException ie) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ie.getMessage());
         } catch (Exception e) {
-            System.err.println("[!] Error en digitalizar: " + e.getMessage());
             e.printStackTrace();
-            return "Error en el servidor: " + e.getMessage();
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error en digitalizar: " + e.getMessage());
         }
     }
 
@@ -70,21 +75,18 @@ public class PlanillaRestController {
         "isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Monitor')"
     )
     @PostMapping("/planillas/digitalizar/guardar")
-    public String guardarDigitalizacion(@RequestBody String jsonData) {
+    public List<PlanillaDigitalizadaResponse> guardarDigitalizacion(@RequestBody List<PlanillaDigitalizadaResponse> datos) {
         try {
-            // Recibe los datos corregidos (o tal cual), guarda las imagenes en S3 y retorna los enlaces
-            return planillaProcessingService.saveCorrectedData(jsonData);
+            return planillaProcessingService.saveCorrectedData(datos);
+        } catch (ResponseStatusException rse) {
+            throw rse;
         } catch (Exception e) {
-            System.err.println(
-                "[!] Error en guardar digitalizacion: " + e.getMessage()
-            );
             e.printStackTrace();
-            return "Error en el servidor: " + e.getMessage();
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error en el servidor: " + e.getMessage());
         }
     }
 
     public static class RecorteRequest {
-
         public int index;
         public int x;
         public int y;
@@ -94,7 +96,6 @@ public class PlanillaRestController {
     }
 
     public static class RecorteResponse {
-
         public int index;
         public String firmaB64;
     }
@@ -121,7 +122,6 @@ public class PlanillaRestController {
                 "data:image/png;base64," +
                 Base64.getEncoder().encodeToString(fileBytes);
 
-            // Limpieza
             Files.walk(tmpDir)
                 .sorted(java.util.Comparator.reverseOrder())
                 .map(Path::toFile)
@@ -132,13 +132,7 @@ public class PlanillaRestController {
             response.firmaB64 = base64;
             return response;
         } catch (Exception e) {
-            System.err.println(
-                "[!] Error en corregirRecorteFirma: " + e.getMessage()
-            );
-            e.printStackTrace();
-            throw new RuntimeException(
-                "Error recortando firma: " + e.getMessage()
-            );
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error recortando firma: " + e.getMessage());
         }
     }
 
@@ -149,31 +143,24 @@ public class PlanillaRestController {
     public String obtenerCampos(@RequestParam("file") MultipartFile file) {
         try {
             String text = "";
-            System.out.println(
-                "[*] Obtener Campos - Tipo de contenido: " +
-                    file.getContentType()
-            );
-            if (file.getContentType().equals("application/pdf")) {
+            String contentType = file.getContentType();
+            
+            if ("application/pdf".equals(contentType)) {
                 List<Resource> resources = FileHandlerUtil.pdfToImages(file);
                 text = compositeAiService.processStructureBatch(resources);
-            } else if (file.getContentType().equals("application/zip")) {
+            } else if ("application/zip".equals(contentType) || "application/x-zip-compressed".equals(contentType)) {
                 List<Resource> resources = FileHandlerUtil.extractZip(file);
                 text = compositeAiService.processStructureBatch(resources);
-            } else if (file.getContentType().equals("image/jpeg")) {
+            } else if (contentType != null && contentType.startsWith("image/")) {
                 text = compositeAiService.processStructureBatch(
                     List.of(file.getResource())
                 );
             } else {
-                return (
-                    "Error: Tipo de archivo no soportado: " +
-                    file.getContentType()
-                );
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tipo de archivo no soportado: " + contentType);
             }
             return text;
         } catch (Exception e) {
-            System.err.println("[!] Error en obtenerCampos: " + e.getMessage());
-            e.printStackTrace();
-            return "Error en el servidor: " + e.getMessage();
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error en obtenerCampos: " + e.getMessage());
         }
     }
 

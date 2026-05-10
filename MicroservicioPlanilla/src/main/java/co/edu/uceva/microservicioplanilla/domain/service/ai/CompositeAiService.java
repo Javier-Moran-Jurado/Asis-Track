@@ -1,8 +1,9 @@
-package co.edu.uceva.microservicioplanilla.domain.service;
+package co.edu.uceva.microservicioplanilla.domain.service.ai;
 
+import co.edu.uceva.microservicioplanilla.domain.model.TipoCampo;
+import co.edu.uceva.microservicioplanilla.domain.repository.ITipoCampoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -22,6 +23,7 @@ public class CompositeAiService {
     private final IAiModelService ollamaService;
     private final IAiModelService groqService;
     private final DynamicAiConfigService configService;
+    private final ITipoCampoRepository tipoCampoRepository;
 
     @Autowired
     public CompositeAiService(
@@ -29,17 +31,18 @@ public class CompositeAiService {
             @Qualifier("huggingFaceAiService") IAiModelService huggingFaceService,
             @Qualifier("ollamaAiService") IAiModelService ollamaService,
             @Qualifier("groqAiService") IAiModelService groqService,
-            DynamicAiConfigService configService) {
+            DynamicAiConfigService configService,
+            ITipoCampoRepository tipoCampoRepository) {
         this.cloudService = cloudService;
         this.huggingFaceService = huggingFaceService;
         this.ollamaService = ollamaService;
         this.groqService = groqService;
         this.configService = configService;
+        this.tipoCampoRepository = tipoCampoRepository;
     }
 
     private IAiModelService getPrimaryService() {
         String provider = configService.getActiveProvider();
-        System.out.println("[DEBUG] getPrimaryService() - Raw activeProvider from configService: '" + provider + "'");
         if (provider != null) {
             provider = provider.trim();
         }
@@ -58,13 +61,16 @@ public class CompositeAiService {
         return ollamaService;
     }
 
-    /**
-     * Procesa una lista de imágenes de forma paralela (lotes de planillas)
-     * reduciendo el tiempo total de procesamiento.
-     */
-    public String processBatch(List<Resource> images) {
+    @Cacheable("tiposCampo")
+    public String getTiposPermitidosFormateados() {
+        return tipoCampoRepository.findAll().stream()
+                .map(TipoCampo::getTipo)
+                .collect(Collectors.joining(", "));
+    }
+
+    public String processBatch(List<Resource> images, String estructuraJson) {
         List<CompletableFuture<String>> futures = images.stream()
-                .map(img -> CompletableFuture.supplyAsync(() -> processSingleImageWithFallback(img)))
+                .map(img -> CompletableFuture.supplyAsync(() -> processSingleImageWithFallback(img, estructuraJson)))
                 .collect(Collectors.toList());
 
         return futures.stream()
@@ -72,38 +78,28 @@ public class CompositeAiService {
                 .collect(Collectors.joining("\n\n"));
     }
 
-    /**
-     * Genera un hash MD5 del recurso para usarlo como clave de caché.
-     */
     public String generateCacheKey(Resource image) {
-        if (image == null) {
-            return "null-image";
-        }
+        if (image == null) return "null-image";
         try (InputStream is = image.getInputStream()) {
             return DigestUtils.md5DigestAsHex(is);
         } catch (IOException e) {
-            return String.valueOf(image.hashCode()); // Fallback if cannot read
+            return String.valueOf(image.hashCode());
         }
     }
 
-    /**
-     * Procesa una sola imagen, intentando usar el caché primero.
-     * La anotación @Cacheable usa redis/in-memory para no reprocesar imágenes idénticas.
-     */
-    @Cacheable(value = "ocrImagesCache", key = "target.generateCacheKey(#image)")
-    public String processSingleImageWithFallback(Resource image) {
+    @Cacheable(value = "ocrImagesCache", key = "target.generateCacheKey(#image) + #estructuraJson.hashCode()")
+    public String processSingleImageWithFallback(Resource image, String estructuraJson) {
         IAiModelService primaryService = getPrimaryService();
         IAiModelService fallbackService = getFallbackService();
         
         try {
             System.out.println("[*] Intentando OCR con modelo primario: " + primaryService.getProviderName());
-            return primaryService.generateResponse(List.of(image));
+            return primaryService.extractText(List.of(image), estructuraJson);
         } catch (Exception e) {
             System.err.println("[!] Error con el modelo primario (" + primaryService.getProviderName() + "): " + e.getMessage());
             System.err.println("[*] Iniciando fallback con modelo secundario: " + fallbackService.getProviderName());
-            
             try {
-                return fallbackService.generateResponse(List.of(image));
+                return fallbackService.extractText(List.of(image), estructuraJson);
             } catch (Exception fallbackEx) {
                 System.err.println("[!] Error crítico en fallback (" + fallbackService.getProviderName() + "): " + fallbackEx.getMessage());
                 return "[Error de OCR: Ambos modelos fallaron. " + fallbackEx.getMessage() + "]";
@@ -111,9 +107,6 @@ public class CompositeAiService {
         }
     }
 
-    /**
-     * Procesa una lista de imágenes de forma paralela para extraer la ESTRUCTURA (campos).
-     */
     public String processStructureBatch(List<Resource> images) {
         List<CompletableFuture<String>> futures = images.stream()
                 .map(img -> CompletableFuture.supplyAsync(() -> processSingleImageStructureWithFallback(img)))
@@ -124,23 +117,20 @@ public class CompositeAiService {
                 .collect(Collectors.joining("\n\n"));
     }
 
-    /**
-     * Procesa una sola imagen para extraer su estructura, intentando usar el caché primero.
-     */
     @Cacheable(value = "ocrStructureCache", key = "target.generateCacheKey(#image)")
     public String processSingleImageStructureWithFallback(Resource image) {
         IAiModelService primaryService = getPrimaryService();
         IAiModelService fallbackService = getFallbackService();
+        String tiposPermitidos = getTiposPermitidosFormateados();
         
         try {
             System.out.println("[*] Intentando Extracción de Estructura con modelo primario: " + primaryService.getProviderName());
-            return primaryService.extractStructure(List.of(image));
+            return primaryService.extractStructure(List.of(image), tiposPermitidos);
         } catch (Exception e) {
             System.err.println("[!] Error con el modelo primario (" + primaryService.getProviderName() + "): " + e.getMessage());
             System.err.println("[*] Iniciando fallback de Estructura con modelo secundario: " + fallbackService.getProviderName());
-            
             try {
-                return fallbackService.extractStructure(List.of(image));
+                return fallbackService.extractStructure(List.of(image), tiposPermitidos);
             } catch (Exception fallbackEx) {
                 System.err.println("[!] Error crítico en fallback de Estructura (" + fallbackService.getProviderName() + "): " + fallbackEx.getMessage());
                 return "[Error de OCR: Ambos modelos fallaron al extraer la estructura. " + fallbackEx.getMessage() + "]";

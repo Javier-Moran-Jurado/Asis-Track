@@ -1,4 +1,8 @@
-package co.edu.uceva.microservicioplanilla.domain.service;
+package co.edu.uceva.microservicioplanilla.domain.service.ai.providers;
+
+import co.edu.uceva.microservicioplanilla.domain.service.ai.IAiModelService;
+import co.edu.uceva.microservicioplanilla.domain.service.ai.DynamicAiConfigService;
+import co.edu.uceva.microservicioplanilla.domain.service.ai.AiPromptFactory;
 
 import co.edu.uceva.microservicioplanilla.utils.ImagePreprocessor;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -32,6 +36,7 @@ import java.util.*;
 public class OllamaAiServiceImpl implements IAiModelService {
 
     private final DynamicAiConfigService configService;
+    private final AiPromptFactory promptFactory;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private RestTemplate getRestTemplate() {
@@ -47,29 +52,17 @@ public class OllamaAiServiceImpl implements IAiModelService {
     }
 
     @Override
-    public String generateResponse(List<Resource> images) {
-        // Limitación de GLM-OCR: Para "Document Parsing" solo soporta strings exactos.
-        // Como son planillas, usamos "Table Recognition:"
-        return callOllamaApi(images, "Table Recognition:");
+    public String extractText(List<Resource> images, String estructuraJson) {
+        String basePrompt = promptFactory.buildTextRecognitionPrompt(estructuraJson);
+        String ollamaPrompt = "请按下列JSON格式输出图中信息:\n" + basePrompt;
+        return callOllamaApi(images, ollamaPrompt);
     }
 
     @Override
-    public String extractStructure(List<Resource> images) {
-        // Limitación de GLM-OCR: Para "Information Extraction" exige un prompt estricto 
-        // indicando el formato JSON esperado precedido por la instrucción en chino:
-        String promptText = """
-                请按下列JSON格式输出图中信息:
-                {
-                  "encabezados": [
-                    {
-                      "nombre": "Nombre de la columna",
-                      "tipo_campo": "texto | numerico | fecha | desplegable | checkbox | radio | area_texto | archivo | firma",
-                      "opciones": ["Opcion 1 si aplica", "Opcion 2 si aplica"] 
-                    }
-                  ]
-                }
-                """;
-        return callOllamaApi(images, promptText);
+    public String extractStructure(List<Resource> images, String tiposPermitidos) {
+        String basePrompt = promptFactory.buildStructureExtractionPrompt(tiposPermitidos);
+        String ollamaPrompt = "请按下列JSON格式输出图中信息:\n" + basePrompt;
+        return callOllamaApi(images, ollamaPrompt);
     }
 
     private String callOllamaApi(List<Resource> images, String promptText) {

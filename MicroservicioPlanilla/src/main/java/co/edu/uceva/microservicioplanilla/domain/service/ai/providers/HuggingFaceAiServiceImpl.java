@@ -1,4 +1,8 @@
-package co.edu.uceva.microservicioplanilla.domain.service;
+package co.edu.uceva.microservicioplanilla.domain.service.ai.providers;
+
+import co.edu.uceva.microservicioplanilla.domain.service.ai.IAiModelService;
+import co.edu.uceva.microservicioplanilla.domain.service.ai.DynamicAiConfigService;
+import co.edu.uceva.microservicioplanilla.domain.service.ai.AiPromptFactory;
 
 import co.edu.uceva.microservicioplanilla.utils.ImagePreprocessor;
 import co.edu.uceva.microservicioplanilla.utils.SpellCheckerUtil;
@@ -20,6 +24,7 @@ import java.util.List;
 public class HuggingFaceAiServiceImpl implements IAiModelService {
 
     private final DynamicAiConfigService configService;
+    private final AiPromptFactory promptFactory;
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -29,29 +34,16 @@ public class HuggingFaceAiServiceImpl implements IAiModelService {
     }
 
     @Override
-    public String extractStructure(List<Resource> images) {
-        // Limitación de GLM-OCR: Para "Information Extraction" exige un prompt estricto 
-        // indicando el formato JSON esperado precedido por la instrucción en chino:
-        String promptText = """
-                请按下列JSON格式输出图中信息:
-                {
-                  "encabezados": [
-                    {
-                      "nombre": "Nombre de la columna",
-                      "tipo_campo": "texto | numerico | fecha | desplegable | checkbox | radio | area_texto | archivo | firma",
-                      "opciones": ["Opcion 1 si aplica", "Opcion 2 si aplica"] 
-                    }
-                  ]
-                }
-                """;
+    public String extractStructure(List<Resource> images, String tiposPermitidos) {
+        String basePrompt = promptFactory.buildStructureExtractionPrompt(tiposPermitidos);
+        String promptText = "请按下列JSON格式输出图中信息:\n" + basePrompt;
         return callHfApi(images, promptText);
     }
 
     @Override
-    public String generateResponse(List<Resource> images) {
-        // Limitación de GLM-OCR: Para "Document Parsing" solo soporta strings exactos:
-        // "Text Recognition:", "Formula Recognition:" o "Table Recognition:"
-        String promptText = "Table Recognition:";
+    public String extractText(List<Resource> images, String estructuraJson) {
+        String basePrompt = promptFactory.buildTextRecognitionPrompt(estructuraJson);
+        String promptText = "请按下列JSON格式输出图中信息:\n" + basePrompt;
         return callHfApi(images, promptText);
     }
 

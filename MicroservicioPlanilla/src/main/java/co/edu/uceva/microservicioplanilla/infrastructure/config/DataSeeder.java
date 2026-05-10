@@ -39,7 +39,7 @@ public class DataSeeder implements CommandLineRunner {
         // Paso 1: Tipos de campo (valores correctos del ER)
         List<String> tipos = List.of(
             "text", "numeric", "signature_file", "file", "date",
-            "checkbox", "multivaluecheckbox", "combo", "radio", "e-mail", "secret"
+            "checkbox", "multivaluecheckbox", "combo", "radio", "email", "secret"
         );
         List<TipoCampo> tiposCampo = tipos.stream().map(t -> {
             TipoCampo tc = new TipoCampo();
