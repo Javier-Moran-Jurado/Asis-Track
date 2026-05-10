@@ -71,7 +71,7 @@ public class JwtService {
                 .id(usuario.getCodigo().toString())
                 .claims(Map.of(
                 "nombre_completo", usuario.getNombreCompleto(),
-                "rol", usuario.getRol()
+                "rol", usuario.getRol().getNombre()
                 ))
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + expiration))

@@ -9,7 +9,7 @@ import co.uceva.edu.security.RSA.RSAKeyPair;
 import co.uceva.edu.security.RSA.RSAPublicKey;
 import co.uceva.edu.security.RSA.RSAPrivateKey;
 import jakarta.annotation.PostConstruct;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -20,10 +20,10 @@ import java.math.BigInteger;
 import java.time.LocalDateTime;
 
 @Service
+@RequiredArgsConstructor
 public class SecurityKeyServiceImpl implements ISecurityKeyService {
 
-    @Autowired
-    private ISecurityKeyRepository repository;
+    private final ISecurityKeyRepository repository;
 
     @Value("${app.security.master-key-e}")
     private long masterE;
@@ -34,8 +34,7 @@ public class SecurityKeyServiceImpl implements ISecurityKeyService {
     @Value("${app.security.master-key-d}")
     private String masterD;
 
-    @Autowired
-    private StringRedisTemplate redisTemplate;
+    private final StringRedisTemplate redisTemplate;
 
     // Ejecuta la rotación cada semana (604800000 ms) - Puedes ajustarlo en el cron si prefieres: @Scheduled(cron = "0 0 0 * * SUN")
     @Override

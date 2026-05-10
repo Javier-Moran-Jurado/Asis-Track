@@ -36,7 +36,9 @@ public class Usuario {
         @NotNull(message = "Su numero de telefono no puede quedar sin un valor.")
         @Column(nullable = false)
         private Long telefono;
-        @NotEmpty(message = "No puede estar vacio")
-        @Pattern(regexp = "^(Estudiante|Coordinador|Docente|Administrativo|Decano|Rector|Administrador|Monitor|Directivo)$", message = "El rol debe ser uno de los siguientes: Estudiante, Docente, Coordinador, Administrativo, Decano, Rector, Monitor, Directivo o Administrador")
-        private String rol;
+
+        @ManyToOne(fetch = FetchType.LAZY)
+        @JoinColumn(name = "rol_id", nullable = false)
+        @NotNull(message = "El rol no puede ser nulo")
+        private Rol rol;
 }
