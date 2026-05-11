@@ -72,6 +72,40 @@ def _register(success: bool, label: str):
         _tests_failed += 1
 
 
+def assert_valores_sin_agrupar(respuesta, label, espera_valores=True):
+    """
+    Verifica que campos agrupables incluyan 'valores' sin agrupar
+    y que campos no-agrupables NO lo incluyan.
+    """
+    if not respuesta or "estadisticas" not in respuesta:
+        return True
+
+    stats = respuesta["estadisticas"]
+    tipo = respuesta.get("tipoCampo", "")
+    con_respuestas = stats.get("conRespuestas", 0)
+
+    tipos_agrupables = {"text", "email", "combo", "radio", "checkbox", "multivaluecheckbox"}
+    tiene_valores = "valores" in stats
+
+    if tipo in tipos_agrupables and espera_valores:
+        if not tiene_valores:
+            print(f"  {C_ERROR}✗ ASSERT ─ {label}: falta 'valores' sin agrupar{C_RESET}")
+            return False
+        valores = stats["valores"]
+        if con_respuestas > 0 and (not valores or len(valores) == 0):
+            print(f"  {C_ERROR}✗ ASSERT ─ {label}: 'valores' vacío pero conRespuestas={con_respuestas}{C_RESET}")
+            return False
+        print(f"  {C_SUCCESS}✓ ASSERT ─ {label}: valores sin agrupar = {len(valores)} items{C_RESET}")
+        print(f"  {C_DIM}  Primeros 10: {valores[:10]}{C_RESET}")
+        return True
+
+    if tipo in {"numeric", "date", "signature_file", "file"} and tiene_valores:
+        print(f"  {C_ERROR}✗ ASSERT ─ {label}: campo '{tipo}' no debería tener 'valores'{C_RESET}")
+        return False
+
+    return True
+
+
 # ══════════════════════════════════════════════════════
 #  RSA PURO (sin dependencia externa a pycryptodome)
 # ══════════════════════════════════════════════════════
@@ -1217,14 +1251,14 @@ def test_reporte(session, sn, se, ck, headers_admin, planilla_id_seed=1):
 # ══════════════════════════════════════════════════════
 #  BLOQUE 3B ─ ESTADÍSTICAS DINÁMICAS DE PLANILLA
 # ══════════════════════════════════════════════════════
-def test_estadisticas_dinamicas(session, sn, se, ck, headers_admin, planilla_id_seed=1):
-    section("ESTADÍSTICAS DINÁMICAS DE PLANILLA")
+def test_estadisticas_dinamicas(session, sn, se, ck, headers_admin, evento_id_seed=1):
+    section("ESTADÍSTICAS DINÁMICAS POR EVENTO")
 
     # Campos reales del seed: Cédula (numeric), Nombres (text), Apellidos (text)
-    run_step(
+    resp_cedula, _ = run_step(
         session,
         "GET",
-        f"{URL_REPORTES}/planilla/{planilla_id_seed}/campo/Cédula/estadisticas",
+        f"{URL_REPORTES}/evento/{evento_id_seed}/campo/Cédula/estadisticas",
         {},
         sn,
         se,
@@ -1232,11 +1266,15 @@ def test_estadisticas_dinamicas(session, sn, se, ck, headers_admin, planilla_id_
         headers=headers_admin,
         label=f"ESTADÍSTICAS ─ Por campo 'Cédula' (numeric)",
     )
+    _register(
+        assert_valores_sin_agrupar(resp_cedula, "Cédula", espera_valores=False),
+        "ASSERT ─ Cédula no tiene valores sin agrupar",
+    )
 
-    run_step(
+    resp_nombres, _ = run_step(
         session,
         "GET",
-        f"{URL_REPORTES}/planilla/{planilla_id_seed}/campo/Nombres/estadisticas",
+        f"{URL_REPORTES}/evento/{evento_id_seed}/campo/Nombres/estadisticas",
         {},
         sn,
         se,
@@ -1244,11 +1282,15 @@ def test_estadisticas_dinamicas(session, sn, se, ck, headers_admin, planilla_id_
         headers=headers_admin,
         label=f"ESTADÍSTICAS ─ Por campo 'Nombres' (text)",
     )
+    _register(
+        assert_valores_sin_agrupar(resp_nombres, "Nombres", espera_valores=True),
+        "ASSERT ─ Nombres tiene valores sin agrupar",
+    )
 
-    run_step(
+    resp_apellidos, _ = run_step(
         session,
         "GET",
-        f"{URL_REPORTES}/planilla/{planilla_id_seed}/campo/Apellidos/estadisticas",
+        f"{URL_REPORTES}/evento/{evento_id_seed}/campo/Apellidos/estadisticas",
         {},
         sn,
         se,
@@ -1256,23 +1298,36 @@ def test_estadisticas_dinamicas(session, sn, se, ck, headers_admin, planilla_id_
         headers=headers_admin,
         label=f"ESTADÍSTICAS ─ Por campo 'Apellidos' (text)",
     )
+    _register(
+        assert_valores_sin_agrupar(resp_apellidos, "Apellidos", espera_valores=True),
+        "ASSERT ─ Apellidos tiene valores sin agrupar",
+    )
 
-    run_step(
+    resp_completas, _ = run_step(
         session,
         "GET",
-        f"{URL_REPORTES}/planilla/{planilla_id_seed}/estadisticas-completas",
+        f"{URL_REPORTES}/evento/{evento_id_seed}/estadisticas-completas",
         {},
         sn,
         se,
         ck,
         headers=headers_admin,
-        label=f"ESTADÍSTICAS ─ Completas de planilla ({planilla_id_seed})",
+        label=f"ESTADÍSTICAS ─ Completas de evento ({evento_id_seed})",
     )
+    if resp_completas and "campos" in resp_completas:
+        for campo_info in resp_completas["campos"]:
+            nombre = campo_info.get("campo", "")
+            tipo = campo_info.get("tipoCampo", "")
+            espera = tipo in {"text", "email", "combo", "radio", "checkbox", "multivaluecheckbox"}
+            _register(
+                assert_valores_sin_agrupar(campo_info, nombre, espera_valores=espera),
+                f"ASSERT ─ Completas {nombre} valores",
+            )
 
-    run_step(
+    resp_comp, _ = run_step(
         session,
         "GET",
-        f"{URL_REPORTES}/planilla/{planilla_id_seed}/comparativa?campos=Cédula,Nombres,Apellidos",
+        f"{URL_REPORTES}/evento/{evento_id_seed}/comparativa?campos=Cédula,Nombres,Apellidos",
         {},
         sn,
         se,
@@ -1280,6 +1335,15 @@ def test_estadisticas_dinamicas(session, sn, se, ck, headers_admin, planilla_id_
         headers=headers_admin,
         label=f"ESTADÍSTICAS ─ Comparativa (Cédula,Nombres,Apellidos)",
     )
+    if resp_comp and "campos" in resp_comp:
+        for campo_info in resp_comp["campos"]:
+            nombre = campo_info.get("campo", "")
+            tipo = campo_info.get("tipoCampo", "")
+            espera = tipo in {"text", "email", "combo", "radio", "checkbox", "multivaluecheckbox"}
+            _register(
+                assert_valores_sin_agrupar(campo_info, nombre, espera_valores=espera),
+                f"ASSERT ─ Comparativa {nombre} valores",
+            )
 
 
 # ══════════════════════════════════════════════════════
@@ -1890,7 +1954,7 @@ if __name__ == "__main__":
     test_guardar_planilla_digitalizada(session, sn, se, ck, h_admin, tipos_map, origen_digital_id)
     # test_ai_config(session, h_admin, ck)
     # test_reporte(session, sn, se, ck, h_admin, planilla_id_seed=planilla_id)
-    test_estadisticas_dinamicas(session, sn, se, ck, h_admin, planilla_id_seed=planilla_id)
+    test_estadisticas_dinamicas(session, sn, se, ck, h_admin, evento_id_seed=1)
     # test_asistencia(session, sn, se, ck, h_est, h_admin, planilla_id_seed=planilla_id)
     # test_justificacion(session, sn, se, ck, h_monitor, h_decano)
     test_rotacion(session, h_admin, origen_digital_id)

@@ -1,5 +1,7 @@
 package co.edu.uceva.microservicioplanilla.delivery.rest;
 
+import co.edu.uceva.microservicioplanilla.delivery.rest.dto.EstadisticasCampoResponse;
+import co.edu.uceva.microservicioplanilla.delivery.rest.dto.EstadisticasEventoResponse;
 import co.edu.uceva.microservicioplanilla.domain.service.IReporteQueryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -24,22 +26,26 @@ public class ReporteQueryRestController {
         return ResponseEntity.ok(reporteQueryService.resumenJustificaciones());
     }
 
-    @GetMapping("/planilla/{planillaId}/campo/{nombre}/estadisticas")
-    public ResponseEntity<Map<String, Object>> estadisticasPorCampo(
-            @PathVariable Long planillaId,
-            @PathVariable String nombre) {
-        return ResponseEntity.ok(reporteQueryService.estadisticasPorCampo(planillaId, nombre));
+    @GetMapping("/evento/{eventoId}/campo/{nombreCampo}/estadisticas")
+    public ResponseEntity<EstadisticasCampoResponse> estadisticasPorCampo(
+            @PathVariable Long eventoId,
+            @PathVariable String nombreCampo,
+            @RequestParam(required = false) Integer bins) {
+        return ResponseEntity.ok(reporteQueryService.estadisticasPorCampoEvento(eventoId, nombreCampo, bins));
     }
 
-    @GetMapping("/planilla/{planillaId}/estadisticas-completas")
-    public ResponseEntity<List<Map<String, Object>>> estadisticasCompletasPlanilla(@PathVariable Long planillaId) {
-        return ResponseEntity.ok(reporteQueryService.estadisticasCompletasPlanilla(planillaId));
+    @GetMapping("/evento/{eventoId}/estadisticas-completas")
+    public ResponseEntity<EstadisticasEventoResponse> estadisticasCompletasEvento(
+            @PathVariable Long eventoId,
+            @RequestParam(required = false) Integer bins) {
+        return ResponseEntity.ok(reporteQueryService.estadisticasCompletasEvento(eventoId, bins));
     }
 
-    @GetMapping("/planilla/{planillaId}/comparativa")
-    public ResponseEntity<Map<String, Object>> comparativaCampos(
-            @PathVariable Long planillaId,
-            @RequestParam List<String> campos) {
-        return ResponseEntity.ok(reporteQueryService.comparativaCampos(planillaId, campos));
+    @GetMapping("/evento/{eventoId}/comparativa")
+    public ResponseEntity<EstadisticasEventoResponse> comparativaCampos(
+            @PathVariable Long eventoId,
+            @RequestParam List<String> campos,
+            @RequestParam(required = false) Integer bins) {
+        return ResponseEntity.ok(reporteQueryService.comparativaCamposEvento(eventoId, campos, bins));
     }
 }

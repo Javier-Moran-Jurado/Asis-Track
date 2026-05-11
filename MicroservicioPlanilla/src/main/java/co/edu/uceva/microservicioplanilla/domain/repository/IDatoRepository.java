@@ -32,4 +32,25 @@ public interface IDatoRepository extends JpaRepository<Dato, Long> {
     @Modifying
     @Query("DELETE FROM Dato d WHERE d.fila.planilla.id = :planillaId")
     void deleteByPlanillaId(@Param("planillaId") Long planillaId);
+
+    @Query("""
+            SELECT d FROM Dato d
+            JOIN d.campo c
+            JOIN c.planilla p
+            WHERE p.evento.id = :eventoId
+            AND c.nombreCampo = :nombreCampo
+            AND c.tipoCampo.tipo NOT IN ('signature_file', 'file')
+            """)
+    List<Dato> findByEventoIdAndNombreCampo(
+            @Param("eventoId") Long eventoId,
+            @Param("nombreCampo") String nombreCampo);
+
+    @Query("""
+            SELECT d FROM Dato d
+            JOIN d.campo c
+            JOIN c.planilla p
+            WHERE p.evento.id = :eventoId
+            AND c.tipoCampo.tipo NOT IN ('signature_file', 'file')
+            """)
+    List<Dato> findDatosByEventoId(@Param("eventoId") Long eventoId);
 }
