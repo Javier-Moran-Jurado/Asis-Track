@@ -1,6 +1,8 @@
 package co.edu.uceva.microservicioplanilla.service;
 
+import co.edu.uceva.microservicioplanilla.domain.model.Planilla;
 import co.edu.uceva.microservicioplanilla.domain.model.TipoCampo;
+import co.edu.uceva.microservicioplanilla.domain.repository.IPlanillaRepository;
 import co.edu.uceva.microservicioplanilla.domain.repository.ITipoCampoRepository;
 import co.edu.uceva.microservicioplanilla.domain.service.ai.CompositeAiService;
 import co.edu.uceva.microservicioplanilla.delivery.rest.dto.*;
@@ -32,6 +34,7 @@ public class PlanillaProcessingService {
     private final CompositeAiService compositeAiService;
     private final ObjectMapper objectMapper;
     private final ITipoCampoRepository tipoCampoRepository;
+    private final IPlanillaRepository planillaRepository;
 
     @Value("${s3.presign-ttl-seconds:3600}")
     private String presignTtlSecondsRaw;
@@ -43,12 +46,14 @@ public class PlanillaProcessingService {
         S3StorageService s3StorageService,
         CompositeAiService compositeAiService,
         ObjectMapper objectMapper,
-        ITipoCampoRepository tipoCampoRepository
+        ITipoCampoRepository tipoCampoRepository,
+        IPlanillaRepository planillaRepository
     ) {
         this.s3StorageService = s3StorageService;
         this.compositeAiService = compositeAiService;
         this.objectMapper = objectMapper;
         this.tipoCampoRepository = tipoCampoRepository;
+        this.planillaRepository = planillaRepository;
     }
 
     public List<PlanillaDigitalizadaResponse> processAndUpload(MultipartFile file, String estructuraJson) throws Exception {
@@ -125,7 +130,7 @@ public class PlanillaProcessingService {
                     filas.add(new FilaDigitalizadaResponse(entry.getKey(), celdas));
                 }
 
-                responses.add(new PlanillaDigitalizadaResponse(pageIndex++, filas));
+                responses.add(new PlanillaDigitalizadaResponse(null, null, pageIndex++, filas));
             }
 
             return responses;
@@ -139,12 +144,35 @@ public class PlanillaProcessingService {
         }
     }
 
-    public List<PlanillaDigitalizadaResponse> saveCorrectedData(List<PlanillaDigitalizadaResponse> hojas) throws Exception {
-        String requestId = UUID.randomUUID().toString();
+    public List<PlanillaDigitalizadaResponse> saveCorrectedData(List<PlanillaDigitalizadaResponse> hojas, String imagenReferenciaB64) throws Exception {
         long presignTtlSeconds = resolvePresignTtlSeconds();
 
         for (int i = 0; i < hojas.size(); i++) {
             PlanillaDigitalizadaResponse hoja = hojas.get(i);
+            String carpeta = hoja.getPlanillaId() != null ? hoja.getPlanillaId().toString() : UUID.randomUUID().toString();
+
+            // Subir imagen de referencia de la planilla digitalizada
+            if (imagenReferenciaB64 != null && i == 0) {
+                try {
+                    String prefix = "data:image/";
+                    int commaIdx = imagenReferenciaB64.indexOf(",");
+                    String b64Data = commaIdx >= 0 ? imagenReferenciaB64.substring(commaIdx + 1) : imagenReferenciaB64;
+                    byte[] refBytes = java.util.Base64.getDecoder().decode(b64Data);
+                    String refKey = String.format("planillas/%s/referencia.jpg", carpeta);
+                    s3StorageService.upload(refBytes, refKey, "image/jpeg");
+                    String refUrl = s3StorageService.presignedGetUrl(refKey, Duration.ofSeconds(presignTtlSeconds));
+                    // Guardar URL en la planilla
+                    if (hoja.getPlanillaId() != null) {
+                        Planilla planilla = planillaRepository.findById(Long.valueOf(hoja.getPlanillaId())).orElse(null);
+                        if (planilla != null) {
+                            planilla.setUrlReferencia(refUrl);
+                            planillaRepository.save(planilla);
+                        }
+                    }
+                } catch (Exception e) {
+                    System.err.println("Error subiendo imagen de referencia: " + e.getMessage());
+                }
+            }
             
             for (int j = 0; j < hoja.getFilas().size(); j++) {
                 FilaDigitalizadaResponse fila = hoja.getFilas().get(j);
@@ -157,9 +185,9 @@ public class PlanillaProcessingService {
                             byte[] fileBytes = java.util.Base64.getDecoder().decode(
                                 celda.getValor().substring("data:image/png;base64,".length())
                             );
-                            String s3Key = String.format("planillas/%s/page_%d/row_%d_%s.png", 
-                                requestId, hoja.getPaginaNumero(), fila.getIndice(), celda.getNombreCampo().replaceAll("[^a-zA-Z0-9.-]", "_"));
-                            
+                            String s3Key = String.format("planillas/%s/page_%d/firma_%d.png", 
+                                carpeta, hoja.getPaginaNumero(), fila.getIndice());
+
                             s3StorageService.upload(fileBytes, s3Key, "image/png");
                             String url = s3StorageService.presignedGetUrl(s3Key, Duration.ofSeconds(presignTtlSeconds));
                             celda.setValor(url);

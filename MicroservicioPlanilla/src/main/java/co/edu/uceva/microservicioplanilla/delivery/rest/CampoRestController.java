@@ -38,14 +38,13 @@ public class CampoRestController {
     }
 
     @PostMapping
-    public ResponseEntity<Campo> save(@RequestBody Campo campo) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(campoService.save(campo));
+    public ResponseEntity<Campo> save(@RequestBody CampoRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(campoService.save(request));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Campo> update(@PathVariable Long id, @RequestBody Campo campo) {
-        campo.setId(id);
-        return ResponseEntity.ok(campoService.update(campo));
+    public ResponseEntity<Campo> update(@PathVariable Long id, @RequestBody CampoRequest request) {
+        return ResponseEntity.ok(campoService.update(id, request));
     }
 
     @DeleteMapping("/{id}")

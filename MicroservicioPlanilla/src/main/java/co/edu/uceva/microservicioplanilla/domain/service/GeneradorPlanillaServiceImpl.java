@@ -67,7 +67,6 @@ public class GeneradorPlanillaServiceImpl implements GeneradorPlanillaService {
         Planilla planilla = new Planilla();
         planilla.setOrigen(origenDigital);
         planilla.setEvento(evento);
-        planilla.setFechaCreacion(LocalDateTime.now());
         planilla = planillaService.save(planilla);
 
         if (request.getCampos() != null && !request.getCampos().isEmpty()) {
@@ -89,11 +88,13 @@ public class GeneradorPlanillaServiceImpl implements GeneradorPlanillaService {
             JsonNode root = objectMapper.readTree(json);
 
             if (esperaEvento) {
-                String nombreEvento = optText(root, "nombre_evento");
-                String descEvento = optText(root, "descripcion_evento");
-                String fechaInicio = optText(root, "fecha_hora_inicio");
-                String fechaFin = optText(root, "fecha_hora_fin");
-                String lugarNombre = optText(root, "lugar_nombre");
+                JsonNode eventoNode = root.has("nombre_evento") ? root : root.path("evento");
+
+                String nombreEvento = optText(eventoNode, "nombre_evento");
+                String descEvento = optText(eventoNode, "descripcion_evento");
+                String fechaInicio = optText(eventoNode, "fecha_hora_inicio");
+                String fechaFin = optText(eventoNode, "fecha_hora_fin");
+                String lugarNombre = optText(eventoNode, "lugar_nombre");
 
                 if (nombreEvento != null) {
                     eventoPropuesto = new EventoPropuestoResponse();

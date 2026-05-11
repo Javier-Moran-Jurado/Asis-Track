@@ -8,6 +8,6 @@ import java.util.List;
 
 @Repository
 public interface IOpcionesCampoRepository extends JpaRepository<OpcionesCampo, Long> {
-    List<OpcionesCampo> findByIdCampoOrderByOrden(Long idCampo);
-    void deleteByIdCampo(Long idCampo);
+    List<OpcionesCampo> findByCampo_IdOrderByOrden(Long idCampo);
+    void deleteByCampo_Id(Long idCampo);
 }

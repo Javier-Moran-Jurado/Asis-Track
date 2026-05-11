@@ -69,9 +69,16 @@ public class PlanillaRestController {
     @PostMapping("/planillas/digitalizar")
     public List<PlanillaDigitalizadaResponse> digitalizar(
             @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "planillaId", required = false) Integer planillaId,
             @RequestParam("estructuraJson") String estructuraJson) {
         try {
-            return planillaProcessingService.processAndUpload(file, estructuraJson);
+            List<PlanillaDigitalizadaResponse> result = planillaProcessingService.processAndUpload(file, estructuraJson);
+            if (planillaId != null) {
+                for (PlanillaDigitalizadaResponse hoja : result) {
+                    hoja.setPlanillaId(planillaId);
+                }
+            }
+            return result;
         } catch (IllegalArgumentException ie) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ie.getMessage());
         } catch (Exception e) {
@@ -84,9 +91,21 @@ public class PlanillaRestController {
         "isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Monitor')"
     )
     @PostMapping("/planillas/digitalizar/guardar")
-    public List<PlanillaDigitalizadaResponse> guardarDigitalizacion(@RequestBody List<PlanillaDigitalizadaResponse> datos) {
+    public List<PlanillaDigitalizadaResponse> guardarDigitalizacion(
+            @RequestParam(required = false) Integer planillaId,
+            @RequestBody List<PlanillaDigitalizadaResponse> datos) {
+        if (planillaId != null) {
+            for (PlanillaDigitalizadaResponse hoja : datos) {
+                hoja.setPlanillaId(planillaId);
+            }
+        }
+        // Extraer imagen de referencia del campo imagenReferenciaB64 del primer elemento
+        String imagenRef = null;
+        if (!datos.isEmpty() && datos.get(0).getImagenReferenciaB64() != null) {
+            imagenRef = datos.get(0).getImagenReferenciaB64();
+        }
         try {
-            return planillaProcessingService.saveCorrectedData(datos);
+            return planillaProcessingService.saveCorrectedData(datos, imagenRef);
         } catch (ResponseStatusException rse) {
             throw rse;
         } catch (Exception e) {

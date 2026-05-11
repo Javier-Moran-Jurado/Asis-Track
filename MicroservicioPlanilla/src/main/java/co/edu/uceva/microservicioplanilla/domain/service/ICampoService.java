@@ -9,7 +9,9 @@ public interface ICampoService {
     List<Campo> findAll();
     Campo findById(Long id);
     Campo save(Campo campo);
+    Campo save(CampoRequest request);
     Campo update(Campo campo);
+    Campo update(Long id, CampoRequest request);
     void deleteById(Long id);
     List<Campo> findByPlanillaId(Long planillaId);
     boolean existsById(Long id);

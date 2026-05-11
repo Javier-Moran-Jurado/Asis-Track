@@ -96,11 +96,21 @@ public class AiPromptFactory {
               }
             ]
 
+            Devuelve ÚNICAMENTE un JSON con este formato exacto, sin texto adicional:
+            {
+              "nombre_evento": "string o null",
+              "descripcion_evento": "string o null",
+              "fecha_hora_inicio": "ISO-8601 o null",
+              "fecha_hora_fin": "ISO-8601 o null",
+              "lugar_nombre": "string o null",
+              "campos": [...]
+            }
+
             Reglas:
             - Usa ÚNICAMENTE estos tipos: """ + tiposPermitidos + """
             - "opciones" solo para combo, radio, multivaluecheckbox. Omitir para otros tipos.
             - Campos comunes de asistencia/eventos: nombre, cédula, correo, firma, fecha, etc.
-            - Devuelve ÚNICAMENTE el JSON solicitado, sin texto adicional.
+            - Si no se debe crear evento, todos los campos de evento deben ser null.
             """;
     }
 }

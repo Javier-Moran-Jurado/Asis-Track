@@ -1,14 +1,13 @@
 package co.edu.uceva.microservicioplanilla.domain.model;
-//solucionerror
-import co.edu.uceva.microservicioplanilla.domain.converters.PlanillaHomomorphicConverter;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
@@ -16,6 +15,7 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Planilla {
 
     @Id
@@ -37,32 +37,7 @@ public class Planilla {
     @OneToMany(mappedBy = "planilla", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Campo> campos;
 
-
-
-
-    // --- Campos legacy: mantenidos temporalmente para backward compatibility ---
-    // TODO: eliminar después de migración de datos completada (Fase 4.10)
-
-    @Deprecated
-    private LocalDateTime fechaHoraInicio;
-
-    @Deprecated
-    private LocalDateTime fechaHoraFin;
-
-    @Deprecated
-    @Column(columnDefinition = "TEXT")
-    @Convert(converter = PlanillaHomomorphicConverter.class)
-    private String lugar;
-
-    @Deprecated
-    @Column(columnDefinition = "TEXT")
-    @Convert(converter = PlanillaHomomorphicConverter.class)
-    private String metadatos;
-
-    @Deprecated
-    @Column(columnDefinition = "TEXT")
-    private String estructuraMetadata;
-
-    @Deprecated
-    private LocalDateTime fechaCreacion;
+    @JsonIgnore
+    @OneToMany(mappedBy = "planilla", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Fila> filas;
 }

@@ -34,11 +34,28 @@ public class CampoServiceImpl implements ICampoService {
     @Override public Campo save(Campo campo) { return repository.save(campo); }
 
     @Override
+    public Campo save(CampoRequest request) {
+        return saveAll(List.of(request)).get(0);
+    }
+
+    @Override
     public Campo update(Campo campo) {
         if (!repository.existsById(campo.getId())) {
             throw new RuntimeException("Campo no encontrado con id: " + campo.getId());
         }
         return repository.save(campo);
+    }
+
+    @Override
+    public Campo update(Long id, CampoRequest request) {
+        Campo existente = findById(id);
+        existente.setPlanilla(planillaRepository.findById(request.getPlanillaId())
+                .orElseThrow(() -> new IllegalArgumentException("Planilla no encontrada: " + request.getPlanillaId())));
+        existente.setTipoCampo(tipoCampoRepository.findById(request.getTipoCampoId())
+                .orElseThrow(() -> new IllegalArgumentException("Tipo de campo no encontrado: " + request.getTipoCampoId())));
+        existente.setNombreCampo(request.getNombreCampo());
+        existente.setObligatorio(Boolean.TRUE.equals(request.getObligatorio()));
+        return repository.save(existente);
     }
 
     @Override
@@ -84,8 +101,10 @@ public class CampoServiceImpl implements ICampoService {
         // 2. Mapear y guardar Campos
         List<Campo> campos = requests.stream().map(req -> {
             Campo c = new Campo();
-            c.setPlanilla(planillaRepository.getReferenceById(req.getPlanillaId()));
-            c.setTipoCampo(tipoCampoRepository.getReferenceById(req.getTipoCampoId()));
+            c.setPlanilla(planillaRepository.findById(req.getPlanillaId())
+                    .orElseThrow(() -> new IllegalArgumentException("Planilla no encontrada: " + req.getPlanillaId())));
+            c.setTipoCampo(tipoCampoRepository.findById(req.getTipoCampoId())
+                    .orElseThrow(() -> new IllegalArgumentException("Tipo de campo no encontrado: " + req.getTipoCampoId())));
             c.setNombreCampo(req.getNombreCampo());
             c.setObligatorio(Boolean.TRUE.equals(req.getObligatorio()));
             return c;

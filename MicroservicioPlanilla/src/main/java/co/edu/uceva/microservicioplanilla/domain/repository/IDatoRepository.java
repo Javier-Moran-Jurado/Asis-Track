@@ -2,6 +2,7 @@ package co.edu.uceva.microservicioplanilla.domain.repository;
 
 import co.edu.uceva.microservicioplanilla.domain.model.Dato;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -23,4 +24,8 @@ public interface IDatoRepository extends JpaRepository<Dato, Long> {
     Optional<Dato> findByCampoIdAndFilaIdAndPosicion(Long campoId, Long filaId, Integer posicion);
 
     boolean existsByCampoIdAndFilaIdAndPosicion(Long campoId, Long filaId, Integer posicion);
+
+    @Modifying
+    @Query("DELETE FROM Dato d WHERE d.fila.id = :filaId")
+    void deleteByFilaId(@Param("filaId") Long filaId);
 }

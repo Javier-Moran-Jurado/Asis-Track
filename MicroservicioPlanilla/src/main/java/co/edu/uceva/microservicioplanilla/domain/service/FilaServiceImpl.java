@@ -100,7 +100,10 @@ public class FilaServiceImpl implements IFilaService {
         }
 
         // Reemplazo total de datos
-        fila.getDatos().clear();
+        datoRepository.deleteByFilaId(fila.getId());
+        if (fila.getDatos() != null) {
+            fila.getDatos().clear();
+        }
         List<Dato> nuevosDatos = mapDatos(request.getDatos(), fila);
         fila.getDatos().addAll(nuevosDatos);
 

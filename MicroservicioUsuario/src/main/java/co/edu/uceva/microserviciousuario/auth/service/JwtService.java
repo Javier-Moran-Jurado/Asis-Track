@@ -68,8 +68,8 @@ public class JwtService {
 
     private String buildToken (final Usuario usuario, final long expiration){
         return Jwts.builder()
-                .subject(usuario.getCodigo().toString())
                 .claims(Map.of(
+                "sub", usuario.getCodigo().toString(),
                 "nombre_completo", usuario.getNombreCompleto(),
                 "correo", usuario.getCorreo(),
                 "rol", usuario.getRol().getNombre()

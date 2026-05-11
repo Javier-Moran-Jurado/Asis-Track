@@ -79,13 +79,6 @@ public class DataSeeder implements CommandLineRunner {
         planilla.setOrigen(origenDigital);
         planilla.setEvento(evento);
         planilla.setUrlReferencia("https://storage.example.com/planillas/prueba.jpg");
-        // legacy
-        planilla.setLugar("Auditorio Principal");
-        planilla.setMetadatos("Encuesta de prueba");
-        planilla.setEstructuraMetadata("{\"encabezados\":[{\"nombre\":\"Cédula\",\"tipo_campo\":\"numeric\"},{\"nombre\":\"Nombres\",\"tipo_campo\":\"text\"},{\"nombre\":\"Apellidos\",\"tipo_campo\":\"text\"}]}");
-        planilla.setFechaHoraInicio(evento.getFechaHoraInicio());
-        planilla.setFechaHoraFin(evento.getFechaHoraFin());
-        planilla.setFechaCreacion(LocalDateTime.now());
         planilla = planillaRepository.save(planilla);
 
         // Paso 6: Campos de la planilla
