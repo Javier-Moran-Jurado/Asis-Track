@@ -5,8 +5,18 @@ target/
 !**/src/test/**/target/
 data/
 .env
-data/
 *.class
+*.out
+*.pid
+
+### macOS ###
+.DS_Store
+
+### Python ###
+__pycache__/
+*.pyc
+*.pyo
+
 ### STS ###
 .apt_generated
 .classpath
@@ -34,9 +44,3 @@ build/
 
 ### VS Code ###
 .vscode/
-
-### Docker ###
-*.pid
-
-*.class
-*.out

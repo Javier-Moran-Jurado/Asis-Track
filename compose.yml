@@ -67,6 +67,7 @@ services:
       - S3_SECRECT_ACCESS_KEY=${S3_SECRECT_ACCESS_KEY}
       - S3_REGION=${S3_REGION}
       - S3_BUCKET=${S3_BUCKET}
+      - S3_PUBLIC_BASE_URL=${S3_PUBLIC_BASE_URL}
       - S3_PRESIGN_TTL=${S3_PRESIGN_TTL}
     networks:
       - mynetwork

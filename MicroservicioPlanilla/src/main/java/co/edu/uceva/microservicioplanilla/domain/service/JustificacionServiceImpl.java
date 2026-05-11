@@ -1,7 +1,10 @@
 package co.edu.uceva.microservicioplanilla.domain.service;
 
 import co.edu.uceva.microservicioplanilla.domain.exception.ResourceNotFoundException;
+import co.edu.uceva.microservicioplanilla.domain.model.EstadoJustificacion;
+import co.edu.uceva.microservicioplanilla.domain.model.Evento;
 import co.edu.uceva.microservicioplanilla.domain.model.Justificacion;
+import co.edu.uceva.microservicioplanilla.domain.repository.IEventoRepository;
 import co.edu.uceva.microservicioplanilla.domain.repository.IJustificacionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,38 +18,42 @@ import java.util.List;
 public class JustificacionServiceImpl implements IJustificacionService {
 
     private final IJustificacionRepository justificacionRepository;
+    private final IEventoRepository eventoRepository;
 
     @Override
     @Transactional
-    public Justificacion solicitarJustificacion(Long registroId, String usuarioCodigo, String motivo, String documentoUrl) {
+    public Justificacion solicitarJustificacion(Long eventoId, Long codigoEstudiante, String motivo, String documentoUrl) {
+        Evento evento = eventoRepository.findById(eventoId)
+                .orElseThrow(() -> new ResourceNotFoundException("Evento no encontrado con id: " + eventoId));
+
         Justificacion justificacion = new Justificacion();
-        justificacion.setRegistroId(registroId);
-        justificacion.setUsuarioCodigo(usuarioCodigo);
+        justificacion.setEvento(evento);
+        justificacion.setCodigoEstudiante(codigoEstudiante);
         justificacion.setMotivo(motivo);
         justificacion.setDocumentoUrl(documentoUrl);
-        justificacion.setEstado("PENDIENTE");
+        justificacion.setEstado(EstadoJustificacion.PENDIENTE);
         justificacion.setFechaSolicitud(LocalDateTime.now());
         return justificacionRepository.save(justificacion);
     }
 
     @Override
     @Transactional
-    public Justificacion aprobarJustificacion(Long id, String revisadoPor, String observaciones) {
+    public Justificacion aprobarJustificacion(Long id, Long codigoDecano, String observaciones) {
         Justificacion justificacion = findById(id);
-        justificacion.setEstado("APROBADO");
+        justificacion.setEstado(EstadoJustificacion.APROBADO);
+        justificacion.setCodigoDecano(codigoDecano);
         justificacion.setFechaRevision(LocalDateTime.now());
-        justificacion.setRevisadoPor(revisadoPor);
         justificacion.setObservaciones(observaciones);
         return justificacionRepository.save(justificacion);
     }
 
     @Override
     @Transactional
-    public Justificacion rechazarJustificacion(Long id, String revisadoPor, String observaciones) {
+    public Justificacion rechazarJustificacion(Long id, Long codigoDecano, String observaciones) {
         Justificacion justificacion = findById(id);
-        justificacion.setEstado("RECHAZADO");
+        justificacion.setEstado(EstadoJustificacion.RECHAZADO);
+        justificacion.setCodigoDecano(codigoDecano);
         justificacion.setFechaRevision(LocalDateTime.now());
-        justificacion.setRevisadoPor(revisadoPor);
         justificacion.setObservaciones(observaciones);
         return justificacionRepository.save(justificacion);
     }
@@ -58,17 +65,17 @@ public class JustificacionServiceImpl implements IJustificacionService {
     }
 
     @Override
-    public List<Justificacion> findByUsuarioCodigo(String usuarioCodigo) {
-        return justificacionRepository.findByUsuarioCodigo(usuarioCodigo);
+    public List<Justificacion> findByCodigoEstudiante(Long codigoEstudiante) {
+        return justificacionRepository.findByCodigoEstudiante(codigoEstudiante);
     }
 
     @Override
-    public List<Justificacion> findByRegistroId(Long registroId) {
-        return justificacionRepository.findByRegistroId(registroId);
+    public List<Justificacion> findByEventoId(Long eventoId) {
+        return justificacionRepository.findByEventoId(eventoId);
     }
 
     @Override
-    public List<Justificacion> findByEstado(String estado) {
+    public List<Justificacion> findByEstado(EstadoJustificacion estado) {
         return justificacionRepository.findByEstado(estado);
     }
 
@@ -83,15 +90,13 @@ public class JustificacionServiceImpl implements IJustificacionService {
         Justificacion existing = justificacionRepository.findById(justificacion.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Justificación no encontrada con id: " + justificacion.getId()));
 
-        existing.setRegistroId(justificacion.getRegistroId() != null ? justificacion.getRegistroId() : existing.getRegistroId());
-        existing.setUsuarioCodigo(justificacion.getUsuarioCodigo() != null ? justificacion.getUsuarioCodigo() : existing.getUsuarioCodigo());
-        existing.setMotivo(justificacion.getMotivo() != null ? justificacion.getMotivo() : existing.getMotivo());
-        existing.setDocumentoUrl(justificacion.getDocumentoUrl() != null ? justificacion.getDocumentoUrl() : existing.getDocumentoUrl());
-        existing.setEstado(justificacion.getEstado() != null ? justificacion.getEstado() : existing.getEstado());
-        existing.setFechaSolicitud(justificacion.getFechaSolicitud() != null ? justificacion.getFechaSolicitud() : existing.getFechaSolicitud());
-        existing.setFechaRevision(justificacion.getFechaRevision() != null ? justificacion.getFechaRevision() : existing.getFechaRevision());
-        existing.setRevisadoPor(justificacion.getRevisadoPor() != null ? justificacion.getRevisadoPor() : existing.getRevisadoPor());
-        existing.setObservaciones(justificacion.getObservaciones() != null ? justificacion.getObservaciones() : existing.getObservaciones());
+        if (justificacion.getEvento() != null) existing.setEvento(justificacion.getEvento());
+        if (justificacion.getCodigoEstudiante() != null) existing.setCodigoEstudiante(justificacion.getCodigoEstudiante());
+        if (justificacion.getCodigoDecano() != null) existing.setCodigoDecano(justificacion.getCodigoDecano());
+        if (justificacion.getMotivo() != null) existing.setMotivo(justificacion.getMotivo());
+        if (justificacion.getDocumentoUrl() != null) existing.setDocumentoUrl(justificacion.getDocumentoUrl());
+        if (justificacion.getEstado() != null) existing.setEstado(justificacion.getEstado());
+        if (justificacion.getObservaciones() != null) existing.setObservaciones(justificacion.getObservaciones());
 
         return justificacionRepository.save(existing);
     }

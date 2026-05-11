@@ -40,6 +40,12 @@ URL_AI_CONFIG = f"{BASE_PLANILLA}/api/v1/planilla-service/ai-config"
 URL_REPORTES = f"{BASE_PLANILLA}/api/v1/planilla-service/reportes"
 URL_ASISTENCIAS = f"{BASE_PLANILLA}/api/v1/planilla-service/asistencias"
 URL_JUSTIFICACIONES = f"{BASE_PLANILLA}/api/v1/planilla-service/justificaciones"
+URL_LUGARES = f"{BASE_PLANILLA}/api/v1/planilla-service/lugares"
+URL_EVENTOS = f"{BASE_PLANILLA}/api/v1/planilla-service/eventos"
+URL_TIPOS_CAMPO = f"{BASE_PLANILLA}/api/v1/planilla-service/tipos-campo"
+URL_CAMPOS = f"{BASE_PLANILLA}/api/v1/planilla-service/campos"
+URL_FILAS = f"{BASE_PLANILLA}/api/v1/planilla-service/filas"
+URL_DATOS = f"{BASE_PLANILLA}/api/v1/planilla-service/datos"
 
 # ══════════════════════════════════════════════════════
 #  CONTADOR GLOBAL DE PRUEBAS
@@ -64,6 +70,40 @@ def _register(success: bool, label: str):
         _tests_ok += 1
     else:
         _tests_failed += 1
+
+
+def assert_valores_sin_agrupar(respuesta, label, espera_valores=True):
+    """
+    Verifica que campos agrupables incluyan 'valores' sin agrupar
+    y que campos no-agrupables NO lo incluyan.
+    """
+    if not respuesta or "estadisticas" not in respuesta:
+        return True
+
+    stats = respuesta["estadisticas"]
+    tipo = respuesta.get("tipoCampo", "")
+    con_respuestas = stats.get("conRespuestas", 0)
+
+    tipos_agrupables = {"text", "email", "combo", "radio", "checkbox", "multivaluecheckbox"}
+    tiene_valores = "valores" in stats
+
+    if tipo in tipos_agrupables and espera_valores:
+        if not tiene_valores:
+            print(f"  {C_ERROR}✗ ASSERT ─ {label}: falta 'valores' sin agrupar{C_RESET}")
+            return False
+        valores = stats["valores"]
+        if con_respuestas > 0 and (not valores or len(valores) == 0):
+            print(f"  {C_ERROR}✗ ASSERT ─ {label}: 'valores' vacío pero conRespuestas={con_respuestas}{C_RESET}")
+            return False
+        print(f"  {C_SUCCESS}✓ ASSERT ─ {label}: valores sin agrupar = {len(valores)} items{C_RESET}")
+        print(f"  {C_DIM}  Primeros 10: {valores[:10]}{C_RESET}")
+        return True
+
+    if tipo in {"numeric", "date", "signature_file", "file"} and tiene_valores:
+        print(f"  {C_ERROR}✗ ASSERT ─ {label}: campo '{tipo}' no debería tener 'valores'{C_RESET}")
+        return False
+
+    return True
 
 
 # ══════════════════════════════════════════════════════
@@ -119,6 +159,7 @@ class CustomRSA:
 #  UTILIDADES DE PRESENTACIÓN
 # ══════════════════════════════════════════════════════
 def color_json(s: str) -> str:
+    s = re.sub(r'(data:image/[^"]{1,20};base64,)[A-Za-z0-9+/=]{100,}', r'\1[FIRMA_BASE64_OMITIDA]', s)
     s = re.sub(r'(".*?")\s*:', f"{C_KEY}\\1{C_RESET}:", s)
     s = re.sub(r':\s*(".*?")', f": {C_VAL}\\1{C_RESET}", s)
     s = re.sub(
@@ -292,6 +333,67 @@ def start_session(session: requests.Session):
 
 
 # ══════════════════════════════════════════════════════
+#  HELPERS ─ MAPAS DINÁMICOS DESDE EL BACKEND
+# ══════════════════════════════════════════════════════
+def obtener_tipos_campo(session, sn, se, ck, headers):
+    """GET /tipos-campo y retorna dict {tipo: id}."""
+    resp_json, status = run_step(
+        session, "GET", URL_TIPOS_CAMPO, {}, sn, se, ck,
+        headers=headers, label="HELPER ─ Obtener tipos de campo",
+        expected_statuses=(200, 201),
+    )
+    tipos_map = {}
+    if resp_json and isinstance(resp_json, list):
+        for item in resp_json:
+            if isinstance(item, dict):
+                tipos_map[item.get("tipo")] = item.get("id")
+    return tipos_map
+
+
+def obtener_origenes(session, sn, se, ck, headers):
+    """GET /origenes y retorna dict {origen: id}."""
+    resp_json, status = run_step(
+        session, "GET", f"{BASE_PLANILLA}/api/v1/planilla-service/origenes", {}, sn, se, ck,
+        headers=headers, label="HELPER ─ Obtener orígenes",
+        expected_statuses=(200, 201),
+    )
+    origenes_map = {}
+    if resp_json and isinstance(resp_json, list):
+        for item in resp_json:
+            if isinstance(item, dict):
+                origenes_map[item.get("origen")] = item.get("id")
+    return origenes_map
+
+
+def _parse_ai_json(text: str):
+    """Extrae JSON de una respuesta de IA (puede venir en markdown, texto plano, etc)."""
+    if not isinstance(text, str):
+        return text
+    text = text.strip()
+    # Intentar directo
+    if text.startswith("{"):
+        try:
+            return json.loads(text)
+        except Exception:
+            pass
+    # Buscar bloque ```json ... ```
+    match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', text)
+    if match:
+        try:
+            return json.loads(match.group(1).strip())
+        except Exception:
+            pass
+    # Buscar primer { ... }
+    match = re.search(r'\{[\s\S]*\}', text)
+    if match:
+        try:
+            return json.loads(match.group())
+        except Exception:
+            pass
+    return None
+
+
+# ══════════════════════════════════════════════════════
 #  BLOQUE 1 ─ MICROSERVICIO USUARIO
 # ══════════════════════════════════════════════════════
 def test_usuario(session, sn, se, ck, headers, ts):
@@ -310,6 +412,19 @@ def test_usuario(session, sn, se, ck, headers, ts):
         label="USUARIO ─ Listar todos",
     )
 
+    # Helper: obtener roles dinámicamente
+    roles_map = {}
+    try:
+        roles_resp = session.get(f"{BASE_USUARIO}/api/v1/usuario-service/roles", headers=headers)
+        if roles_resp.status_code == 200:
+            for r in roles_resp.json():
+                roles_map[r.get("nombre")] = r.get("id")
+    except Exception:
+        pass
+
+    estudiante_rol_id = roles_map.get("Estudiante", 1)
+    monitor_rol_id = roles_map.get("Monitor", 8)
+
     # Crear
     new_code = 6000 + ts
     created, _ = run_step(
@@ -323,7 +438,7 @@ def test_usuario(session, sn, se, ck, headers, ts):
             "contrasena": "TestPass#1",
             "cedula": 99000000 + ts,
             "telefono": 3100000000 + ts,
-            "rol": "Estudiante",
+            "rol": {"id": estudiante_rol_id},
         },
         sn,
         se,
@@ -344,7 +459,7 @@ def test_usuario(session, sn, se, ck, headers, ts):
             "contrasena": "Segura#123",
             "cedula": 1001234567,
             "telefono": 3101234567,
-            "rol": "Monitor",
+            "rol": {"id": monitor_rol_id},
         },
         sn,
         se,
@@ -373,7 +488,7 @@ def test_usuario(session, sn, se, ck, headers, ts):
 # ══════════════════════════════════════════════════════
 #  BLOQUE 2 ─ MICROSERVICIO PLANILLA
 # ══════════════════════════════════════════════════════
-def test_planilla(session, sn, se, ck, headers_admin):
+def test_planilla(session, sn, se, ck, headers_admin, origen_digital_id):
     section("MICROSERVICIO PLANILLA")
 
     # Listar
@@ -389,18 +504,11 @@ def test_planilla(session, sn, se, ck, headers_admin):
         label="PLANILLA ─ Listar todas",
     )
 
-    # Crear
     created, _ = run_step(
         session,
         "POST",
         URL_PLANILLAS,
-        {
-            "fechaHoraInicio": "2026-05-01T08:00:00",
-            "fechaHoraFin": "2026-05-01T10:00:00",
-            "lugar": "Aula 201",
-            "metadatos": "Clase de Redes",
-            "fechaCreacion": "2026-05-01T07:50:00",
-        },
+        {"origenId": origen_digital_id},
         sn,
         se,
         ck,
@@ -426,19 +534,11 @@ def test_planilla(session, sn, se, ck, headers_admin):
             label=f"PLANILLA ─ FindById ({planilla_id})",
         )
 
-        # Actualizar
         run_step(
             session,
             "PUT",
-            URL_PLANILLAS,
-            {
-                "id": planilla_id,
-                "fechaHoraInicio": "2026-05-01T09:00:00",
-                "fechaHoraFin": "2026-05-01T11:00:00",
-                "lugar": "Aula 301 (actualizado)",
-                "metadatos": "Clase de SO",
-                "fechaCreacion": "2026-05-01T07:50:00",
-            },
+            f"{URL_PLANILLAS}/{planilla_id}",
+            {"origenId": origen_digital_id},
             sn,
             se,
             ck,
@@ -467,14 +567,11 @@ def test_planilla(session, sn, se, ck, headers_admin):
     return planilla_id
 
 
-def test_digitalizar(session, sn, se, client_key, headers_admin):
+def test_digitalizar(session, sn, se, client_key, headers_admin, planilla_id):
     section("PLANILLA ─ DIGITALIZAR")
-    url = f"{URL_PLANILLAS}/digitalizar"
     file_path = resolve_test_image_path()
 
     print(f"\n{C_TITLE}▶  PLANILLA ─ Digitalizar imagen{C_RESET}")
-    decrypted_json = None
-    success = False
     try:
         if not os.path.exists(file_path):
             print(f"  {C_ERROR}✗ Archivo no encontrado: {file_path}{C_RESET}")
@@ -482,8 +579,9 @@ def test_digitalizar(session, sn, se, client_key, headers_admin):
             return
 
         with open(file_path, "rb") as f:
-            files = {"file": ("2026-04-14_082294-4.jpg", f, "image/jpeg")}
-            resp = session.post(url, files=files, headers=headers_admin)
+            files = {"file": ("test1.jpg", f, "image/jpeg")}
+            resp = session.post(f"{URL_PLANILLAS}/digitalizar", files=files, headers=headers_admin,
+                                params={"planillaId": planilla_id, "estructuraJson": "{}"})
 
         success = resp.status_code in (200, 201)
         icon = f"{C_SUCCESS}✔" if success else f"{C_ERROR}✗"
@@ -494,18 +592,15 @@ def test_digitalizar(session, sn, se, client_key, headers_admin):
                 resp_json = resp.json()
             except:
                 resp_json = {"raw": resp.text}
-
             decrypted = decrypt_server_response(resp_json, client_key)
-            print(f"  {C_DIM}Resultado OCR/IA (Desencriptado):{C_RESET}")
+            print(f"  {C_DIM}Resultado (Desencriptado):{C_RESET}")
             try:
-                import json
-
-                decrypted_json = (
-                    json.loads(decrypted) if isinstance(decrypted, str) else decrypted
-                )
-                print(
-                    f"  {C_VAL}Se obtuvieron {len(decrypted_json) if isinstance(decrypted_json, list) else 1} registros.{C_RESET}"
-                )
+                decrypted_json = json.loads(decrypted) if isinstance(decrypted, str) else decrypted
+                print(f"  {pretty_json(decrypted_json)}")
+                if isinstance(decrypted_json, dict):
+                    filas = decrypted_json.get("filas", [])
+                    url_ref = decrypted_json.get("urlReferencia")
+                    print(f"  {C_VAL}Filas guardadas: {len(filas)}, urlReferencia: {url_ref is not None}{C_RESET}")
             except:
                 print(f"  {C_VAL}{str(decrypted)[:500]}...{C_RESET}")
 
@@ -513,71 +608,6 @@ def test_digitalizar(session, sn, se, client_key, headers_admin):
     except Exception as exc:
         print(f"  {C_ERROR}✗ Error en la prueba: {exc}{C_RESET}")
         _register(False, "PLANILLA ─ Digitalizar")
-
-    # Si el resultado es un string (posible doble codificación), intentamos parsearlo
-    if success and isinstance(decrypted_json, str):
-        try:
-            import json
-            decrypted_json = json.loads(decrypted_json)
-        except:
-            pass
-
-    # Si el resultado es un objeto único, lo tratamos como una lista de uno
-    if success and isinstance(decrypted_json, dict):
-        decrypted_json = [decrypted_json]
-
-    if not success or not isinstance(decrypted_json, list) or len(decrypted_json) == 0:
-        tipo = type(decrypted_json).__name__
-        print(f"  {C_WARN}⚠ Saltando pruebas de Recorte y Guardar: No se obtuvieron registros válidos (Tipo: {tipo}).{C_RESET}")
-    else:
-        import base64
-        try:
-            with open(file_path, "rb") as f:
-                img_b64 = "data:image/jpeg;base64," + base64.b64encode(f.read()).decode(
-                    "utf-8"
-                )
-
-            crop_payload = {
-                "index": 0,
-                "x": 10,
-                "y": 10,
-                "w": 100,
-                "h": 50,
-                "sourceImageB64": img_b64,
-            }
-            resp_recorte, success_recorte = run_step(
-                session,
-                "POST",
-                f"{URL_PLANILLAS}/digitalizar/recortar",
-                crop_payload,
-                sn,
-                se,
-                client_key,
-                headers=headers_admin,
-                label="PLANILLA ─ Recortar firma",
-            )
-
-            if success_recorte and resp_recorte:
-                print(f"  {C_VAL}Firma recortada obtenida (Base64){C_RESET}")
-                decrypted_json[0]["firma"] = resp_recorte.get("firmaB64", "")
-
-            resp_guardar, success_guardar = run_step(
-                session,
-                "POST",
-                f"{URL_PLANILLAS}/digitalizar/guardar",
-                decrypted_json,
-                sn,
-                se,
-                client_key,
-                headers=headers_admin,
-                label="PLANILLA ─ Guardar digitalización",
-            )
-
-            if success_guardar and resp_guardar:
-                print(f"  {C_VAL}Registros guardados en S3 exitosamente{C_RESET}")
-        except Exception as exc:
-            print(f"  {C_ERROR}✗ Error probando recorte/guardado: {exc}{C_RESET}")
-            _register(False, "PLANILLA ─ Recortar / Guardar")
 
     url_campos = f"{URL_PLANILLAS}/campos"
     print(f"\n{C_TITLE}▶  PLANILLA ─ Obtener Campos (Estructura){C_RESET}")
@@ -588,7 +618,7 @@ def test_digitalizar(session, sn, se, client_key, headers_admin):
             return
 
         with open(file_path, "rb") as f:
-            files = {"file": ("2026-04-14_082294-4.jpg", f, "image/jpeg")}
+            files = {"file": ("test1.jpg", f, "image/jpeg")}
             resp = session.post(url_campos, files=files, headers=headers_admin)
 
         success = resp.status_code in (200, 201)
@@ -600,7 +630,6 @@ def test_digitalizar(session, sn, se, client_key, headers_admin):
                 resp_json = resp.json()
             except:
                 resp_json = {"raw": resp.text}
-
             decrypted = decrypt_server_response(resp_json, client_key)
             print(f"  {C_DIM}Resultado OCR/IA Estructura (Desencriptado):{C_RESET}")
             try:
@@ -614,272 +643,566 @@ def test_digitalizar(session, sn, se, client_key, headers_admin):
         _register(False, "PLANILLA ─ Obtener Campos")
 
 
-def test_ai_config(session, headers_admin, client_key):
-    """Pruebas del endpoint /ai-config y ciclo completo por proveedor."""
-    section("CONFIGURACIÓN DE IA (AI-CONFIG)")
-    file_path = resolve_test_image_path()
+# ══════════════════════════════════════════════════════
+#  BLOQUE 2 ─ GUARDAR PLANILLA DIGITALIZADA (OCR → DB)
+# ══════════════════════════════════════════════════════
+def test_guardar_planilla_digitalizada(session, sn, se, ck, headers_admin, tipos_map, origen_digital_id):
+    section("GUARDAR PLANILLA DIGITALIZADA (OCR → DB)")
 
+    file_path = resolve_test_image_path()
     if not os.path.exists(file_path):
-        print(f"  {C_ERROR}✗ Imagen de prueba no encontrada: {file_path}{C_RESET}")
-        _register(False, "AI-CONFIG ─ Prerequisito")
+        print(f"  {C_ERROR}✗ Imagen no encontrada: {file_path}{C_RESET}")
+        _register(False, "GUARDAR DIGITAL ─ Prerequisito")
         return
 
-    def _show_current_config(label):
-        """Helper: GET y mostrar config desencriptada."""
-        print(f"\n{C_TITLE}▶  AI-CONFIG ─ GET config ({label}){C_RESET}")
-        try:
-            r = session.get(URL_AI_CONFIG, headers=headers_admin)
-            if r.status_code == 200 and r.text.strip():
-                try:
-                    rj = r.json()
-                except:
-                    rj = {"raw": r.text}
-                d = decrypt_server_response(rj, client_key)
-                print(f"  {C_SUCCESS}✔{C_RESET} Status 200")
-                print(f"  {pretty_json(d)}")
-            else:
-                print(f"  {C_ERROR}✗{C_RESET} Status {r.status_code}")
-        except Exception as e:
-            print(f"  {C_ERROR}✗ {e}{C_RESET}")
-
-    # ── GET config actual ──
-    _show_current_config("inicial")
-
-    # Cargar tokens del .env para no exponerlos en el código fuente
-    groq_token = ""
-    cloud_api_key = ""
-    env_path = os.path.join(os.path.dirname(__file__), ".env")
-    if os.path.exists(env_path):
-        with open(env_path, "r") as f:
-            for line in f:
-                if line.startswith("GROQ_TOKEN="):
-                    groq_token = line.split("=", 1)[1].strip()
-                elif line.startswith(
-                    "OPENAI_API_KEY="
-                ):  # o NVIDIA_API_KEY si usaras una distinta
-                    cloud_api_key = line.split("=", 1)[1].strip()
-
-    # ── PUT cambiar a GROQ ──
-    payload_groq = {
-        "activeProvider": "groq",
-        "groqUrl": "https://api.groq.com/openai/v1",
-        "groqToken": groq_token,
-        "groqModel": "meta-llama/llama-4-scout-17b-16e-instruct",
-    }
-    print(f"\n{C_TITLE}▶  AI-CONFIG ─ Cambiar a GROQ{C_RESET}")
-    try:
-        resp = session.put(URL_AI_CONFIG, json=payload_groq, headers=headers_admin)
-        success = resp.status_code == 200
-        icon = f"{C_SUCCESS}✔" if success else f"{C_ERROR}✗"
-        print(f"  {icon} Status {resp.status_code}{C_RESET}")
-        if resp.text.strip():
-            print(f"  {C_VAL}{resp.text}{C_RESET}")
-        _register(success, "AI-CONFIG ─ PUT Groq")
-    except Exception as exc:
-        print(f"  {C_ERROR}✗ Error: {exc}{C_RESET}")
-        _register(False, "AI-CONFIG ─ PUT Groq")
-
-    # ── Probar /digitalizar con GROQ ──
-    print(f"\n{C_TITLE}▶  AI-CONFIG ─ Digitalizar con GROQ{C_RESET}")
+    # ── Paso 1: Obtener estructura de la imagen ──
+    url_campos = f"{URL_PLANILLAS}/campos"
+    estructura_json = None
+    print(f"\n{C_TITLE}▶  GUARDAR DIGITAL ─ Extraer estructura OCR{C_RESET}")
     try:
         with open(file_path, "rb") as f:
             files = {"file": ("test.jpg", f, "image/jpeg")}
-            resp = session.post(
-                f"{URL_PLANILLAS}/digitalizar", files=files, headers=headers_admin
-            )
+            resp = session.post(url_campos, files=files, headers=headers_admin)
+        if resp.status_code in (200, 201):
+            try:
+                resp_json = resp.json()
+                decrypted = decrypt_server_response(resp_json, ck)
+                if isinstance(decrypted, str):
+                    try:
+                        decrypted = json.loads(decrypted)
+                    except Exception:
+                        pass
+                print(f"  {C_DIM}Respuesta cruda IA (primeros 400 chars):{C_RESET}")
+                print(f"  {C_VAL}{str(decrypted)[:400]}{C_RESET}")
+                estructura_json = _parse_ai_json(decrypted)
+                if estructura_json and isinstance(estructura_json, dict):
+                    encs = estructura_json.get("encabezados", estructura_json.get("campos"))
+                    if isinstance(encs, list) and len(encs) > 0:
+                        print(f"  {C_SUCCESS}✔ Estructura detectada: {len(encs)} columnas{C_RESET}")
+                    else:
+                        estructura_json = None
+            except Exception as e:
+                print(f"  {C_ERROR}✗ Error parseando respuesta IA: {e}{C_RESET}")
+                estructura_json = None
+        success = estructura_json is not None
+    except Exception as exc:
+        print(f"  {C_ERROR}✗ Error: {exc}{C_RESET}")
+        success = False
+    _register(success, "GUARDAR DIGITAL ─ Extraer estructura")
+
+    if not estructura_json:
+        print(f"  {C_WARN}⚠ No se pudo extraer estructura, omitiendo resto del flujo.{C_RESET}")
+        return
+
+    # ── Paso 2: Crear planilla ──
+    planilla, _ = run_step(
+        session, "POST", URL_PLANILLAS,
+        {"origenId": origen_digital_id},
+        sn, se, ck, headers=headers_admin,
+        label="GUARDAR DIGITAL ─ Crear planilla",
+    )
+    planilla_id = planilla.get("id") if isinstance(planilla, dict) else None
+    if not planilla_id:
+        print(f"  {C_WARN}⚠ No se pudo crear planilla, omitiendo resto.{C_RESET}")
+        return
+
+    # ── Paso 3: Guardar estructura (campos) ──
+    encabezados = estructura_json.get("encabezados", [])
+    if not isinstance(encabezados, list) or not encabezados:
+        print(f"  {C_WARN}⚠ Estructura sin encabezados válidos.{C_RESET}")
+        return
+
+    campos_confirmar = []
+    for enc in encabezados:
+        if not isinstance(enc, dict):
+            continue
+        nombre = enc.get("nombre") or enc.get("nombre_campo", "")
+        tipo_str = enc.get("tipo_campo", "text")
+        tipo_id = tipos_map.get(tipo_str)
+        if not tipo_id:
+            tipo_id = tipos_map.get("text", 1)
+        campos_confirmar.append({
+            "planillaId": planilla_id,
+            "tipoCampoId": tipo_id,
+            "nombreCampo": nombre,
+            "obligatorio": enc.get("obligatorio", False),
+            "opciones": enc.get("opciones"),
+        })
+
+    print(f"  {C_VAL}Mapeados {len(campos_confirmar)} campos{C_RESET}")
+    run_step(
+        session, "POST", f"{URL_PLANILLAS}/{planilla_id}/confirmar-estructura",
+        campos_confirmar, sn, se, ck, headers=headers_admin,
+        label="GUARDAR DIGITAL ─ Confirmar estructura",
+    )
+
+    # ── Paso 4: Digitalizar (guarda filas+datos+S3 directamente) ──
+    estructura_str = json.dumps(estructura_json)
+    print(f"\n{C_TITLE}▶  GUARDAR DIGITAL ─ Digitalizar y guardar{C_RESET}")
+    try:
+        with open(file_path, "rb") as f:
+            files = {"file": ("test.jpg", f, "image/jpeg")}
+            resp = session.post(f"{URL_PLANILLAS}/digitalizar",
+                                files=files, headers=headers_admin,
+                                params={"planillaId": planilla_id, "estructuraJson": estructura_str})
+        success = resp.status_code in (200, 201)
+        icon = f"{C_SUCCESS}✔" if success else f"{C_ERROR}✗"
+        print(f"  {icon} Status {resp.status_code}{C_RESET}")
+        if resp.text.strip():
+            resp_json = resp.json() if resp.text.strip() else {}
+            decrypted = decrypt_server_response(resp_json, ck)
+            decrypted_data = json.loads(decrypted) if isinstance(decrypted, str) else decrypted
+            if isinstance(decrypted_data, dict):
+                filas = decrypted_data.get("filas", [])
+                url_ref = decrypted_data.get("urlReferencia")
+                print(f"  {C_SUCCESS}✔ Filas guardadas: {len(filas)}, urlReferencia: {url_ref is not None}{C_RESET}")
+        _register(success, "GUARDAR DIGITAL ─ Digitalizar y guardar")
+    except Exception as exc:
+        print(f"  {C_ERROR}✗ Error: {exc}{C_RESET}")
+        _register(False, "GUARDAR DIGITAL ─ Digitalizar y guardar")
+
+    # Verificar planilla completa
+    run_step(
+        session, "GET", f"{URL_PLANILLAS}/{planilla_id}", {}, sn, se, ck,
+        headers=headers_admin, label=f"GUARDAR DIGITAL ─ Verificar planilla ({planilla_id})",
+    )
+    run_step(
+        session, "GET", f"{URL_FILAS}/planilla/{planilla_id}", {}, sn, se, ck,
+        headers=headers_admin, label=f"GUARDAR DIGITAL ─ Verificar filas ({planilla_id})",
+    )
+
+
+# ══════════════════════════════════════════════════════
+#  BLOQUE 2A ─ LUGARES
+# ══════════════════════════════════════════════════════
+def test_lugares(session, sn, se, ck, headers_admin):
+    section("LUGARES")
+    # Crear
+    created, _ = run_step(
+        session, "POST", URL_LUGARES,
+        {"nombre": "Aula de Prueba", "coordenadas": "4.0,-72.0"},
+        sn, se, ck, headers=headers_admin,
+        label="LUGAR ─ Crear",
+    )
+    lugar_id = None
+    if created and isinstance(created, dict):
+        lugar_id = created.get("id")
+
+    if lugar_id:
+        run_step(session, "GET", f"{URL_LUGARES}/{lugar_id}", {}, sn, se, ck,
+                 headers=headers_admin, label=f"LUGAR ─ FindById ({lugar_id})")
+        run_step(session, "PUT", f"{URL_LUGARES}/{lugar_id}",
+                 {"nombre": "Aula de Prueba (actualizado)", "coordenadas": "4.1,-72.1"},
+                 sn, se, ck, headers=headers_admin,
+                 label=f"LUGAR ─ Actualizar ({lugar_id})")
+        run_step(session, "GET", URL_LUGARES, {}, sn, se, ck,
+                 headers=headers_admin, label="LUGAR ─ Listar todos")
+        # No eliminar lugar para que test_eventos pueda usarlo
+    return lugar_id
+
+
+# ══════════════════════════════════════════════════════
+#  BLOQUE 2B ─ EVENTOS
+# ══════════════════════════════════════════════════════
+def test_eventos(session, sn, se, ck, headers_admin, lugar_id):
+    section("EVENTOS")
+    if not lugar_id:
+        print(f"  {C_WARN}⚠ No hay lugar_id, omitiendo tests de eventos.{C_RESET}")
+        return None
+
+    created, _ = run_step(
+        session, "POST", URL_EVENTOS,
+        {
+            "nombre": "Evento de Prueba",
+            "descripcion": "Descripción del evento de prueba",
+            "fechaHoraInicio": "2026-05-10T08:00:00",
+            "fechaHoraFin": "2026-05-10T10:00:00",
+            "lugarId": lugar_id,
+        },
+        sn, se, ck, headers=headers_admin,
+        label="EVENTO ─ Crear",
+    )
+    evento_id = None
+    if created and isinstance(created, dict):
+        evento_id = created.get("id")
+
+    if evento_id:
+        run_step(session, "GET", f"{URL_EVENTOS}/{evento_id}", {}, sn, se, ck,
+                 headers=headers_admin, label=f"EVENTO ─ FindById ({evento_id})")
+        run_step(session, "GET", URL_EVENTOS, {}, sn, se, ck,
+                 headers=headers_admin, label="EVENTO ─ Listar todos")
+        run_step(session, "GET", f"{URL_EVENTOS}/usuario/1", {}, sn, se, ck,
+                 headers=headers_admin, label="EVENTO ─ Por usuario (codigo=1)")
+        run_step(session, "PUT", f"{URL_EVENTOS}/{evento_id}",
+                 {
+                     "nombre": "Evento Actualizado",
+                     "descripcion": "Actualizado",
+                     "fechaHoraInicio": "2026-05-10T09:00:00",
+                     "fechaHoraFin": "2026-05-10T11:00:00",
+                     "lugarId": lugar_id,
+                 },
+                 sn, se, ck, headers=headers_admin,
+                 label=f"EVENTO ─ Actualizar ({evento_id})")
+        run_step(session, "DELETE", f"{URL_EVENTOS}/{evento_id}", {}, sn, se, ck,
+                 headers=headers_admin, label=f"EVENTO ─ Eliminar ({evento_id})",
+                 expected_statuses=(200, 201, 204))
+    return evento_id
+
+
+# ══════════════════════════════════════════════════════
+#  BLOQUE 2C ─ CAMPOS
+# ══════════════════════════════════════════════════════
+def test_campos(session, sn, se, ck, headers_admin, planilla_id, tipos_map):
+    section("CAMPOS")
+    if not planilla_id or not tipos_map:
+        print(f"  {C_WARN}⚠ Faltan planilla_id o tipos_map, omitiendo tests de campos.{C_RESET}")
+        return []
+
+    tipo_text_id = tipos_map.get("text")
+    tipo_numeric_id = tipos_map.get("numeric")
+    if not tipo_text_id or not tipo_numeric_id:
+        print(f"  {C_WARN}⚠ No se encontraron tipos 'text' o 'numeric'.{C_RESET}")
+        return []
+
+    # Crear campo
+    created, _ = run_step(
+        session, "POST", URL_CAMPOS,
+        {"planillaId": planilla_id, "tipoCampoId": tipo_text_id,
+         "nombreCampo": "Campo de Prueba", "obligatorio": True},
+        sn, se, ck, headers=headers_admin,
+        label="CAMPO ─ Crear",
+    )
+    campo_id = None
+    if created and isinstance(created, dict):
+        campo_id = created.get("id")
+
+    campos_creados = []
+    if campo_id:
+        campos_creados.append(campo_id)
+        run_step(session, "GET", f"{URL_CAMPOS}/{campo_id}", {}, sn, se, ck,
+                 headers=headers_admin, label=f"CAMPO ─ FindById ({campo_id})")
+        run_step(session, "GET", f"{URL_CAMPOS}/planilla/{planilla_id}", {}, sn, se, ck,
+                 headers=headers_admin, label=f"CAMPO ─ Por planilla ({planilla_id})")
+        run_step(session, "PUT", f"{URL_CAMPOS}/{campo_id}",
+                 {"planillaId": planilla_id, "tipoCampoId": tipo_text_id,
+                  "nombreCampo": "Campo Actualizado", "obligatorio": False},
+                 sn, se, ck, headers=headers_admin,
+                 label=f"CAMPO ─ Actualizar ({campo_id})")
+
+    # Batch
+    run_step(
+        session, "POST", f"{URL_CAMPOS}/batch",
+        [
+            {"planillaId": planilla_id, "tipoCampoId": tipo_numeric_id,
+             "nombreCampo": "Edad", "obligatorio": True},
+            {"planillaId": planilla_id, "tipoCampoId": tipo_text_id,
+             "nombreCampo": "Correo", "obligatorio": False},
+        ],
+        sn, se, ck, headers=headers_admin,
+        label="CAMPO ─ Batch crear",
+    )
+
+    # Listar todos
+    run_step(session, "GET", URL_CAMPOS, {}, sn, se, ck,
+             headers=headers_admin, label="CAMPO ─ Listar todos")
+
+    if campo_id:
+        run_step(session, "DELETE", f"{URL_CAMPOS}/{campo_id}", {}, sn, se, ck,
+                 headers=headers_admin, label=f"CAMPO ─ Eliminar ({campo_id})",
+                 expected_statuses=(200, 201, 204))
+    return campos_creados
+
+
+# ══════════════════════════════════════════════════════
+#  BLOQUE 2D ─ FILAS
+# ══════════════════════════════════════════════════════
+def test_filas(session, sn, se, ck, headers_admin, planilla_id, campos_ids, tipos_map):
+    section("FILAS")
+    if not planilla_id:
+        print(f"  {C_WARN}⚠ No hay planilla_id, omitiendo tests de filas.{C_RESET}")
+        return None
+
+    # Obtener campos de la planilla para construir filas con datos
+    campos_resp, _ = run_step(
+        session, "GET", f"{URL_CAMPOS}/planilla/{planilla_id}", {}, sn, se, ck,
+        headers=headers_admin, label="FILA ─ Obtener campos de planilla",
+        expected_statuses=(200, 201),
+    )
+    campos_planilla = []
+    if campos_resp and isinstance(campos_resp, list):
+        campos_planilla = campos_resp
+
+    # Crear fila con datos
+    datos_fila = []
+    for i, c in enumerate(campos_planilla[:3]):  # máx 3 campos para simplificar
+        if isinstance(c, dict):
+            datos_fila.append({
+                "campoId": c.get("id"),
+                "posicion": 0,
+                "informacion": f"valor_{i}",
+            })
+
+    created, _ = run_step(
+        session, "POST", URL_FILAS,
+        {"planillaId": planilla_id, "indice": 0, "datos": datos_fila},
+        sn, se, ck, headers=headers_admin,
+        label="FILA ─ Crear",
+    )
+    fila_id = None
+    if created and isinstance(created, dict):
+        fila_id = created.get("id")
+
+    if fila_id:
+        run_step(session, "GET", f"{URL_FILAS}/{fila_id}", {}, sn, se, ck,
+                 headers=headers_admin, label=f"FILA ─ FindById ({fila_id})")
+        run_step(session, "GET", f"{URL_FILAS}/planilla/{planilla_id}", {}, sn, se, ck,
+                 headers=headers_admin, label=f"FILA ─ Por planilla ({planilla_id})")
+        run_step(session, "PUT", f"{URL_FILAS}/{fila_id}",
+                 {"planillaId": planilla_id, "indice": 0, "datos": datos_fila},
+                 sn, se, ck, headers=headers_admin,
+                 label=f"FILA ─ Actualizar ({fila_id})")
+        run_step(session, "PATCH", f"{URL_FILAS}/{fila_id}",
+                 {"planillaId": planilla_id, "indice": 0, "datos": datos_fila},
+                 sn, se, ck, headers=headers_admin,
+                 label=f"FILA ─ Patch ({fila_id})")
+        run_step(session, "DELETE", f"{URL_FILAS}/{fila_id}", {}, sn, se, ck,
+                 headers=headers_admin, label=f"FILA ─ Eliminar ({fila_id})",
+                 expected_statuses=(200, 201, 204))
+
+    # Batch
+    if len(campos_planilla) >= 2:
+        batch_datos = [
+            {"campoId": campos_planilla[0].get("id"), "posicion": 0, "informacion": "batch1"},
+            {"campoId": campos_planilla[1].get("id"), "posicion": 0, "informacion": "batch2"},
+        ]
+        run_step(
+            session, "POST", f"{URL_FILAS}/batch",
+            [{"planillaId": planilla_id, "indice": 1, "datos": batch_datos}],
+            sn, se, ck, headers=headers_admin,
+            label="FILA ─ Batch crear",
+        )
+
+    run_step(session, "GET", URL_FILAS, {}, sn, se, ck,
+             headers=headers_admin, label="FILA ─ Listar todos")
+    return fila_id
+
+
+# ══════════════════════════════════════════════════════
+#  BLOQUE 2E ─ DATOS
+# ══════════════════════════════════════════════════════
+def test_datos(session, sn, se, ck, headers_admin, planilla_id):
+    section("DATOS")
+    if not planilla_id:
+        print(f"  {C_WARN}⚠ No hay planilla_id, omitiendo tests de datos.{C_RESET}")
+        return
+
+    # Obtener campos de la planilla
+    campos_resp, _ = run_step(
+        session, "GET", f"{URL_CAMPOS}/planilla/{planilla_id}", {}, sn, se, ck,
+        headers=headers_admin, label="DATO ─ Obtener campos de planilla",
+        expected_statuses=(200, 201),
+    )
+    campos_planilla = []
+    if campos_resp and isinstance(campos_resp, list):
+        campos_planilla = campos_resp
+
+    if not campos_planilla:
+        print(f"  {C_WARN}⚠ Planilla sin campos, omitiendo tests de datos.{C_RESET}")
+        return
+
+    # Obtener filas de la planilla
+    filas_resp, _ = run_step(
+        session, "GET", f"{URL_FILAS}/planilla/{planilla_id}", {}, sn, se, ck,
+        headers=headers_admin, label="DATO ─ Obtener filas de planilla",
+        expected_statuses=(200, 201),
+    )
+    filas_planilla = []
+    if filas_resp and isinstance(filas_resp, list):
+        filas_planilla = filas_resp
+
+    fila_id = None
+    if filas_planilla and isinstance(filas_planilla[0], dict):
+        fila_id = filas_planilla[0].get("id")
+
+    # Crear una fila nueva exclusiva para tests de datos (sin datos previos)
+    fila_nueva, _ = run_step(
+        session, "POST", URL_FILAS,
+        {"planillaId": planilla_id, "indice": 99, "datos": []},
+        sn, se, ck, headers=headers_admin,
+        label="DATO ─ Crear fila vacía para datos",
+        expected_statuses=(200, 201),
+    )
+    if fila_nueva and isinstance(fila_nueva, dict):
+        fila_id = fila_nueva.get("id")
+
+    if not fila_id:
+        print(f"  {C_WARN}⚠ No hay filas en la planilla, omitiendo tests de datos.{C_RESET}")
+        return
+
+    campo_id = campos_planilla[0].get("id") if campos_planilla else None
+    if not campo_id:
+        return
+
+    # Crear dato
+    created, _ = run_step(
+        session, "POST", URL_DATOS,
+        {"campoId": campo_id, "filaId": fila_id, "posicion": 0, "informacion": "Dato de prueba"},
+        sn, se, ck, headers=headers_admin,
+        label="DATO ─ Crear",
+    )
+    dato_id = None
+    if created and isinstance(created, dict):
+        dato_id = created.get("id")
+
+    if dato_id:
+        run_step(session, "GET", f"{URL_DATOS}/{dato_id}", {}, sn, se, ck,
+                 headers=headers_admin, label=f"DATO ─ FindById ({dato_id})")
+        run_step(session, "GET", f"{URL_DATOS}/planilla/{planilla_id}", {}, sn, se, ck,
+                 headers=headers_admin, label=f"DATO ─ Por planilla ({planilla_id})")
+        run_step(session, "GET", f"{URL_DATOS}/campo/{campo_id}", {}, sn, se, ck,
+                 headers=headers_admin, label=f"DATO ─ Por campo ({campo_id})")
+        run_step(session, "PUT", f"{URL_DATOS}/{dato_id}",
+                 {"campoId": campo_id, "filaId": fila_id, "posicion": 0, "informacion": "Dato actualizado"},
+                 sn, se, ck, headers=headers_admin,
+                 label=f"DATO ─ Actualizar ({dato_id})")
+        run_step(session, "DELETE", f"{URL_DATOS}/{dato_id}", {}, sn, se, ck,
+                 headers=headers_admin, label=f"DATO ─ Eliminar ({dato_id})",
+                 expected_statuses=(200, 201, 204))
+
+    # Batch
+    if len(campos_planilla) >= 2:
+        run_step(
+            session, "POST", f"{URL_DATOS}/batch",
+            [
+                {"campoId": campos_planilla[0].get("id"), "filaId": fila_id,
+                 "posicion": 0, "informacion": "batch_a"},
+                {"campoId": campos_planilla[1].get("id"), "filaId": fila_id,
+                 "posicion": 0, "informacion": "batch_b"},
+            ],
+            sn, se, ck, headers=headers_admin,
+            label="DATO ─ Batch crear",
+        )
+
+
+# ══════════════════════════════════════════════════════
+#  BLOQUE 2F ─ IA: PROPONER ESTRUCTURA DESDE IMAGEN
+# ══════════════════════════════════════════════════════
+def test_proponer_estructura(session, sn, se, ck, headers_admin, planilla_id, tipos_map):
+    section("IA ─ PROPONER ESTRUCTURA DESDE IMAGEN")
+    if not planilla_id:
+        print(f"  {C_WARN}⚠ No hay planilla_id, omitiendo.{C_RESET}")
+        return
+
+    file_path = resolve_test_image_path()
+    if not os.path.exists(file_path):
+        print(f"  {C_ERROR}✗ Imagen no encontrada: {file_path}{C_RESET}")
+        _register(False, "IA ─ Proponer estructura")
+        return
+
+    url = f"{URL_PLANILLAS}/{planilla_id}/proponer-estructura"
+    print(f"\n{C_TITLE}▶  IA ─ Proponer estructura desde imagen{C_RESET}")
+    try:
+        with open(file_path, "rb") as f:
+            files = {"imagen": ("test1.jpg", f, "image/jpeg")}
+            resp = session.post(url, files=files, headers=headers_admin)
+
+        success = resp.status_code in (200, 201)
+        icon = f"{C_SUCCESS}✔" if success else f"{C_ERROR}✗"
+        print(f"  {icon} Status {resp.status_code}{C_RESET}")
+
+        campos_propuestos = []
+        if success and resp.text.strip():
+            try:
+                resp_json = resp.json()
+            except:
+                resp_json = {"raw": resp.text}
+            decrypted = decrypt_server_response(resp_json, ck)
+            print(f"  {C_DIM}Campos guardados (desencriptado):{C_RESET}")
+            try:
+                parsed = json.loads(decrypted) if isinstance(decrypted, str) else decrypted
+                print(f"  {pretty_json(parsed)}")
+                if isinstance(parsed, list):
+                    campos_propuestos = parsed
+                    print(f"  {C_SUCCESS}✔ {len(campos_propuestos)} campos guardados directamente{C_RESET}")
+                elif isinstance(parsed, dict):
+                    campos_propuestos = parsed.get("campos", [])
+            except Exception as e:
+                print(f"  {C_VAL}{decrypted}{C_RESET}")
+
+        _register(success, "IA ─ Proponer estructura")
+    except Exception as exc:
+        print(f"  {C_ERROR}✗ Error: {exc}{C_RESET}")
+        _register(False, "IA ─ Proponer estructura")
+        return
+
+    if not campos_propuestos:
+        print(f"  {C_WARN}⚠ IA no propuso campos.{C_RESET}")
+
+    # Verificar persistencia
+    run_step(
+        session, "GET", f"{URL_CAMPOS}/planilla/{planilla_id}", {}, sn, se, ck,
+        headers=headers_admin, label=f"IA ─ Verificar campos persistidos ({planilla_id})",
+        expected_statuses=(200, 201),
+    )
+
+
+# ══════════════════════════════════════════════════════
+#  BLOQUE 2G ─ IA: GENERAR PROPUESTA DESDE DESCRIPCIÓN
+# ══════════════════════════════════════════════════════
+def test_generar_propuesta(session, sn, se, ck, headers_admin, lugar_id, tipos_map):
+    section("IA ─ GENERAR PROPUESTA DESDE DESCRIPCIÓN")
+
+    url = f"{URL_PLANILLAS}/generar-propuesta"
+
+    print(f"\n{C_TITLE}▶  IA ─ Generar propuesta (sin lugar){C_RESET}")
+    try:
+        resp = session.post(url, headers=headers_admin,
+                            params={"descripcion": "Quiero una planilla simple con nombre, correo y fecha de nacimiento"})
         success = resp.status_code in (200, 201)
         icon = f"{C_SUCCESS}✔" if success else f"{C_ERROR}✗"
         print(f"  {icon} Status {resp.status_code}{C_RESET}")
         if resp.text.strip():
             try:
                 resp_json = resp.json()
-            except:
-                resp_json = {"raw": resp.text}
-            decrypted = decrypt_server_response(resp_json, client_key)
-            print(f"  {C_DIM}Resultado GROQ digitalizar:{C_RESET}")
-            print(f"  {C_VAL}{pretty_json(decrypted)}{C_RESET}")
-        _register(success, "AI-CONFIG ─ Digitalizar Groq")
+                decrypted = decrypt_server_response(resp_json, ck)
+                parsed = json.loads(decrypted) if isinstance(decrypted, str) else decrypted
+                if isinstance(parsed, dict):
+                    evento = parsed.get("evento")
+                    campos = parsed.get("campos", [])
+                    print(f"  {C_VAL}Evento: {'sí' if evento else 'no'}, Campos: {len(campos)}{C_RESET}")
+            except Exception:
+                pass
+        _register(success, "IA ─ Generar propuesta (sin lugar)")
     except Exception as exc:
         print(f"  {C_ERROR}✗ Error: {exc}{C_RESET}")
-        _register(False, "AI-CONFIG ─ Digitalizar Groq")
+        _register(False, "IA ─ Generar propuesta (sin lugar)")
 
-    # ── Probar /campos con GROQ ──
-    print(f"\n{C_TITLE}▶  AI-CONFIG ─ Campos con GROQ{C_RESET}")
+    print(f"\n{C_TITLE}▶  IA ─ Generar propuesta (con lugar){C_RESET}")
     try:
-        with open(file_path, "rb") as f:
-            files = {"file": ("test.jpg", f, "image/jpeg")}
-            resp = session.post(
-                f"{URL_PLANILLAS}/campos", files=files, headers=headers_admin
-            )
+        params = {"descripcion": "Evento de capacitación con registro de asistentes"}
+        if lugar_id:
+            params["lugarId"] = lugar_id
+        resp = session.post(url, headers=headers_admin, params=params)
         success = resp.status_code in (200, 201)
         icon = f"{C_SUCCESS}✔" if success else f"{C_ERROR}✗"
         print(f"  {icon} Status {resp.status_code}{C_RESET}")
         if resp.text.strip():
             try:
                 resp_json = resp.json()
-            except:
-                resp_json = {"raw": resp.text}
-            decrypted = decrypt_server_response(resp_json, client_key)
-            print(f"  {C_DIM}Resultado GROQ campos:{C_RESET}")
-            print(f"  {C_VAL}{pretty_json(decrypted)}{C_RESET}")
-        _register(success, "AI-CONFIG ─ Campos Groq")
+                decrypted = decrypt_server_response(resp_json, ck)
+                parsed = json.loads(decrypted) if isinstance(decrypted, str) else decrypted
+                if isinstance(parsed, dict):
+                    evento = parsed.get("evento")
+                    campos = parsed.get("campos", [])
+                    filas = parsed.get("filas", [])
+                    planilla_id_gen = parsed.get("id")
+                    print(f"  {C_SUCCESS}✔ Planilla creada: id={planilla_id_gen}, Evento: {'sí' if evento else 'no'}, Campos: {len(campos)}, Filas: {len(filas)}{C_RESET}")
+            except Exception:
+                pass
+        _register(success, "IA ─ Generar propuesta (con lugar)")
     except Exception as exc:
         print(f"  {C_ERROR}✗ Error: {exc}{C_RESET}")
-        _register(False, "AI-CONFIG ─ Campos Groq")
-
-    _show_current_config("tras Groq")
-
-    # ── PUT cambiar a CLOUD (OpenAI-compatible) ──
-    payload_cloud = {
-        "activeProvider": "cloud",
-        "cloudBaseUrl": "https://integrate.api.nvidia.com",
-        "cloudApiKey": cloud_api_key,
-        "cloudModelName": "microsoft/phi-4-multimodal-instruct",
-    }
-    print(f"\n{C_TITLE}▶  AI-CONFIG ─ Cambiar a CLOUD (NVIDIA/OpenAI){C_RESET}")
-    try:
-        resp = session.put(URL_AI_CONFIG, json=payload_cloud, headers=headers_admin)
-        success = resp.status_code == 200
-        icon = f"{C_SUCCESS}✔" if success else f"{C_ERROR}✗"
-        print(f"  {icon} Status {resp.status_code}{C_RESET}")
-        if resp.text.strip():
-            print(f"  {C_VAL}{resp.text}{C_RESET}")
-        _register(success, "AI-CONFIG ─ PUT Cloud")
-    except Exception as exc:
-        print(f"  {C_ERROR}✗ Error: {exc}{C_RESET}")
-        _register(False, "AI-CONFIG ─ PUT Cloud")
-
-    # ── Probar /digitalizar con CLOUD ──
-    print(f"\n{C_TITLE}▶  AI-CONFIG ─ Digitalizar con CLOUD{C_RESET}")
-    try:
-        with open(file_path, "rb") as f:
-            files = {"file": ("test.jpg", f, "image/jpeg")}
-            resp = session.post(
-                f"{URL_PLANILLAS}/digitalizar", files=files, headers=headers_admin
-            )
-        success = resp.status_code in (200, 201)
-        icon = f"{C_SUCCESS}✔" if success else f"{C_ERROR}✗"
-        print(f"  {icon} Status {resp.status_code}{C_RESET}")
-        if resp.text.strip():
-            try:
-                resp_json = resp.json()
-            except:
-                resp_json = {"raw": resp.text}
-            decrypted = decrypt_server_response(resp_json, client_key)
-            print(f"  {C_DIM}Resultado CLOUD digitalizar:{C_RESET}")
-            print(f"  {C_VAL}{pretty_json(decrypted)}{C_RESET}")
-        _register(success, "AI-CONFIG ─ Digitalizar Cloud")
-    except Exception as exc:
-        print(f"  {C_ERROR}✗ Error: {exc}{C_RESET}")
-        _register(False, "AI-CONFIG ─ Digitalizar Cloud")
-
-    # ── Probar /campos con CLOUD ──
-    print(f"\n{C_TITLE}▶  AI-CONFIG ─ Campos con CLOUD{C_RESET}")
-    try:
-        with open(file_path, "rb") as f:
-            files = {"file": ("test.jpg", f, "image/jpeg")}
-            resp = session.post(
-                f"{URL_PLANILLAS}/campos", files=files, headers=headers_admin
-            )
-        success = resp.status_code in (200, 201)
-        icon = f"{C_SUCCESS}✔" if success else f"{C_ERROR}✗"
-        print(f"  {icon} Status {resp.status_code}{C_RESET}")
-        if resp.text.strip():
-            try:
-                resp_json = resp.json()
-            except:
-                resp_json = {"raw": resp.text}
-            decrypted = decrypt_server_response(resp_json, client_key)
-            print(f"  {C_DIM}Resultado CLOUD campos:{C_RESET}")
-            print(f"  {C_VAL}{pretty_json(decrypted)}{C_RESET}")
-        _register(success, "AI-CONFIG ─ Campos Cloud")
-    except Exception as exc:
-        print(f"  {C_ERROR}✗ Error: {exc}{C_RESET}")
-        _register(False, "AI-CONFIG ─ Campos Cloud")
-
-    _show_current_config("tras Cloud")
-
-    # ── PUT cambiar a OLLAMA (ngrok) ──
-    payload_ollama = {
-        "activeProvider": "ollama",
-        "ollamaBaseUrl": "https://echoless-vashti-flauntingly.ngrok-free.dev/",
-    }
-    print(f"\n{C_TITLE}▶  AI-CONFIG ─ Cambiar a OLLAMA{C_RESET}")
-    try:
-        resp = session.put(URL_AI_CONFIG, json=payload_ollama, headers=headers_admin)
-        success = resp.status_code == 200
-        icon = f"{C_SUCCESS}✔" if success else f"{C_ERROR}✗"
-        print(f"  {icon} Status {resp.status_code}{C_RESET}")
-        if resp.text.strip():
-            print(f"  {C_VAL}{resp.text}{C_RESET}")
-        _register(success, "AI-CONFIG ─ PUT Ollama")
-    except Exception as exc:
-        print(f"  {C_ERROR}✗ Error: {exc}{C_RESET}")
-        _register(False, "AI-CONFIG ─ PUT Ollama")
-
-    # ── Probar /digitalizar con OLLAMA ──
-    print(f"\n{C_TITLE}▶  AI-CONFIG ─ Digitalizar con OLLAMA{C_RESET}")
-    try:
-        with open(file_path, "rb") as f:
-            files = {"file": ("test.jpg", f, "image/jpeg")}
-            resp = session.post(
-                f"{URL_PLANILLAS}/digitalizar", files=files, headers=headers_admin
-            )
-        success = resp.status_code in (200, 201)
-        icon = f"{C_SUCCESS}✔" if success else f"{C_ERROR}✗"
-        print(f"  {icon} Status {resp.status_code}{C_RESET}")
-        if resp.text.strip():
-            try:
-                resp_json = resp.json()
-            except:
-                resp_json = {"raw": resp.text}
-            decrypted = decrypt_server_response(resp_json, client_key)
-            print(f"  {C_DIM}Resultado OLLAMA digitalizar:{C_RESET}")
-            print(f"  {C_VAL}{pretty_json(decrypted)}{C_RESET}")
-        _register(success, "AI-CONFIG ─ Digitalizar Ollama")
-    except Exception as exc:
-        print(f"  {C_ERROR}✗ Error: {exc}{C_RESET}")
-        _register(False, "AI-CONFIG ─ Digitalizar Ollama")
-
-    # ── Probar /campos con OLLAMA ──
-    print(f"\n{C_TITLE}▶  AI-CONFIG ─ Campos con OLLAMA{C_RESET}")
-    try:
-        with open(file_path, "rb") as f:
-            files = {"file": ("test.jpg", f, "image/jpeg")}
-            resp = session.post(
-                f"{URL_PLANILLAS}/campos", files=files, headers=headers_admin
-            )
-        success = resp.status_code in (200, 201)
-        icon = f"{C_SUCCESS}✔" if success else f"{C_ERROR}✗"
-        print(f"  {icon} Status {resp.status_code}{C_RESET}")
-        if resp.text.strip():
-            try:
-                resp_json = resp.json()
-            except:
-                resp_json = {"raw": resp.text}
-            decrypted = decrypt_server_response(resp_json, client_key)
-            print(f"  {C_DIM}Resultado OLLAMA campos:{C_RESET}")
-            print(f"  {C_VAL}{pretty_json(decrypted)}{C_RESET}")
-        _register(success, "AI-CONFIG ─ Campos Ollama")
-    except Exception as exc:
-        print(f"  {C_ERROR}✗ Error: {exc}{C_RESET}")
-        _register(False, "AI-CONFIG ─ Campos Ollama")
-
-    _show_current_config("tras Ollama")
-
-    # ── Restaurar proveedor original (groq) ──
-    print(f"\n{C_TITLE}▶  AI-CONFIG ─ Restaurar a GROQ{C_RESET}")
-    try:
-        resp = session.put(URL_AI_CONFIG, json=payload_groq, headers=headers_admin)
-        success = resp.status_code == 200
-        icon = f"{C_SUCCESS}✔" if success else f"{C_ERROR}✗"
-        print(f"  {icon} Status {resp.status_code}{C_RESET}")
-        _register(success, "AI-CONFIG ─ Restaurar Groq")
-    except Exception as exc:
-        print(f"  {C_ERROR}✗ Error: {exc}{C_RESET}")
-        _register(False, "AI-CONFIG ─ Restaurar Groq")
-
-    _show_current_config("restaurado")
+        _register(False, "IA ─ Generar propuesta (con lugar)")
 
 
 # ══════════════════════════════════════════════════════
@@ -915,18 +1238,6 @@ def test_reporte(session, sn, se, ck, headers_admin, planilla_id_seed=1):
     run_step(
         session,
         "GET",
-        f"{URL_REPORTES}/ausentismo/rango?inicio=2026-01-01T00:00:00&fin=2026-12-31T23:59:59",
-        {},
-        sn,
-        se,
-        ck,
-        headers=headers_admin,
-        label="REPORTE ─ Ausentismo por rango",
-    )
-
-    run_step(
-        session,
-        "GET",
         f"{URL_REPORTES}/estudiante/2024117001/trazabilidad",
         {},
         sn,
@@ -940,80 +1251,99 @@ def test_reporte(session, sn, se, ck, headers_admin, planilla_id_seed=1):
 # ══════════════════════════════════════════════════════
 #  BLOQUE 3B ─ ESTADÍSTICAS DINÁMICAS DE PLANILLA
 # ══════════════════════════════════════════════════════
-def test_estadisticas_dinamicas(session, sn, se, ck, headers_admin, planilla_id_seed=1):
-    section("ESTADÍSTICAS DINÁMICAS DE PLANILLA")
+def test_estadisticas_dinamicas(session, sn, se, ck, headers_admin, evento_id_seed=1):
+    section("ESTADÍSTICAS DINÁMICAS POR EVENTO")
 
-    run_step(
+    # Campos reales del seed: Cédula (numeric), Nombres (text), Apellidos (text)
+    resp_cedula, _ = run_step(
         session,
         "GET",
-        f"{URL_REPORTES}/planilla/{planilla_id_seed}/encabezado/Programa/estadisticas",
+        f"{URL_REPORTES}/evento/{evento_id_seed}/campo/Cédula/estadisticas",
         {},
         sn,
         se,
         ck,
         headers=headers_admin,
-        label=f"ESTADÍSTICAS ─ Por encabezado 'Programa' (desplegable)",
+        label=f"ESTADÍSTICAS ─ Por campo 'Cédula' (numeric)",
+    )
+    _register(
+        assert_valores_sin_agrupar(resp_cedula, "Cédula", espera_valores=False),
+        "ASSERT ─ Cédula no tiene valores sin agrupar",
     )
 
-    run_step(
+    resp_nombres, _ = run_step(
         session,
         "GET",
-        f"{URL_REPORTES}/planilla/{planilla_id_seed}/encabezado/Edad/estadisticas",
+        f"{URL_REPORTES}/evento/{evento_id_seed}/campo/Nombres/estadisticas",
         {},
         sn,
         se,
         ck,
         headers=headers_admin,
-        label=f"ESTADÍSTICAS ─ Por encabezado 'Edad' (numerico)",
+        label=f"ESTADÍSTICAS ─ Por campo 'Nombres' (text)",
+    )
+    _register(
+        assert_valores_sin_agrupar(resp_nombres, "Nombres", espera_valores=True),
+        "ASSERT ─ Nombres tiene valores sin agrupar",
     )
 
-    run_step(
+    resp_apellidos, _ = run_step(
         session,
         "GET",
-        f"{URL_REPORTES}/planilla/{planilla_id_seed}/encabezado/Nombres/estadisticas",
+        f"{URL_REPORTES}/evento/{evento_id_seed}/campo/Apellidos/estadisticas",
         {},
         sn,
         se,
         ck,
         headers=headers_admin,
-        label=f"ESTADÍSTICAS ─ Por encabezado 'Nombres' (texto)",
+        label=f"ESTADÍSTICAS ─ Por campo 'Apellidos' (text)",
+    )
+    _register(
+        assert_valores_sin_agrupar(resp_apellidos, "Apellidos", espera_valores=True),
+        "ASSERT ─ Apellidos tiene valores sin agrupar",
     )
 
-    run_step(
+    resp_completas, _ = run_step(
         session,
         "GET",
-        f"{URL_REPORTES}/planilla/{planilla_id_seed}/encabezado/AceptaTerminos/estadisticas",
+        f"{URL_REPORTES}/evento/{evento_id_seed}/estadisticas-completas",
         {},
         sn,
         se,
         ck,
         headers=headers_admin,
-        label=f"ESTADÍSTICAS ─ Por encabezado 'AceptaTerminos' (checkbox)",
+        label=f"ESTADÍSTICAS ─ Completas de evento ({evento_id_seed})",
     )
+    if resp_completas and "campos" in resp_completas:
+        for campo_info in resp_completas["campos"]:
+            nombre = campo_info.get("campo", "")
+            tipo = campo_info.get("tipoCampo", "")
+            espera = tipo in {"text", "email", "combo", "radio", "checkbox", "multivaluecheckbox"}
+            _register(
+                assert_valores_sin_agrupar(campo_info, nombre, espera_valores=espera),
+                f"ASSERT ─ Completas {nombre} valores",
+            )
 
-    run_step(
+    resp_comp, _ = run_step(
         session,
         "GET",
-        f"{URL_REPORTES}/planilla/{planilla_id_seed}/estadisticas-completas",
+        f"{URL_REPORTES}/evento/{evento_id_seed}/comparativa?campos=Cédula,Nombres,Apellidos",
         {},
         sn,
         se,
         ck,
         headers=headers_admin,
-        label=f"ESTADÍSTICAS ─ Completas de planilla ({planilla_id_seed})",
+        label=f"ESTADÍSTICAS ─ Comparativa (Cédula,Nombres,Apellidos)",
     )
-
-    run_step(
-        session,
-        "GET",
-        f"{URL_REPORTES}/planilla/{planilla_id_seed}/comparativa?encabezados=Programa,Modalidad,AceptaTerminos",
-        {},
-        sn,
-        se,
-        ck,
-        headers=headers_admin,
-        label=f"ESTADÍSTICAS ─ Comparativa (Programa,Modalidad,AceptaTerminos)",
-    )
+    if resp_comp and "campos" in resp_comp:
+        for campo_info in resp_comp["campos"]:
+            nombre = campo_info.get("campo", "")
+            tipo = campo_info.get("tipoCampo", "")
+            espera = tipo in {"text", "email", "combo", "radio", "checkbox", "multivaluecheckbox"}
+            _register(
+                assert_valores_sin_agrupar(campo_info, nombre, espera_valores=espera),
+                f"ASSERT ─ Comparativa {nombre} valores",
+            )
 
 
 # ══════════════════════════════════════════════════════
@@ -1420,7 +1750,7 @@ def test_justificacion(session, sn, se, ck, headers_estudiante, headers_decano):
 # ══════════════════════════════════════════════════════
 #  BLOQUE 6 ─ ROTACIÓN DE CLAVES
 # ══════════════════════════════════════════════════════
-def test_rotacion(session, headers_admin):
+def test_rotacion(session, headers_admin, origen_digital_id):
     section("ROTACIÓN DE CLAVES RSA")
     print(f"\n{C_TITLE}▶  Rotando claves en servidor de seguridad...{C_RESET}")
     try:
@@ -1475,13 +1805,7 @@ def test_rotacion(session, headers_admin):
         session,
         "POST",
         URL_PLANILLAS,
-        {
-            "fechaHoraInicio": "2026-06-01T08:00:00",
-            "fechaHoraFin": "2026-06-01T10:00:00",
-            "lugar": "Sala Post-Rotación",
-            "metadatos": "Prueba post-rotación",
-            "fechaCreacion": "2026-06-01T07:50:00",
-        },
+        {"origenId": origen_digital_id},
         sn2,
         se2,
         ck2,
@@ -1596,14 +1920,44 @@ if __name__ == "__main__":
     #  EJECUCIÓN DE BLOQUES DE PRUEBA
     # ══════════════════════════════════════════════════
     test_usuario(session, sn, se, ck, h_admin, ts)
-    test_planilla(session, sn, se, ck, h_admin)
-    test_digitalizar(session, sn, se, ck, h_admin)
-    test_ai_config(session, h_admin, ck)
-    test_reporte(session, sn, se, ck, h_admin, planilla_id_seed=1)
-    test_estadisticas_dinamicas(session, sn, se, ck, h_admin, planilla_id_seed=1)
-    test_asistencia(session, sn, se, ck, h_est, h_admin, planilla_id_seed=1)
-    test_justificacion(session, sn, se, ck, h_monitor, h_decano)
-    test_rotacion(session, h_admin)
+
+    # Helpers dinámicos
+    origenes_map = obtener_origenes(session, sn, se, ck, h_admin)
+    origen_digital_id = origenes_map.get("digital", 1)
+    tipos_map = obtener_tipos_campo(session, sn, se, ck, h_admin)
+
+    # CRUD Planilla (crea y elimina una planilla de prueba)
+    test_planilla(session, sn, se, ck, h_admin, origen_digital_id)
+
+    # Crear planilla de trabajo persistente para tests dependientes
+    planilla_trabajo, _ = run_step(
+        session, "POST", URL_PLANILLAS,
+        {"origenId": origen_digital_id},
+        sn, se, ck, headers=h_admin,
+        label="SETUP ─ Crear planilla de trabajo",
+    )
+    planilla_id = planilla_trabajo.get("id") if isinstance(planilla_trabajo, dict) else 1
+
+    # Nuevos bloques de dominio
+    lugar_id = test_lugares(session, sn, se, ck, h_admin)
+    test_eventos(session, sn, se, ck, h_admin, lugar_id)
+    campos_ids = test_campos(session, sn, se, ck, h_admin, planilla_id, tipos_map)
+    test_filas(session, sn, se, ck, h_admin, planilla_id, campos_ids, tipos_map)
+    test_datos(session, sn, se, ck, h_admin, planilla_id)
+
+    # Bloques IA
+    test_proponer_estructura(session, sn, se, ck, h_admin, planilla_id, tipos_map)
+    test_generar_propuesta(session, sn, se, ck, h_admin, lugar_id, tipos_map)
+
+    # Bloques existentes (IA y microservicios no levantados omitidos)
+    test_digitalizar(session, sn, se, ck, h_admin, planilla_id)
+    test_guardar_planilla_digitalizada(session, sn, se, ck, h_admin, tipos_map, origen_digital_id)
+    # test_ai_config(session, h_admin, ck)
+    # test_reporte(session, sn, se, ck, h_admin, planilla_id_seed=planilla_id)
+    test_estadisticas_dinamicas(session, sn, se, ck, h_admin, evento_id_seed=1)
+    # test_asistencia(session, sn, se, ck, h_est, h_admin, planilla_id_seed=planilla_id)
+    # test_justificacion(session, sn, se, ck, h_monitor, h_decano)
+    test_rotacion(session, h_admin, origen_digital_id)
 
     # ══════════════════════════════════════════════════
     #  RESUMEN

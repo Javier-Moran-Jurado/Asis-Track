@@ -1,286 +1,239 @@
 package co.edu.uceva.microservicioplanilla.domain.service;
 
-import co.edu.uceva.microservicioplanilla.domain.model.Asistencia;
-import co.edu.uceva.microservicioplanilla.domain.model.Planilla;
-import co.edu.uceva.microservicioplanilla.domain.repository.IAsistenciaRepository;
+import co.edu.uceva.microservicioplanilla.delivery.rest.dto.*;
+import co.edu.uceva.microservicioplanilla.domain.model.*;
+import co.edu.uceva.microservicioplanilla.domain.repository.ICampoRepository;
+import co.edu.uceva.microservicioplanilla.domain.repository.IDatoRepository;
+import co.edu.uceva.microservicioplanilla.domain.repository.IEventoRepository;
 import co.edu.uceva.microservicioplanilla.domain.repository.IJustificacionRepository;
-import co.edu.uceva.microservicioplanilla.domain.repository.IPlanillaRepository;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.DoubleSummaryStatistics;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class ReporteQueryServiceImpl implements IReporteQueryService {
 
-    private final IPlanillaRepository planillaRepository;
-    private final IAsistenciaRepository asistenciaRepository;
+    private final IEventoRepository eventoRepository;
     private final IJustificacionRepository justificacionRepository;
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
-    @Override
-    public Map<String, Object> resumenPorPlanilla(Long planillaId) {
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("planillaId", planillaId);
-        response.put("planillaExiste", planillaRepository.existsById(planillaId));
-        response.put("totalRegistros", asistenciaRepository.countByPlanillaId(planillaId));
-        response.put("presentes", asistenciaRepository.countByPlanillaIdAndEstado(planillaId, "PRESENTE"));
-        response.put("salidas", asistenciaRepository.countByPlanillaIdAndEstado(planillaId, "SALIDA"));
-        response.put("justificados", asistenciaRepository.countByPlanillaIdAndEstado(planillaId, "JUSTIFICADO"));
-        response.put("ausentes", asistenciaRepository.countByPlanillaIdAndEstado(planillaId, "AUSENTE"));
-        return response;
-    }
+    private final ICampoRepository campoRepository;
+    private final IDatoRepository datoRepository;
 
     @Override
     public Map<String, Object> resumenJustificaciones() {
         Map<String, Object> response = new LinkedHashMap<>();
-        response.put("pendientes", justificacionRepository.countByEstado("PENDIENTE"));
-        response.put("aprobadas", justificacionRepository.countByEstado("APROBADO"));
-        response.put("rechazadas", justificacionRepository.countByEstado("RECHAZADO"));
+        response.put("pendientes", justificacionRepository.countByEstado(EstadoJustificacion.PENDIENTE));
+        response.put("aprobadas", justificacionRepository.countByEstado(EstadoJustificacion.APROBADO));
+        response.put("rechazadas", justificacionRepository.countByEstado(EstadoJustificacion.RECHAZADO));
         response.put("total", justificacionRepository.count());
         return response;
     }
 
     @Override
-    public Map<String, Object> ausentismoPorRango(LocalDateTime inicio, LocalDateTime fin) {
-        long total = asistenciaRepository.findByFechaHoraRegistroBetween(inicio, fin).size();
-        long ausentes = asistenciaRepository.findByFechaHoraRegistroBetween(inicio, fin)
-                .stream()
-                .filter(a -> "AUSENTE".equalsIgnoreCase(a.getEstado()))
+    public EstadisticasEventoResponse estadisticasCompletasEvento(Long eventoId, Integer bins) {
+        Evento evento = eventoRepository.findById(eventoId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento no encontrado: " + eventoId));
+
+        List<Dato> todosLosDatos = datoRepository.findDatosByEventoId(eventoId);
+        List<Campo> campos = extraerCamposUnicos(todosLosDatos);
+
+        int totalFilas = (int) todosLosDatos.stream()
+                .map(d -> d.getFila().getId())
+                .distinct()
                 .count();
 
-        double porcentajeAusentismo = total == 0 ? 0.0 : (ausentes * 100.0) / total;
-
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("inicio", inicio);
-        response.put("fin", fin);
-        response.put("totalRegistros", total);
-        response.put("ausentes", ausentes);
-        response.put("porcentajeAusentismo", porcentajeAusentismo);
-        return response;
-    }
-
-    @Override
-    public Map<String, Object> trazabilidadEstudiante(String codigoEstudiante) {
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("codigoEstudiante", codigoEstudiante);
-        response.put("totalRegistrosAsistencia", asistenciaRepository.countByCodigoEstudiante(codigoEstudiante));
-        response.put("justificacionesPendientes", justificacionRepository.findByUsuarioCodigoAndEstado(codigoEstudiante, "PENDIENTE").size());
-        response.put("justificacionesAprobadas", justificacionRepository.findByUsuarioCodigoAndEstado(codigoEstudiante, "APROBADO").size());
-        response.put("justificacionesRechazadas", justificacionRepository.findByUsuarioCodigoAndEstado(codigoEstudiante, "RECHAZADO").size());
-        return response;
-    }
-
-    @Override
-    public Map<String, Object> estadisticasPorEncabezado(Long planillaId, String nombreEncabezado) {
-        Map<String, Object> response = new LinkedHashMap<>();
-        
-        Planilla planilla = planillaRepository.findById(planillaId).orElse(null);
-        if (planilla == null) {
-            response.put("error", "Planilla no encontrada");
-            return response;
-        }
-
-        List<Encabezado> encabezados = parsearEncabezados(planilla.getEstructuraMetadata());
-        Encabezado encabezado = encabezados.stream()
-                .filter(e -> e.getNombre().equalsIgnoreCase(nombreEncabezado))
-                .findFirst()
-                .orElse(null);
-
-        if (encabezado == null) {
-            response.put("error", "Encabezado no encontrado: " + nombreEncabezado);
-            return response;
-        }
-
-        List<Asistencia> asistencias = asistenciaRepository.findByPlanillaId(planillaId);
-        List<Map<String, String>> datos = extraerDatosAdicionales(asistencias, nombreEncabezado);
-
-        response.put("planillaId", planillaId);
-        response.put("encabezado", nombreEncabezado);
-        response.put("tipoCampo", encabezado.getTipoCampo());
-        response.put("totalRegistros", datos.size());
-        response.put("datos", calcularEstadisticas(datos, encabezado));
+        EstadisticasEventoResponse response = new EstadisticasEventoResponse();
+        response.setEventoId(evento.getId());
+        response.setNombreEvento(evento.getNombre());
+        response.setTotalPlanillas(campos.isEmpty() ? 0 : campos.get(0).getPlanilla().getId() != null ? 1 : 0);
+        response.setTotalFilas(totalFilas);
+        response.setCampos(campos.stream()
+                .map(c -> construirEstadisticasCampo(c, todosLosDatos.stream()
+                        .filter(d -> d.getCampo().getId().equals(c.getId()))
+                        .collect(Collectors.toList()), bins))
+                .collect(Collectors.toList()));
 
         return response;
     }
 
     @Override
-    public List<Map<String, Object>> estadisticasCompletasPlanilla(Long planillaId) {
-        List<Map<String, Object>> resultados = new ArrayList<>();
+    public EstadisticasCampoResponse estadisticasPorCampoEvento(Long eventoId, String nombreCampo, Integer bins) {
+        Evento evento = eventoRepository.findById(eventoId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento no encontrado: " + eventoId));
 
-        Planilla planilla = planillaRepository.findById(planillaId).orElse(null);
-        if (planilla == null) {
-            return resultados;
+        List<Dato> datos = datoRepository.findByEventoIdAndNombreCampo(eventoId, nombreCampo);
+        if (datos.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Campo no encontrado para el evento: " + nombreCampo);
         }
 
-        List<Encabezado> encabezados = parsearEncabezados(planilla.getEstructuraMetadata());
-        List<Asistencia> asistencias = asistenciaRepository.findByPlanillaId(planillaId);
-
-        for (Encabezado encabezado : encabezados) {
-            Map<String, Object> stats = new LinkedHashMap<>();
-            stats.put("encabezado", encabezado.getNombre());
-            stats.put("tipoCampo", encabezado.getTipoCampo());
-            stats.put("opciones", encabezado.getOpciones());
-
-            List<Map<String, String>> datos = extraerDatosAdicionales(asistencias, encabezado.getNombre());
-            stats.put("totalRegistros", datos.size());
-            stats.put("estadisticas", calcularEstadisticas(datos, encabezado));
-
-            resultados.add(stats);
-        }
-
-        return resultados;
+        Campo campo = datos.get(0).getCampo();
+        return construirEstadisticasCampo(campo, datos, bins);
     }
 
     @Override
-    public Map<String, Object> comparativaEncabezados(Long planillaId, List<String> nombresEncabezados) {
-        Map<String, Object> response = new LinkedHashMap<>();
-        List<Map<String, Object>> resultados = new ArrayList<>();
+    public EstadisticasEventoResponse comparativaCamposEvento(Long eventoId, List<String> nombresCampos, Integer bins) {
+        Evento evento = eventoRepository.findById(eventoId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento no encontrado: " + eventoId));
 
-        Planilla planilla = planillaRepository.findById(planillaId).orElse(null);
-        if (planilla == null) {
-            response.put("error", "Planilla no encontrada");
-            return response;
-        }
+        List<Dato> todosLosDatos = datoRepository.findDatosByEventoId(eventoId);
+        List<Campo> campos = extraerCamposUnicos(todosLosDatos).stream()
+                .filter(c -> nombresCampos.contains(c.getNombreCampo()))
+                .collect(Collectors.toList());
 
-        List<Encabezado> encabezados = parsearEncabezados(planilla.getEstructuraMetadata());
-        List<Asistencia> asistencias = asistenciaRepository.findByPlanillaId(planillaId);
+        int totalFilas = (int) todosLosDatos.stream()
+                .map(d -> d.getFila().getId())
+                .distinct()
+                .count();
 
-        for (String nombre : nombresEncabezados) {
-            Encabezado encabezado = encabezados.stream()
-                    .filter(e -> e.getNombre().equalsIgnoreCase(nombre))
-                    .findFirst()
-                    .orElse(null);
+        EstadisticasEventoResponse response = new EstadisticasEventoResponse();
+        response.setEventoId(evento.getId());
+        response.setNombreEvento(evento.getNombre());
+        response.setTotalPlanillas(1);
+        response.setTotalFilas(totalFilas);
+        response.setCampos(campos.stream()
+                .map(c -> construirEstadisticasCampo(c, todosLosDatos.stream()
+                        .filter(d -> d.getCampo().getId().equals(c.getId()))
+                        .collect(Collectors.toList()), bins))
+                .collect(Collectors.toList()));
 
-            if (encabezado != null) {
-                List<Map<String, String>> datos = extraerDatosAdicionales(asistencias, nombre);
-                Map<String, Object> item = new LinkedHashMap<>();
-                item.put("encabezado", nombre);
-                item.put("tipoCampo", encabezado.getTipoCampo());
-                item.put("estadisticas", calcularEstadisticas(datos, encabezado));
-                resultados.add(item);
-            }
-        }
-
-        response.put("planillaId", planillaId);
-        response.put("comparativa", resultados);
         return response;
     }
 
-    private List<Encabezado> parsearEncabezados(String estructuraMetadata) {
-        List<Encabezado> resultado = new ArrayList<>();
-        try {
-            Map<String, Object> parsed = objectMapper.readValue(estructuraMetadata, new TypeReference<>() {});
-            List<Map<String, Object>> encabezadosList = (List<Map<String, Object>>) parsed.get("encabezados");
-            if (encabezadosList != null) {
-                for (Map<String, Object> e : encabezadosList) {
-                    Encabezado enc = new Encabezado();
-                    enc.setNombre((String) e.get("nombre"));
-                    enc.setTipoCampo((String) e.get("tipo_campo"));
-                    List<String> opts = (List<String>) e.get("opciones");
-                    enc.setOpciones(opts != null ? opts : new ArrayList<>());
-                    resultado.add(enc);
-                }
-            }
-        } catch (Exception e) {
-            // estructura inválida
-        }
-        return resultado;
+    private List<Campo> extraerCamposUnicos(List<Dato> datos) {
+        return datos.stream()
+                .map(Dato::getCampo)
+                .filter(c -> !List.of("signature_file", "file").contains(c.getTipoCampo().getTipo()))
+                .distinct()
+                .sorted(Comparator.comparing(Campo::getId))
+                .collect(Collectors.toList());
     }
 
-    private List<Map<String, String>> extraerDatosAdicionales(List<Asistencia> asistencias, String nombreEncabezado) {
-        List<Map<String, String>> resultados = new ArrayList<>();
-        for (Asistencia a : asistencias) {
-            if (a.getDatosAdicionales() != null && !a.getDatosAdicionales().isEmpty()) {
-                try {
-                    Map<String, Object> datos = objectMapper.readValue(a.getDatosAdicionales(), new TypeReference<>() {});
-                    Map<String, String> item = new LinkedHashMap<>();
-                    item.put("codigoEstudiante", a.getCodigoEstudiante());
-                    Object valor = datos.get(nombreEncabezado);
-                    item.put("valor", valor != null ? valor.toString() : null);
-                    resultados.add(item);
-                } catch (Exception e) {
-                    // datos inválidos
-                }
-            }
-        }
-        return resultados;
-    }
-
-    private Map<String, Object> calcularEstadisticas(List<Map<String, String>> datos, Encabezado encabezado) {
-        Map<String, Object> stats = new LinkedHashMap<>();
-        String tipoCampo = encabezado.getTipoCampo();
+    private EstadisticasCampoResponse construirEstadisticasCampo(Campo campo, List<Dato> datos, Integer bins) {
+        EstadisticasCampoResponse response = new EstadisticasCampoResponse();
+        response.setCampo(campo.getNombreCampo());
+        response.setTipoCampo(campo.getTipoCampo().getTipo());
+        response.setTotalRegistros(datos.size());
 
         List<String> valores = datos.stream()
-                .map(d -> d.get("valor"))
+                .map(Dato::getInformacion)
                 .filter(v -> v != null && !v.isEmpty())
                 .collect(Collectors.toList());
 
-        stats.put("conRespuestas", valores.size());
-        stats.put("sinRespuestas", datos.size() - valores.size());
+        response.setConRespuestas(valores.size());
+        response.setSinRespuestas(datos.size() - valores.size());
+        response.setEstadisticas(calcularEstadisticasTipadas(valores, campo.getTipoCampo().getTipo(), bins));
 
+        return response;
+    }
+
+    private Object calcularEstadisticasTipadas(List<String> valores, String tipoCampo, Integer bins) {
         switch (tipoCampo) {
-            case "desplegable":
+            case "combo":
             case "radio":
             case "checkbox":
-                Map<String, Long> dist = valores.stream()
-                        .collect(Collectors.groupingBy(v -> v, Collectors.counting()));
-                stats.put("distribucion", dist);
-                break;
-            case "numerico":
+            case "multivaluecheckbox":
+                EstadisticasCategoricasResponse cat = new EstadisticasCategoricasResponse();
+                cat.setConRespuestas(valores.size());
+                cat.setSinRespuestas(0);
+                cat.setDistribucion(valores.stream()
+                        .collect(Collectors.groupingBy(v -> v, Collectors.counting())));
+                cat.setValores(valores);
+                return cat;
+
+            case "numeric":
+                EstadisticasNumericasResponse num = new EstadisticasNumericasResponse();
+                num.setConRespuestas(valores.size());
+                num.setSinRespuestas(0);
                 if (!valores.isEmpty()) {
-                    DoubleSummaryStatistics summary = valores.stream()
+                    List<Double> valoresNumericos = valores.stream()
                             .mapToDouble(v -> {
                                 try { return Double.parseDouble(v); } catch (Exception e) { return 0.0; }
                             })
+                            .boxed()
+                            .collect(Collectors.toList());
+
+                    DoubleSummaryStatistics summary = valoresNumericos.stream()
+                            .mapToDouble(Double::doubleValue)
                             .summaryStatistics();
-                    stats.put("min", summary.getMin());
-                    stats.put("max", summary.getMax());
-                    stats.put("promedio", summary.getAverage());
-                    stats.put("suma", summary.getSum());
-                    stats.put("count", summary.getCount());
+
+                    num.setMin(summary.getMin());
+                    num.setMax(summary.getMax());
+                    num.setPromedio(summary.getAverage());
+                    num.setSuma(summary.getSum());
+                    num.setCount(summary.getCount());
+                    num.setDistribucionPorRango(calcularRangos(valoresNumericos, bins));
                 }
-                break;
-            case "texto":
-            case "area_texto":
-                stats.put("valoresUnicos", valores.stream().distinct().count());
-                stats.put("valorMasComun", valores.stream()
+                return num;
+
+            case "text":
+            case "email":
+                EstadisticasTextoResponse txt = new EstadisticasTextoResponse();
+                txt.setConRespuestas(valores.size());
+                txt.setSinRespuestas(0);
+                txt.setValoresUnicos(valores.stream().distinct().count());
+                txt.setValorMasComun(valores.stream()
                         .collect(Collectors.groupingBy(v -> v, Collectors.counting()))
                         .entrySet().stream()
-                        .max((a, b) -> a.getValue().compareTo(b.getValue()))
+                        .max(Comparator.comparingLong(Map.Entry::getValue))
                         .map(Map.Entry::getKey)
                         .orElse(null));
-                break;
-            case "fecha":
-                stats.put("totalFechas", valores.size());
-                stats.put("formatosDetectados", valores.stream().distinct().count());
-                break;
-            default:
-                stats.put("totalRegistrado", valores.size());
-        }
+                txt.setFrecuencias(valores.stream()
+                        .collect(Collectors.groupingBy(v -> v, Collectors.counting())));
+                txt.setValores(valores);
+                return txt;
 
-        return stats;
+            case "date":
+                EstadisticasFechaResponse fecha = new EstadisticasFechaResponse();
+                fecha.setConRespuestas(valores.size());
+                fecha.setSinRespuestas(0);
+                fecha.setTotalFechas(valores.size());
+                fecha.setValoresUnicos(valores.stream().distinct().count());
+                return fecha;
+
+            default:
+                EstadisticasTextoResponse def = new EstadisticasTextoResponse();
+                def.setConRespuestas(valores.size());
+                def.setSinRespuestas(0);
+                def.setValoresUnicos(valores.stream().distinct().count());
+                return def;
+        }
     }
 
-    private static class Encabezado {
-        private String nombre;
-        private String tipoCampo;
-        private List<String> opciones = new ArrayList<>();
+    private List<RangoEstadisticaResponse> calcularRangos(List<Double> valores, Integer bins) {
+        if (valores.isEmpty()) return Collections.emptyList();
 
-        public String getNombre() { return nombre; }
-        public void setNombre(String nombre) { this.nombre = nombre; }
-        public String getTipoCampo() { return tipoCampo; }
-        public void setTipoCampo(String tipoCampo) { this.tipoCampo = tipoCampo; }
-        public List<String> getOpciones() { return opciones; }
-        public void setOpciones(List<String> opciones) { this.opciones = opciones; }
+        double min = Collections.min(valores);
+        double max = Collections.max(valores);
+
+        if (min == max) {
+            return List.of(new RangoEstadisticaResponse(min, max, (long) valores.size(), String.format("%.1f", min)));
+        }
+
+        int numBins = (bins != null) ? bins : (int) Math.ceil(Math.log(valores.size()) / Math.log(2)) + 1;
+        numBins = Math.max(2, numBins);
+
+        double step = (max - min) / numBins;
+
+        List<RangoEstadisticaResponse> rangos = new ArrayList<>();
+        for (int i = 0; i < numBins; i++) {
+            double rangoMin = min + i * step;
+            double rangoMax = (i == numBins - 1) ? max : min + (i + 1) * step;
+            final double finalMin = rangoMin;
+            final double finalMax = rangoMax;
+            long count = valores.stream()
+                    .filter(v -> v >= finalMin && v <= finalMax)
+                    .count();
+            rangos.add(new RangoEstadisticaResponse(
+                    rangoMin,
+                    rangoMax,
+                    count,
+                    String.format("%.1f - %.1f", rangoMin, rangoMax)
+            ));
+        }
+        return rangos;
     }
 }

@@ -1,16 +1,15 @@
 package co.edu.uceva.microservicioplanilla.domain.service;
 
-import java.time.LocalDateTime;
+import co.edu.uceva.microservicioplanilla.delivery.rest.dto.EstadisticasCampoResponse;
+import co.edu.uceva.microservicioplanilla.delivery.rest.dto.EstadisticasEventoResponse;
+
 import java.util.List;
 import java.util.Map;
 
 public interface IReporteQueryService {
-    Map<String, Object> resumenPorPlanilla(Long planillaId);
     Map<String, Object> resumenJustificaciones();
-    Map<String, Object> ausentismoPorRango(LocalDateTime inicio, LocalDateTime fin);
-    Map<String, Object> trazabilidadEstudiante(String codigoEstudiante);
 
-    Map<String, Object> estadisticasPorEncabezado(Long planillaId, String nombreEncabezado);
-    List<Map<String, Object>> estadisticasCompletasPlanilla(Long planillaId);
-    Map<String, Object> comparativaEncabezados(Long planillaId, List<String> nombresEncabezados);
+    EstadisticasEventoResponse estadisticasCompletasEvento(Long eventoId, Integer bins);
+    EstadisticasCampoResponse estadisticasPorCampoEvento(Long eventoId, String nombreCampo, Integer bins);
+    EstadisticasEventoResponse comparativaCamposEvento(Long eventoId, List<String> nombresCampos, Integer bins);
 }
