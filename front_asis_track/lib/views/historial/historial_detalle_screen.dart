@@ -1,19 +1,42 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../../models/historial_asistencia.dart';
+import '../../providers/auth_provider.dart';
+import '../../services/justificacion_service.dart';
+import '../../services/role_service.dart';
 import '../../themes/app_theme.dart';
 
-class HistorialDetalleScreen extends StatelessWidget {
+class HistorialDetalleScreen extends StatefulWidget {
   final HistorialAsistencia asistencia;
 
   const HistorialDetalleScreen({super.key, required this.asistencia});
 
   @override
+  State<HistorialDetalleScreen> createState() => _HistorialDetalleScreenState();
+}
+
+class _HistorialDetalleScreenState extends State<HistorialDetalleScreen> {
+  late EstadoJustificacion _estadoActual;
+
+  @override
+  void initState() {
+    super.initState();
+    _estadoActual = widget.asistencia.estadoJustificacion;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final bool esFalta = !asistencia.asistio;
+    final a = widget.asistencia;
+    final bool esFalta = !a.asistio;
     final bool mostrarBotonJustificar = esFalta &&
-        (asistencia.estadoJustificacion == EstadoJustificacion.ninguna ||
-            asistencia.estadoJustificacion == EstadoJustificacion.rechazada);
+        (_estadoActual == EstadoJustificacion.ninguna ||
+            _estadoActual == EstadoJustificacion.rechazada);
+
+    final rol = context.read<AuthProvider>().currentUser?.rol ?? '';
+    final puedeValidar = RoleService.canValidateJustificacion(rol);
+    final esPendiente = _estadoActual == EstadoJustificacion.pendiente;
 
     return Scaffold(
       backgroundColor: AppTheme.gray50,
@@ -61,7 +84,7 @@ class HistorialDetalleScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              asistencia.materia,
+                              a.materia,
                               style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -70,7 +93,7 @@ class HistorialDetalleScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              asistencia.tipoEvento,
+                              a.tipoEvento,
                               style: TextStyle(
                                 fontSize: 14,
                                 color: Colors.grey.shade600,
@@ -89,25 +112,25 @@ class HistorialDetalleScreen extends StatelessWidget {
                     icon: Icons.calendar_today,
                     label: 'Fecha',
                     value: DateFormat('EEEE, d MMMM yyyy', 'es')
-                        .format(asistencia.fecha),
+                        .format(a.fecha),
                   ),
                   const SizedBox(height: 12),
                   _DetailRow(
                     icon: Icons.access_time,
                     label: 'Hora',
-                    value: DateFormat('HH:mm').format(asistencia.fecha),
+                    value: DateFormat('HH:mm').format(a.fecha),
                   ),
                   const SizedBox(height: 12),
                   _DetailRow(
                     icon: Icons.person_outline,
                     label: 'Docente a cargo',
-                    value: asistencia.docente,
+                    value: a.docente,
                   ),
                   const SizedBox(height: 12),
                   _DetailRow(
                     icon: Icons.location_on_outlined,
                     label: 'Ubicación',
-                    value: asistencia.ubicacion,
+                    value: a.ubicacion,
                   ),
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 16),
@@ -161,8 +184,7 @@ class HistorialDetalleScreen extends StatelessWidget {
             const SizedBox(height: 24),
 
             // ── Card de Justificación (si es falta y tiene justificación) ──
-            if (esFalta &&
-                asistencia.estadoJustificacion != EstadoJustificacion.ninguna)
+            if (esFalta && _estadoActual != EstadoJustificacion.ninguna)
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -185,12 +207,10 @@ class HistorialDetalleScreen extends StatelessWidget {
                     _DetailRow(
                       icon: Icons.info_outline,
                       label: 'Estado',
-                      value:
-                          _obtenerTextoEstado(asistencia.estadoJustificacion),
-                      valueColor:
-                          _obtenerColorEstado(asistencia.estadoJustificacion),
+                      value: _obtenerTextoEstado(_estadoActual),
+                      valueColor: _obtenerColorEstado(_estadoActual),
                     ),
-                    if (asistencia.motivoJustificacion != null) ...[
+                    if (a.motivoJustificacion != null) ...[
                       const SizedBox(height: 12),
                       const Text(
                         'Motivo:',
@@ -198,12 +218,12 @@ class HistorialDetalleScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        asistencia.motivoJustificacion!,
+                        a.motivoJustificacion!,
                         style: const TextStyle(
                             fontSize: 15, color: AppTheme.gray900),
                       ),
                     ],
-                    if (asistencia.archivoAdjunto != null) ...[
+                    if (a.archivoAdjunto != null) ...[
                       const SizedBox(height: 16),
                       InkWell(
                         onTap: () {},
@@ -225,7 +245,7 @@ class HistorialDetalleScreen extends StatelessWidget {
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  asistencia.archivoAdjunto!,
+                                  a.archivoAdjunto!,
                                   style: const TextStyle(
                                     color: AppTheme.primaryColor,
                                     fontWeight: FontWeight.w500,
@@ -240,6 +260,11 @@ class HistorialDetalleScreen extends StatelessWidget {
                         ),
                       ),
                     ],
+                    // ── Botones de validación (solo Decano / Administrador) ──
+                    if (puedeValidar && esPendiente) ...[
+                      const SizedBox(height: 20),
+                      _buildValidationButtons(a),
+                    ],
                   ],
                 ),
               ),
@@ -250,7 +275,7 @@ class HistorialDetalleScreen extends StatelessWidget {
             if (mostrarBotonJustificar)
               ElevatedButton.icon(
                 onPressed: () {
-                  // Acción desactivada por ahora
+                  context.push('/justificaciones/nueva', extra: a);
                 },
                 icon: const Icon(Icons.description_outlined),
                 label: const Text('Justificar Falta'),
@@ -265,6 +290,79 @@ class HistorialDetalleScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildValidationButtons(HistorialAsistencia a) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final useRow = constraints.maxWidth > 300;
+        final buttons = [
+          ElevatedButton.icon(
+            onPressed: () async {
+              await JustificacionService.validarJustificacion(
+                justificacionId: a.id,
+                aprobada: true,
+              );
+              if (mounted) {
+                setState(() {
+                  _estadoActual = EstadoJustificacion.aprobada;
+                });
+              }
+            },
+            icon: const Icon(Icons.check_circle_outline, size: 18),
+            label: const Text('Aprobar'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.secondaryColor,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              await JustificacionService.validarJustificacion(
+                justificacionId: a.id,
+                aprobada: false,
+              );
+              if (mounted) {
+                setState(() {
+                  _estadoActual = EstadoJustificacion.rechazada;
+                });
+              }
+            },
+            icon: const Icon(Icons.cancel_outlined, size: 18),
+            label: const Text('Rechazar'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.errorColor,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+        ];
+
+        if (useRow) {
+          return Row(
+            children: [
+              Expanded(child: buttons[0]),
+              const SizedBox(width: 12),
+              Expanded(child: buttons[1]),
+            ],
+          );
+        }
+        return Column(
+          children: [
+            SizedBox(width: double.infinity, child: buttons[0]),
+            const SizedBox(height: 8),
+            SizedBox(width: double.infinity, child: buttons[1]),
+          ],
+        );
+      },
     );
   }
 

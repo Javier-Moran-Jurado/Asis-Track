@@ -12,6 +12,7 @@ import 'package:front_asis_track/views/historial/historial_detalle_screen.dart';
 import 'package:front_asis_track/models/historial_asistencia.dart';
 import 'package:front_asis_track/views/main_layout.dart';
 import 'package:front_asis_track/views/justificaciones/justificaciones_screen.dart';
+import 'package:front_asis_track/views/justificaciones/justificacion_screen.dart';
 import 'package:front_asis_track/views/perfil/perfil_screen.dart';
 import 'package:front_asis_track/models/evento_qr.dart';
 
@@ -66,6 +67,16 @@ final GoRouter appRouter = GoRouter(
       pageBuilder: (context, state) => const MaterialPage(
         key: ValueKey('key_a_generador'),
         child: QrGeneratorScreen(),
+      ),
+    ),
+    GoRoute(
+      name: 'j_nueva',
+      path: '/justificaciones/nueva',
+      parentNavigatorKey: _rootNavigatorKey,
+      pageBuilder: (context, state) => MaterialPage(
+        key: const ValueKey('key_j_nueva'),
+        child: JustificacionScreen(
+            asistencia: state.extra as HistorialAsistencia),
       ),
     ),
 

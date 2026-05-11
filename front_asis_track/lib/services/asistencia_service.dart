@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:async' show TimeoutException;
 import 'dart:io' show SocketException;
 import 'package:http/http.dart' as http;
+import '../config/app_config.dart';
 import '../models/evento_qr.dart';
 import '../models/zona.dart';
 
@@ -9,7 +10,7 @@ import '../models/zona.dart';
 /// BASE_URL apunta al gateway/backend real; ajústala según el entorno.
 class AsistenciaService {
   // Ajustado para funcionar en dispositivo físico (moto g52), web o escritorio.
-  static String get _baseUrl => 'https://ambush-goal-narrow.ngrok-free.dev';
+  static String get _baseUrl => AppConfig.baseUrl;
 
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -22,7 +23,10 @@ class AsistenciaService {
       final response = await http
           .post(
             uri,
-            headers: {'Content-Type': 'application/json'},
+            headers: {
+              'Content-Type': 'application/json',
+              'ngrok-skip-browser-warning': 'true',
+            },
             body: jsonEncode({'tokenQr': tokenQr}),
           )
           .timeout(const Duration(seconds: 30));
@@ -69,7 +73,10 @@ class AsistenciaService {
       final response = await http
           .post(
             uri,
-            headers: {'Content-Type': 'application/json'},
+            headers: {
+              'Content-Type': 'application/json',
+              'ngrok-skip-browser-warning': 'true',
+            },
             body: jsonEncode(body),
           )
           .timeout(const Duration(seconds: 30));
@@ -101,7 +108,10 @@ class AsistenciaService {
   static Future<List<Zona>> fetchZonas() async {
     final uri = Uri.parse('$_baseUrl/asistencia/zonas');
     try {
-      final response = await http.get(uri).timeout(const Duration(seconds: 30));
+      final response = await http.get(
+        uri,
+        headers: {'ngrok-skip-browser-warning': 'true'},
+      ).timeout(const Duration(seconds: 30));
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         return data.map((z) => Zona.fromJson(z)).toList();
@@ -128,7 +138,10 @@ class AsistenciaService {
       final response = await http
           .post(
             uri,
-            headers: {'Content-Type': 'application/json'},
+            headers: {
+              'Content-Type': 'application/json',
+              'ngrok-skip-browser-warning': 'true',
+            },
             body: jsonEncode(payload),
           )
           .timeout(const Duration(seconds: 30));

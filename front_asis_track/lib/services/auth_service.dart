@@ -4,6 +4,7 @@ import 'dart:io' show SocketException;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/app_config.dart';
 import '../models/user_model.dart';
 
 /// Servicio de autenticación.
@@ -15,7 +16,7 @@ import '../models/user_model.dart';
 ///   • Persistencia de datos no sensibles del usuario (shared_preferences).
 class AuthService {
   // ──────────────────────────────────────────────────────────────────────────
-  static String get _baseUrl => 'https://ambush-goal-narrow.ngrok-free.dev';
+  static String get _baseUrl => AppConfig.baseUrl;
 
   // ──────────────────────────────────────────────────────────────────────────
   // SecureStorage — SOLO tokens sensibles
@@ -53,7 +54,10 @@ class AuthService {
       final response = await http
           .post(
             uri,
-            headers: {'Content-Type': 'application/json'},
+            headers: {
+              'Content-Type': 'application/json',
+              'ngrok-skip-browser-warning': 'true',
+            },
             body: jsonEncode({
               'codigo': int.parse(codigo),
               'contrasena': contrasena,
@@ -103,6 +107,7 @@ class AuthService {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $accessToken',
+          'ngrok-skip-browser-warning': 'true',
         },
       ).timeout(const Duration(seconds: 30));
 
