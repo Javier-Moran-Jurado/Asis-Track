@@ -28,7 +28,7 @@ public class AppConfig {
     public UserDetailsService userDetailsService() {
         return username -> {
             Long codigo = Long.parseLong(username);
-            final Usuario usuario = usuarioRepository.findById(codigo)
+            final Usuario usuario = usuarioRepository.findByCodigo(codigo)
                     .orElseThrow(() -> new UsuarioNoEncontradoException(codigo));
             return org.springframework.security.core.userdetails.User.builder()
                     .username(codigo.toString())

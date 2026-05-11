@@ -1,7 +1,6 @@
 package co.edu.uceva.microserviciousuario.auth.config;
 
-import co.edu.uceva.microserviciousuario.auth.repository.ITokenRepository;
-import co.edu.uceva.microserviciousuario.auth.repository.Token;
+
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +27,6 @@ public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
     private final AuthenticationProvider authenticationProvider;
-    private final ITokenRepository tokenRepository;
 
     @Bean
     public SecurityFilterChain securityFilterChain(final HttpSecurity http) throws Exception {
@@ -57,20 +55,6 @@ public class SecurityConfig {
             final HttpServletRequest request, final HttpServletResponse response,
             final Authentication authentication
     ) {
-
-        final String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return;
-        }
-
-        final String jwt = authHeader.substring(7);
-        final Token storedToken = tokenRepository.findByToken(jwt)
-                .orElse(null);
-        if (storedToken != null) {
-            storedToken.setExpired(true);
-            storedToken.setRevoked(true);
-            tokenRepository.save(storedToken);
-            SecurityContextHolder.clearContext();
-        }
+        SecurityContextHolder.clearContext();
     }
 }
