@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../models/historial_asistencia.dart';
 import '../../themes/app_theme.dart';
+import '../../utils/app_breakpoints.dart';
 import 'package:intl/intl.dart';
 
 class HistorialScreen extends StatefulWidget {
@@ -211,7 +212,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
                     ),
                   )
                 : ListView.builder(
-                    padding: const EdgeInsets.all(16),
+                    padding: AppBreakpoints.responsivePadding(context),
                     itemCount: _historialFiltrado.length,
                     itemBuilder: (context, index) {
                       final item = _historialFiltrado[index];

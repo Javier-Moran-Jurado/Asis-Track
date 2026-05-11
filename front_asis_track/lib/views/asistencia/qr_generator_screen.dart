@@ -6,6 +6,7 @@ import '../../models/zona.dart';
 import '../../services/asistencia_service.dart';
 import '../../widgets/custom_button.dart';
 import '../../themes/app_theme.dart';
+import '../../utils/app_breakpoints.dart';
 
 class QrGeneratorScreen extends StatefulWidget {
   const QrGeneratorScreen({super.key});
@@ -372,7 +373,11 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
       );
     }
 
-    return SingleChildScrollView(
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+            maxWidth: AppBreakpoints.maxContentWidth),
+        child: SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
       child: Form(
         key: _formKey,
@@ -467,7 +472,9 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
           ],
         ),
       ),
-    );
+    ),
+  ),
+  );
   }
 
   Widget _buildQrView() {
