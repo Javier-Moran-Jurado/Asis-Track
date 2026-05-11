@@ -41,7 +41,7 @@ public class ReporteQueryServiceImpl implements IReporteQueryService {
         }
 
         // Buscar el campo por nombre dentro de la planilla
-        Campo campo = campoRepository.findByPlanillaIdAndNombreCampo(planillaId, nombreCampo);
+        Campo campo = campoRepository.findTopByPlanillaIdAndNombreCampoOrderByIdAsc(planillaId, nombreCampo);
         if (campo == null) {
             response.put("error", "Campo no encontrado: " + nombreCampo);
             return response;
@@ -96,7 +96,7 @@ public class ReporteQueryServiceImpl implements IReporteQueryService {
         }
 
         for (String nombre : nombresCampos) {
-            Campo campo = campoRepository.findByPlanillaIdAndNombreCampo(planillaId, nombre);
+            Campo campo = campoRepository.findTopByPlanillaIdAndNombreCampoOrderByIdAsc(planillaId, nombre);
             if (campo != null) {
                 List<Dato> datos = datoRepository.findByCampoId(campo.getId());
                 Map<String, Object> item = new LinkedHashMap<>();

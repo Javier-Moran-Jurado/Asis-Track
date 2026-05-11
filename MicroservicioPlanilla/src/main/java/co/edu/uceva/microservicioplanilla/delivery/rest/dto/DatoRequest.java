@@ -7,7 +7,6 @@ import lombok.Setter;
 @Getter
 @Setter
 public class DatoRequest {
-    @NotNull
     private Long filaId;
 
     @NotNull

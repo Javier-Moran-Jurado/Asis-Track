@@ -1,6 +1,6 @@
 package co.edu.uceva.microservicioplanilla.delivery.rest;
 
-import co.edu.uceva.microservicioplanilla.delivery.rest.dto.JustificacionDTO;
+import co.edu.uceva.microservicioplanilla.delivery.rest.dto.JustificacionResponse;
 import co.edu.uceva.microservicioplanilla.delivery.rest.dto.JustificacionRequest;
 import co.edu.uceva.microservicioplanilla.delivery.rest.dto.RevisionRequest;
 import co.edu.uceva.microservicioplanilla.domain.model.EstadoJustificacion;
@@ -24,7 +24,7 @@ public class JustificacionRestController {
 
     @PreAuthorize("isAuthenticated() and hasAnyRole('Estudiante', 'Monitor', 'Docente', 'Administrador', 'Administrativo')")
     @PostMapping("/solicitar")
-    public ResponseEntity<JustificacionDTO> solicitarJustificacion(@RequestBody JustificacionRequest request) {
+    public ResponseEntity<JustificacionResponse> solicitarJustificacion(@RequestBody JustificacionRequest request) {
         Justificacion saved = justificacionService.solicitarJustificacion(
                 request.getEventoId(),
                 request.getCodigoEstudiante(),
@@ -36,28 +36,28 @@ public class JustificacionRestController {
 
     @PreAuthorize("isAuthenticated() and hasAnyRole('Docente', 'Administrador', 'Administrativo', 'Decano')")
     @PostMapping("/{id}/aprobar")
-    public ResponseEntity<JustificacionDTO> aprobarJustificacion(@PathVariable Long id, @RequestBody RevisionRequest request) {
+    public ResponseEntity<JustificacionResponse> aprobarJustificacion(@PathVariable Long id, @RequestBody RevisionRequest request) {
         Justificacion updated = justificacionService.aprobarJustificacion(id, request.getCodigoDecano(), request.getObservaciones());
         return ResponseEntity.ok(convertToDTO(updated));
     }
 
     @PreAuthorize("isAuthenticated() and hasAnyRole('Docente', 'Administrador', 'Administrativo', 'Decano')")
     @PostMapping("/{id}/rechazar")
-    public ResponseEntity<JustificacionDTO> rechazarJustificacion(@PathVariable Long id, @RequestBody RevisionRequest request) {
+    public ResponseEntity<JustificacionResponse> rechazarJustificacion(@PathVariable Long id, @RequestBody RevisionRequest request) {
         Justificacion updated = justificacionService.rechazarJustificacion(id, request.getCodigoDecano(), request.getObservaciones());
         return ResponseEntity.ok(convertToDTO(updated));
     }
 
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/{id}")
-    public ResponseEntity<JustificacionDTO> findById(@PathVariable Long id) {
+    public ResponseEntity<JustificacionResponse> findById(@PathVariable Long id) {
         return ResponseEntity.ok(convertToDTO(justificacionService.findById(id)));
     }
 
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/estudiante/{codigoEstudiante}")
-    public ResponseEntity<List<JustificacionDTO>> findByCodigoEstudiante(@PathVariable Long codigoEstudiante) {
-        List<JustificacionDTO> response = justificacionService.findByCodigoEstudiante(codigoEstudiante)
+    public ResponseEntity<List<JustificacionResponse>> findByCodigoEstudiante(@PathVariable Long codigoEstudiante) {
+        List<JustificacionResponse> response = justificacionService.findByCodigoEstudiante(codigoEstudiante)
                 .stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
@@ -66,8 +66,8 @@ public class JustificacionRestController {
 
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/evento/{eventoId}")
-    public ResponseEntity<List<JustificacionDTO>> findByEventoId(@PathVariable Long eventoId) {
-        List<JustificacionDTO> response = justificacionService.findByEventoId(eventoId)
+    public ResponseEntity<List<JustificacionResponse>> findByEventoId(@PathVariable Long eventoId) {
+        List<JustificacionResponse> response = justificacionService.findByEventoId(eventoId)
                 .stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
@@ -76,8 +76,8 @@ public class JustificacionRestController {
 
     @PreAuthorize("isAuthenticated() and hasAnyRole('Docente', 'Administrador', 'Administrativo', 'Decano')")
     @GetMapping("/estado/{estado}")
-    public ResponseEntity<List<JustificacionDTO>> findByEstado(@PathVariable EstadoJustificacion estado) {
-        List<JustificacionDTO> response = justificacionService.findByEstado(estado)
+    public ResponseEntity<List<JustificacionResponse>> findByEstado(@PathVariable EstadoJustificacion estado) {
+        List<JustificacionResponse> response = justificacionService.findByEstado(estado)
                 .stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
@@ -86,8 +86,8 @@ public class JustificacionRestController {
 
     @PreAuthorize("isAuthenticated() and hasAnyRole('Docente', 'Administrador', 'Administrativo', 'Decano')")
     @GetMapping("/all")
-    public ResponseEntity<List<JustificacionDTO>> findAll() {
-        List<JustificacionDTO> response = justificacionService.findAll()
+    public ResponseEntity<List<JustificacionResponse>> findAll() {
+        List<JustificacionResponse> response = justificacionService.findAll()
                 .stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
@@ -96,7 +96,7 @@ public class JustificacionRestController {
 
     @PreAuthorize("isAuthenticated() and hasAnyRole('Docente', 'Administrador', 'Administrativo', 'Decano')")
     @PutMapping("/{id}")
-    public ResponseEntity<JustificacionDTO> update(@PathVariable Long id, @RequestBody JustificacionDTO dto) {
+    public ResponseEntity<JustificacionResponse> update(@PathVariable Long id, @RequestBody JustificacionResponse dto) {
         Justificacion justificacion = convertToEntity(dto);
         justificacion.setId(id);
         Justificacion updated = justificacionService.update(justificacion);
@@ -110,9 +110,9 @@ public class JustificacionRestController {
         return ResponseEntity.noContent().build();
     }
 
-    private JustificacionDTO convertToDTO(Justificacion entity) {
+    private JustificacionResponse convertToDTO(Justificacion entity) {
         if (entity == null) return null;
-        JustificacionDTO dto = new JustificacionDTO();
+        JustificacionResponse dto = new JustificacionResponse();
         dto.setId(entity.getId());
         dto.setEventoId(entity.getEvento() != null ? entity.getEvento().getId() : null);
         dto.setCodigoEstudiante(entity.getCodigoEstudiante());
@@ -126,7 +126,7 @@ public class JustificacionRestController {
         return dto;
     }
 
-    private Justificacion convertToEntity(JustificacionDTO dto) {
+    private Justificacion convertToEntity(JustificacionResponse dto) {
         if (dto == null) return null;
         Justificacion entity = new Justificacion();
         entity.setId(dto.getId());

@@ -6,11 +6,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class GenerarPropuestaRequest {
+public class TipoCampoRequest {
     @NotBlank
-    private String descripcion;
-
-    private boolean crearEvento = false;
-
-    private Long lugarId;
+    private String tipo;
 }

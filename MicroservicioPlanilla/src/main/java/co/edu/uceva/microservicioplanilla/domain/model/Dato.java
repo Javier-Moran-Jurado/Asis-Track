@@ -1,5 +1,6 @@
 package co.edu.uceva.microservicioplanilla.domain.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -24,6 +25,7 @@ public class Dato {
     @JoinColumn(name = "id_campo", nullable = false)
     private Campo campo;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_fila", nullable = false)
     private Fila fila;

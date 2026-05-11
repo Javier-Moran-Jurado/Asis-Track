@@ -33,11 +33,9 @@ public class Planilla {
     @Column(name = "url_referencia", columnDefinition = "TEXT")
     private String urlReferencia;
 
-    @JsonIgnore
     @OneToMany(mappedBy = "planilla", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Campo> campos;
 
-    @JsonIgnore
     @OneToMany(mappedBy = "planilla", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Fila> filas;
 }

@@ -71,16 +71,10 @@ public class DatoRestController {
     }
 
     private List<DatoResponse> toResponse(List<Dato> datos) {
-        return datos.stream().map(this::toResponse).toList();
+        return datos.stream().map(DatoResponse::from).toList();
     }
 
     private DatoResponse toResponse(Dato d) {
-        DatoResponse resp = new DatoResponse();
-        resp.setId(d.getId());
-        resp.setCampoId(d.getCampo() != null ? d.getCampo().getId() : null);
-        resp.setFilaId(d.getFila() != null ? d.getFila().getId() : null);
-        resp.setPosicion(d.getPosicion());
-        resp.setInformacion(d.getInformacion());
-        return resp;
+        return DatoResponse.from(d);
     }
 }

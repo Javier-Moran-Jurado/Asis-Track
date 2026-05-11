@@ -24,6 +24,12 @@ public class S3StorageService {
     @Value("${s3.bucket:}")
     private String bucket;
 
+    @Value("${s3.endpoint:}")
+    private String endpoint;
+
+    @Value("${s3.public-base-url:}")
+    private String publicBaseUrl;
+
     public S3StorageService(S3Client s3Client, S3Presigner s3Presigner) {
         this.s3Client = s3Client;
         this.s3Presigner = s3Presigner;
@@ -43,6 +49,25 @@ public class S3StorageService {
         } catch (Exception e) {
             throw new RuntimeException("Error uploading to S3", e);
         }
+    }
+
+    public String publicUrl(String key) {
+        String base = resolvePublicBaseUrl();
+        if (!base.endsWith("/")) base += "/";
+        return base + key;
+    }
+
+    private String resolvePublicBaseUrl() {
+        if (publicBaseUrl != null && !publicBaseUrl.isBlank()) {
+            return publicBaseUrl;
+        }
+        if (endpoint != null && endpoint.contains(".supabase.co")) {
+            return endpoint.replaceFirst(
+                "https?://([^.]+)\\.storage\\.supabase\\.co/storage/v1/s3",
+                "https://$1.supabase.co/storage/v1/object/public/" + bucket
+            );
+        }
+        return presignedGetUrl("/", Duration.ofHours(1)).replace("/?", "");
     }
 
     public String presignedGetUrl(String key, Duration ttl) {

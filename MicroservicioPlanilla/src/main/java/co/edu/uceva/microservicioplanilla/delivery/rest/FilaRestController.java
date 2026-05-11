@@ -2,7 +2,6 @@ package co.edu.uceva.microservicioplanilla.delivery.rest;
 
 import co.edu.uceva.microservicioplanilla.domain.model.Fila;
 import co.edu.uceva.microservicioplanilla.domain.service.IFilaService;
-import co.edu.uceva.microservicioplanilla.delivery.rest.dto.DatoResponse;
 import co.edu.uceva.microservicioplanilla.delivery.rest.dto.FilaRequest;
 import co.edu.uceva.microservicioplanilla.delivery.rest.dto.FilaResponse;
 import jakarta.validation.Valid;
@@ -96,27 +95,10 @@ public class FilaRestController {
     }
 
     private List<FilaResponse> toResponse(List<Fila> filas) {
-        return filas.stream().map(this::toResponse).toList();
+        return filas.stream().map(FilaResponse::from).toList();
     }
 
     private FilaResponse toResponse(Fila fila) {
-        FilaResponse resp = new FilaResponse();
-        resp.setId(fila.getId());
-        resp.setPlanillaId(fila.getPlanilla() != null ? fila.getPlanilla().getId() : null);
-        resp.setCodigoUsuario(fila.getCodigoUsuario());
-        resp.setIndice(fila.getIndice());
-        resp.setFechaRegistro(fila.getFechaRegistro());
-        if (fila.getDatos() != null) {
-            resp.setDatos(fila.getDatos().stream().map(d -> {
-                DatoResponse dr = new DatoResponse();
-                dr.setId(d.getId());
-                dr.setCampoId(d.getCampo() != null ? d.getCampo().getId() : null);
-                dr.setFilaId(d.getFila() != null ? d.getFila().getId() : null);
-                dr.setPosicion(d.getPosicion());
-                dr.setInformacion(d.getInformacion());
-                return dr;
-            }).toList());
-        }
-        return resp;
+        return FilaResponse.from(fila);
     }
 }

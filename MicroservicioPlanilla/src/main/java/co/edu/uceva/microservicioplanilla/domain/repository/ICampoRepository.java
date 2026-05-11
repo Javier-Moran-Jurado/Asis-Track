@@ -8,6 +8,6 @@ import java.util.List;
 public interface ICampoRepository extends JpaRepository<Campo, Long> {
     List<Campo> findByPlanillaId(Long planillaId);
     List<Campo> findByTipoCampoId(Long tipoCampoId);
-    Campo findByPlanillaIdAndNombreCampo(Long planillaId, String nombreCampo);
+    Campo findTopByPlanillaIdAndNombreCampoOrderByIdAsc(Long planillaId, String nombreCampo);
     void deleteByPlanillaId(Long planillaId);
 }

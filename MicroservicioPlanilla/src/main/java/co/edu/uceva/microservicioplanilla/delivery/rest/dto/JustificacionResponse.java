@@ -6,7 +6,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-public class JustificacionDTO {
+public class JustificacionResponse {
     private Long id;
     private Long eventoId;
     private Long codigoEstudiante;

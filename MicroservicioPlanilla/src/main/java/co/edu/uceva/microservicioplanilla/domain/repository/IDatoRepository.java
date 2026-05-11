@@ -28,4 +28,8 @@ public interface IDatoRepository extends JpaRepository<Dato, Long> {
     @Modifying
     @Query("DELETE FROM Dato d WHERE d.fila.id = :filaId")
     void deleteByFilaId(@Param("filaId") Long filaId);
+
+    @Modifying
+    @Query("DELETE FROM Dato d WHERE d.fila.planilla.id = :planillaId")
+    void deleteByPlanillaId(@Param("planillaId") Long planillaId);
 }

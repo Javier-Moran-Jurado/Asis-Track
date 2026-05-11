@@ -15,9 +15,8 @@ public class FilaRequest {
 
     private Long codigoUsuario;
 
-    @NotNull
     private Integer indice;
 
     @Valid
-    private List<DatoSinFilaRequest> datos;
+    private List<DatoRequest> datos;
 }

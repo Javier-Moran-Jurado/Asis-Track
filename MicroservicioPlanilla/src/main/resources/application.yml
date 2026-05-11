@@ -103,4 +103,5 @@ s3:
   secret-key: ${S3_SECRECT_ACCESS_KEY:}
   region: ${S3_REGION:us-east-1}
   bucket: ${S3_BUCKET:}
+  public-base-url: ${S3_PUBLIC_BASE_URL:}
   presign-ttl-seconds: ${S3_PRESIGN_TTL:3600}

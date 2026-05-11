@@ -8,20 +8,15 @@ import co.edu.uceva.microservicioplanilla.domain.service.IPlanillaService;
 import co.edu.uceva.microservicioplanilla.service.PlanillaProcessingService;
 import co.edu.uceva.microservicioplanilla.delivery.rest.dto.*;
 import co.edu.uceva.microservicioplanilla.utils.FileHandlerUtil;
-import co.edu.uceva.microservicioplanilla.utils.PythonSignatureUtil;
 import jakarta.validation.Valid;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Base64;
-import java.util.List;
-import lombok.SneakyThrows;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/planilla-service")
@@ -47,184 +42,80 @@ public class PlanillaRestController {
         this.campoService = campoService;
     }
 
-    @PreAuthorize(
-        "isAuthenticated() and hasAnyRole('Administrativo', 'Administrador')"
-    )
+    @PreAuthorize("isAuthenticated() and hasAnyRole('Administrativo', 'Administrador')")
     @GetMapping("/planillas")
-    public List<Planilla> getPlanillas() {
-        return planillaService.findAll();
+    public List<PlanillaResponse> getPlanillas() {
+        return planillaService.findAll().stream().map(PlanillaResponse::from).toList();
     }
 
-    @PreAuthorize(
-        "isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Docente', 'Monitor', 'Decano')"
-    )
+    @PreAuthorize("isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Docente', 'Monitor', 'Decano')")
     @PostMapping("/planillas")
-    public Planilla save(@RequestBody Planilla planilla) {
-        return planillaService.save(planilla);
+    public PlanillaResponse save(@Valid @RequestBody PlanillaRequest request) {
+        Planilla planilla = planillaService.save(request);
+        return PlanillaResponse.from(planilla);
     }
 
-    @PreAuthorize(
-        "isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Monitor')"
-    )
-    @PostMapping("/planillas/digitalizar")
-    public List<PlanillaDigitalizadaResponse> digitalizar(
-            @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "planillaId", required = false) Integer planillaId,
-            @RequestParam("estructuraJson") String estructuraJson) {
-        try {
-            List<PlanillaDigitalizadaResponse> result = planillaProcessingService.processAndUpload(file, estructuraJson);
-            if (planillaId != null) {
-                for (PlanillaDigitalizadaResponse hoja : result) {
-                    hoja.setPlanillaId(planillaId);
-                }
-            }
-            return result;
-        } catch (IllegalArgumentException ie) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ie.getMessage());
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error en digitalizar: " + e.getMessage());
-        }
+    @PreAuthorize("isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Docente', 'Monitor', 'Decano')")
+    @GetMapping("/planillas/{id}")
+    public PlanillaResponse findById(@PathVariable Long id) {
+        return PlanillaResponse.from(planillaService.findById(id));
     }
 
-    @PreAuthorize(
-        "isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Monitor')"
-    )
-    @PostMapping("/planillas/digitalizar/guardar")
-    public List<PlanillaDigitalizadaResponse> guardarDigitalizacion(
-            @RequestParam(required = false) Integer planillaId,
-            @RequestBody List<PlanillaDigitalizadaResponse> datos) {
-        if (planillaId != null) {
-            for (PlanillaDigitalizadaResponse hoja : datos) {
-                hoja.setPlanillaId(planillaId);
-            }
-        }
-        // Extraer imagen de referencia del campo imagenReferenciaB64 del primer elemento
-        String imagenRef = null;
-        if (!datos.isEmpty() && datos.get(0).getImagenReferenciaB64() != null) {
-            imagenRef = datos.get(0).getImagenReferenciaB64();
-        }
-        try {
-            return planillaProcessingService.saveCorrectedData(datos, imagenRef);
-        } catch (ResponseStatusException rse) {
-            throw rse;
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error en el servidor: " + e.getMessage());
-        }
+    @PreAuthorize("isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Docente', 'Monitor', 'Decano')")
+    @PutMapping("/planillas/{id}")
+    public PlanillaResponse update(@PathVariable Long id, @Valid @RequestBody PlanillaRequest request) {
+        return PlanillaResponse.from(planillaService.update(id, request));
     }
 
-    public static class RecorteRequest {
-        public int index;
-        public int x;
-        public int y;
-        public int w;
-        public int h;
-        public String sourceImageB64;
-    }
-
-    public static class RecorteResponse {
-        public int index;
-        public String firmaB64;
-    }
-
-    @PreAuthorize(
-        "isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Monitor')"
-    )
-    @PostMapping("/planillas/digitalizar/recortar")
-    public RecorteResponse corregirRecorteFirma(
-        @RequestBody RecorteRequest request
-    ) {
-        try {
-            Path tmpDir = Files.createTempDirectory("custom-crop");
-            String path = PythonSignatureUtil.cropSignature(
-                request.sourceImageB64,
-                request.x,
-                request.y,
-                request.w,
-                request.h,
-                tmpDir
-            );
-            byte[] fileBytes = Files.readAllBytes(Paths.get(path));
-            String base64 =
-                "data:image/png;base64," +
-                Base64.getEncoder().encodeToString(fileBytes);
-
-            Files.walk(tmpDir)
-                .sorted(java.util.Comparator.reverseOrder())
-                .map(Path::toFile)
-                .forEach(java.io.File::delete);
-
-            RecorteResponse response = new RecorteResponse();
-            response.index = request.index;
-            response.firmaB64 = base64;
-            return response;
-        } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error recortando firma: " + e.getMessage());
-        }
-    }
-
-    @PreAuthorize(
-        "isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Monitor')"
-    )
-    @PostMapping("/planillas/campos")
-    public String obtenerCampos(@RequestParam("file") MultipartFile file) {
-        try {
-            String text = "";
-            String contentType = file.getContentType();
-            
-            if ("application/pdf".equals(contentType)) {
-                List<Resource> resources = FileHandlerUtil.pdfToImages(file);
-                text = compositeAiService.processStructureBatch(resources);
-            } else if ("application/zip".equals(contentType) || "application/x-zip-compressed".equals(contentType)) {
-                List<Resource> resources = FileHandlerUtil.extractZip(file);
-                text = compositeAiService.processStructureBatch(resources);
-            } else if (contentType != null && contentType.startsWith("image/")) {
-                text = compositeAiService.processStructureBatch(
-                    List.of(file.getResource())
-                );
-            } else {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tipo de archivo no soportado: " + contentType);
-            }
-            return text;
-        } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error en obtenerCampos: " + e.getMessage());
-        }
-    }
-
-    @PreAuthorize(
-        "isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Docente', 'Monitor', 'Decano')"
-    )
+    @PreAuthorize("isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Docente', 'Monitor', 'Decano')")
     @DeleteMapping("/planillas/{id}")
     public void delete(@PathVariable Long id) {
         planillaService.deleteById(id);
     }
 
-    @PreAuthorize(
-        "isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Docente', 'Monitor', 'Decano')"
-    )
-    @PutMapping("/planillas")
-    public Planilla update(@RequestBody Planilla planilla) {
-        return planillaService.update(planilla);
+    @PreAuthorize("isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Monitor')")
+    @PostMapping("/planillas/digitalizar")
+    public PlanillaResponse digitalizar(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("planillaId") Long planillaId,
+            @RequestParam("estructuraJson") String estructuraJson) {
+        try {
+            return planillaProcessingService.digitalizarYGuardar(file, planillaId, estructuraJson);
+        } catch (ResponseStatusException rse) {
+            throw rse;
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error en digitalizar: " + e.getMessage());
+        }
     }
 
-    @PreAuthorize(
-        "isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Docente', 'Monitor', 'Decano')"
-    )
-    @GetMapping("/planillas/{id}")
-    public Planilla findById(@PathVariable Long id) {
-        return planillaService.findById(id);
+    @PreAuthorize("isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Monitor')")
+    @PostMapping("/planillas/campos")
+    public String obtenerCampos(@RequestParam("file") MultipartFile file) {
+        try {
+            String contentType = file.getContentType();
+            if ("application/pdf".equals(contentType)) {
+                List<Resource> resources = FileHandlerUtil.pdfToImages(file);
+                return compositeAiService.processStructureBatch(resources);
+            } else if ("application/zip".equals(contentType) || "application/x-zip-compressed".equals(contentType)) {
+                List<Resource> resources = FileHandlerUtil.extractZip(file);
+                return compositeAiService.processStructureBatch(resources);
+            } else if (contentType != null && contentType.startsWith("image/")) {
+                return compositeAiService.processStructureBatch(List.of(file.getResource()));
+            } else {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tipo de archivo no soportado: " + contentType);
+            }
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error en obtenerCampos: " + e.getMessage());
+        }
     }
 
-    @PreAuthorize(
-        "isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Monitor')"
-    )
+    @PreAuthorize("isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Monitor')")
     @PostMapping("/planillas/{planillaId}/proponer-estructura")
-    public EstructuraPropuestaResponse proponerEstructura(
+    public List<CampoResponse> proponerEstructura(
             @PathVariable Long planillaId,
             @RequestParam("imagen") MultipartFile imagen) {
         try {
-            return planillaProcessingService.proposeStructureFromImage(planillaId, imagen);
+            return planillaProcessingService.proposeAndSaveStructure(planillaId, imagen);
         } catch (ResponseStatusException rse) {
             throw rse;
         } catch (Exception e) {
@@ -232,40 +123,26 @@ public class PlanillaRestController {
         }
     }
 
-    @PreAuthorize(
-        "isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Monitor')"
-    )
+    @PreAuthorize("isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Monitor')")
     @PostMapping("/planillas/{planillaId}/confirmar-estructura")
-    public List<co.edu.uceva.microservicioplanilla.domain.model.Campo> confirmarEstructura(
+    public List<CampoResponse> confirmarEstructura(
             @PathVariable Long planillaId,
             @Valid @RequestBody List<CampoRequest> campos) {
         for (CampoRequest cr : campos) {
             cr.setPlanillaId(planillaId);
         }
-        return campoService.saveAll(campos);
+        return campoService.saveAll(campos).stream().map(CampoResponse::from).toList();
     }
 
-    @PreAuthorize(
-        "isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Monitor')"
-    )
+    @PreAuthorize("isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Monitor')")
     @PostMapping("/planillas/generar-propuesta")
-    public PlanillaPropuestaResponse generarPropuesta(@Valid @RequestBody GenerarPropuestaRequest request) {
+    public PlanillaResponse generarPropuesta(
+            @RequestParam("descripcion") String descripcion,
+            @RequestParam(value = "lugarId", required = false) Long lugarId) {
         try {
-            return generadorPlanillaService.generarPropuesta(request);
+            return generadorPlanillaService.generarYGuardarPropuesta(descripcion, lugarId);
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error generando propuesta: " + e.getMessage());
-        }
-    }
-
-    @PreAuthorize(
-        "isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Monitor')"
-    )
-    @PostMapping("/planillas/generar-propuesta/confirmar")
-    public Planilla confirmarPropuesta(@Valid @RequestBody ConfirmarPropuestaRequest request) {
-        try {
-            return generadorPlanillaService.confirmarPropuesta(request);
-        } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error confirmando propuesta: " + e.getMessage());
         }
     }
 }

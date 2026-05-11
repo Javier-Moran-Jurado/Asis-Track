@@ -1,5 +1,6 @@
 package co.edu.uceva.microservicioplanilla.domain.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -26,6 +27,7 @@ public class Fila {
     @Column(name = "codigo_usuario")
     private Long codigoUsuario;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_planilla", nullable = false)
     private Planilla planilla;

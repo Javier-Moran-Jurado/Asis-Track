@@ -1,5 +1,6 @@
 package co.edu.uceva.microservicioplanilla.domain.service;
 
+import co.edu.uceva.microservicioplanilla.delivery.rest.dto.PlanillaRequest;
 import co.edu.uceva.microservicioplanilla.domain.model.Planilla;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -8,15 +9,15 @@ import java.util.List;
 
 public interface IPlanillaService {
 
-    public List<Planilla> findAll();
+    List<Planilla> findAll();
 
-    public Planilla findById(long id);
+    Planilla findById(long id);
 
-    public Planilla update(Planilla planilla);
+    Planilla update(Long id, PlanillaRequest request);
 
-    public Planilla save(Planilla planilla);
+    Planilla save(PlanillaRequest request);
 
-    public void deleteById(long id);
+    void deleteById(long id);
 
-    public Page<Planilla> findAll(Pageable pageable);
+    Page<Planilla> findAll(Pageable pageable);
 }

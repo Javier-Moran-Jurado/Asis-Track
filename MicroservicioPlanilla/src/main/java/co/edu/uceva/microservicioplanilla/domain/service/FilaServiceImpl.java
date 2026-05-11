@@ -8,7 +8,7 @@ import co.edu.uceva.microservicioplanilla.domain.repository.ICampoRepository;
 import co.edu.uceva.microservicioplanilla.domain.repository.IDatoRepository;
 import co.edu.uceva.microservicioplanilla.domain.repository.IFilaRepository;
 import co.edu.uceva.microservicioplanilla.domain.repository.IPlanillaRepository;
-import co.edu.uceva.microservicioplanilla.delivery.rest.dto.DatoSinFilaRequest;
+import co.edu.uceva.microservicioplanilla.delivery.rest.dto.DatoRequest;
 import co.edu.uceva.microservicioplanilla.delivery.rest.dto.FilaRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
@@ -68,9 +68,15 @@ public class FilaServiceImpl implements IFilaService {
         Planilla planilla = planillaRepository.findById(request.getPlanillaId())
                 .orElseThrow(() -> new IllegalArgumentException("Planilla no encontrada: " + request.getPlanillaId()));
 
+        Integer indice = request.getIndice();
+        if (indice == null || filaRepository.findByPlanillaIdAndIndice(planilla.getId(), indice).isPresent()) {
+            Integer max = filaRepository.findMaxIndiceByPlanillaId(planilla.getId());
+            indice = (max != null) ? max + 1 : 0;
+        }
+
         Fila fila = new Fila();
         fila.setPlanilla(planilla);
-        fila.setIndice(request.getIndice());
+        fila.setIndice(indice);
         fila.setCodigoUsuario(codigoUsuario);
 
         List<Dato> datos = mapDatos(request.getDatos(), fila);
@@ -121,7 +127,7 @@ public class FilaServiceImpl implements IFilaService {
         }
 
         if (request.getDatos() != null) {
-            for (DatoSinFilaRequest datoReq : request.getDatos()) {
+            for (DatoRequest datoReq : request.getDatos()) {
                 Campo campo = campoRepository.findById(datoReq.getCampoId())
                         .orElseThrow(() -> new IllegalArgumentException("Campo no encontrado: " + datoReq.getCampoId()));
                 validateCampoBelongsToPlanilla(campo, fila.getPlanilla());
@@ -154,10 +160,10 @@ public class FilaServiceImpl implements IFilaService {
         filaRepository.deleteById(id);
     }
 
-    private List<Dato> mapDatos(List<DatoSinFilaRequest> requests, Fila fila) {
+    private List<Dato> mapDatos(List<DatoRequest> requests, Fila fila) {
         if (requests == null) return new ArrayList<>();
         List<Dato> datos = new ArrayList<>();
-        for (DatoSinFilaRequest req : requests) {
+        for (DatoRequest req : requests) {
             Campo campo = campoRepository.findById(req.getCampoId())
                     .orElseThrow(() -> new IllegalArgumentException("Campo no encontrado: " + req.getCampoId()));
             validateCampoBelongsToPlanilla(campo, fila.getPlanilla());

@@ -4,13 +4,11 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.List;
-
 @Getter
 @Setter
-public class ConfirmarPropuestaRequest {
-    private EventoConfirmadoRequest evento;
-
+public class PlanillaRequest {
     @NotNull
-    private List<CampoRequest> campos;
+    private Long origenId;
+    private Long eventoId;
+    private String urlReferencia;
 }
