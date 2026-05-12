@@ -87,7 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   // ── Logo ───────────────────────────────────────────────
                   Center(
                     child: Image.asset(
-                      'assets/icon/logo-asis-track.png',
+                      'assets/icon/logo_asis_track.png',
                       width: 100,
                       height: 100,
                     ),
