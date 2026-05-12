@@ -83,7 +83,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 8),
                 Center(
                   child: Image.asset(
-                    'assets/icon/logo-asis-track.png',
+                    'assets/icon/logo_asis_track.png',
                     height: 80,
                   ),
                 ),

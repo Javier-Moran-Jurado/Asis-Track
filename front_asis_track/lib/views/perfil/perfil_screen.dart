@@ -32,7 +32,7 @@ class PerfilScreen extends StatelessWidget {
         title: Row(
           children: [
             Image.asset(
-              'assets/icon/logo-asis-track.png',
+              'assets/icon/logo_asis_track.png',
               height: 32,
             ),
             const SizedBox(width: 8),
