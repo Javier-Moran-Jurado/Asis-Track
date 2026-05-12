@@ -1,4 +1,4 @@
-package co.edu.uceva.microserviciousuario.auth.controller;
+package co.edu.uceva.microservicioplanilla.auth.controller;
 
 import lombok.Getter;
 import lombok.Setter;

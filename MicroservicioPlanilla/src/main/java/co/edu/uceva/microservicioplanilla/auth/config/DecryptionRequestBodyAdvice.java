@@ -1,19 +1,24 @@
 package co.edu.uceva.microservicioplanilla.auth.config;
-import co.uceva.edu.security.RSA.RSAEncryption;
-import co.uceva.edu.security.RSA.RSAPrivateKey;
-import co.edu.uceva.microserviciousuario.domain.service.PrivateKeyResponseDTO;
+
+import co.uceva.edu.security.AES.AESEncryption;
+import co.edu.uceva.microservicioplanilla.domain.service.PrivateKeyResponseDTO;
 import co.edu.uceva.microservicioplanilla.domain.service.SecurityIntegrationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpSession;
 import lombok.*;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpInputMessage;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.RequestBodyAdviceAdapter;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+
 import java.io.*;
 import java.lang.reflect.Type;
-import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+
 @ControllerAdvice
 public class DecryptionRequestBodyAdvice extends RequestBodyAdviceAdapter {
     private final SecurityIntegrationService securityIntegrationService;
@@ -29,16 +34,21 @@ public class DecryptionRequestBodyAdvice extends RequestBodyAdviceAdapter {
             if (bytes.length == 0) return im;
             try {
                 EncryptedRequest req = objectMapper.readValue(new String(bytes, StandardCharsets.UTF_8), EncryptedRequest.class);
-                if (req.getEncryptedData() != null) {
-                    PrivateKeyResponseDTO dto = securityIntegrationService.fetchCurrentPrivateKey();
-                    RSAPrivateKey pk = new RSAPrivateKey(new BigInteger(dto.getPublicN()), new BigInteger(dto.getPrivateD()));
-                    return new DecryptedInputMessage(im, RSAEncryption.decrypt(pk, req.getEncryptedData()).getBytes(StandardCharsets.UTF_8));
+                if (req.getEncryptedData() != null && req.getIv() != null) {
+                    HttpSession session = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest().getSession(false);
+                    if (session != null && session.getAttribute("CLIENT_AES_KEY") != null) {
+                        byte[] aesKey = (byte[]) session.getAttribute("CLIENT_AES_KEY");
+                        byte[] iv = Base64.getDecoder().decode(req.getIv());
+
+                        String decryptedJson = AESEncryption.decrypt(aesKey, iv, req.getEncryptedData());
+                        return new DecryptedInputMessage(im, decryptedJson.getBytes(StandardCharsets.UTF_8));
+                    }
                 }
             } catch (Exception e) { return new DecryptedInputMessage(im, bytes); }
             return new DecryptedInputMessage(im, bytes);
         }
     }
-    @Getter @Setter @NoArgsConstructor @AllArgsConstructor public static class EncryptedRequest { private String encryptedData; }
+    @Getter @Setter @NoArgsConstructor @AllArgsConstructor public static class EncryptedRequest { private String encryptedData; private String iv; }
     private static class DecryptedInputMessage implements HttpInputMessage {
         private final HttpInputMessage original; private final byte[] body;
         public DecryptedInputMessage(HttpInputMessage o, byte[] b) { this.original = o; this.body = b; }

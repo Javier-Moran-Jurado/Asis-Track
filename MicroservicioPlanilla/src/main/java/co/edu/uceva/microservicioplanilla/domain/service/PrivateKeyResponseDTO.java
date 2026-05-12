@@ -1,4 +1,4 @@
-package co.edu.uceva.microserviciousuario.domain.service;
+package co.edu.uceva.microservicioplanilla.domain.service;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
