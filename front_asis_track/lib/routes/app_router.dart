@@ -13,6 +13,11 @@ import 'package:front_asis_track/models/historial_asistencia.dart';
 import 'package:front_asis_track/views/main_layout.dart';
 import 'package:front_asis_track/views/justificaciones/justificaciones_screen.dart';
 import 'package:front_asis_track/views/justificaciones/justificacion_screen.dart';
+import 'package:front_asis_track/views/firma/firma_screen.dart';
+import 'package:front_asis_track/views/planillas/planillas_screen.dart';
+import 'package:front_asis_track/views/planillas/crear_planilla_screen.dart';
+import 'package:front_asis_track/views/planillas/dashboard_screen.dart';
+import 'package:front_asis_track/views/planillas/digitalizar_planilla_screen.dart';
 import 'package:front_asis_track/views/perfil/perfil_screen.dart';
 import 'package:front_asis_track/models/evento_qr.dart';
 
@@ -79,6 +84,22 @@ final GoRouter appRouter = GoRouter(
             asistencia: state.extra as HistorialAsistencia),
       ),
     ),
+    GoRoute(
+      path: '/firma',
+      builder: (context, state) => const FirmaScreen(),
+    ),
+    GoRoute(
+      path: '/planillas/nueva',
+      builder: (context, state) => const CrearPlanillaScreen(),
+    ),
+    GoRoute(
+      path: '/planillas/digitalizar',
+      builder: (context, state) => const DigitalizarPlanillaScreen(),
+    ),
+    GoRoute(
+      path: '/dashboard',
+      builder: (context, state) => const DashboardScreen(),
+    ),
 
     // ── MAIN SHELL ──
     ShellRoute(
@@ -110,6 +131,13 @@ final GoRouter appRouter = GoRouter(
           pageBuilder: (context, state) => const NoTransitionPage(
             key: ValueKey('key_justificaciones'),
             child: JustificacionesScreen(),
+          ),
+        ),
+        GoRoute(
+          path: '/planillas',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            key: ValueKey('key_planillas'),
+            child: PlanillasScreen(),
           ),
         ),
         GoRoute(

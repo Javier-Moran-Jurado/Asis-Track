@@ -80,6 +80,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                const SizedBox(height: 8),
+                Center(
+                  child: Image.asset(
+                    'assets/icon/logo-asis-track.png',
+                    height: 80,
+                  ),
+                ),
+                const SizedBox(height: 16),
                 const Text(
                   'Crear cuenta',
                   style: TextStyle(

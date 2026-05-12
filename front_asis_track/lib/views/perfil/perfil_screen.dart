@@ -29,12 +29,21 @@ class PerfilScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 16,
-        title: const Text(
-          'AsisTrack - Perfil',
-          style: TextStyle(
-            color: AppTheme.primaryColor,
-            fontWeight: FontWeight.bold,
-          ),
+        title: Row(
+          children: [
+            Image.asset(
+              'assets/icon/logo-asis-track.png',
+              height: 32,
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              'Perfil',
+              style: TextStyle(
+                color: AppTheme.primaryColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
         ),
         automaticallyImplyLeading: false,
       ),
@@ -127,6 +136,16 @@ class PerfilScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
               ],
+
+              // ── Firma digital ───────────────────────────────────────────
+              _QuickAccessCard(
+                icon: Icons.draw_outlined,
+                title: 'Firma digital',
+                subtitle: 'Crea tu firma digitalizada para documentos',
+                color: AppTheme.primaryColor,
+                onTap: () => context.push('/firma'),
+              ),
+              const SizedBox(height: 24),
 
               // ── Cerrar sesión ───────────────────────────────────────────
               SizedBox(

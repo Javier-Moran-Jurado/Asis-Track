@@ -84,11 +84,19 @@ class _LoginScreenState extends State<LoginScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // ── Logo / Título ────────────────────────────────────────
+                  // ── Logo ───────────────────────────────────────────────
+                  Center(
+                    child: Image.asset(
+                      'assets/icon/logo-asis-track.png',
+                      width: 100,
+                      height: 100,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   const Text(
-                    'AsisTrack',
+                    'Asis-Track',
                     style: TextStyle(
-                      fontSize: 32,
+                      fontSize: 24,
                       fontWeight: FontWeight.bold,
                       color: AppTheme.primaryColor,
                     ),
