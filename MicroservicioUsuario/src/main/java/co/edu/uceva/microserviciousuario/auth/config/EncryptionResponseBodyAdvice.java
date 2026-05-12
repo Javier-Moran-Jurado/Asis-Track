@@ -1,8 +1,6 @@
 package co.edu.uceva.microserviciousuario.auth.config;
 
-import co.edu.uceva.microserviciousuario.auth.controller.ClientKeyPairDTO;
-import co.uceva.edu.security.RSA.RSAEncryption;
-import co.uceva.edu.security.RSA.RSAPublicKey;
+import co.uceva.edu.security.AES.AESEncryption;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -17,7 +15,6 @@ import org.springframework.http.server.ServletServerHttpRequest;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 
-import java.math.BigInteger;
 import java.util.Base64;
 
 @ControllerAdvice
@@ -42,8 +39,6 @@ public class EncryptionResponseBodyAdvice implements ResponseBodyAdvice<Object> 
         if (body == null)
             return null;
 
-        // Evitar re-encriptar o interceptar nuestros propios DTOs de error globales si
-        // los hay
         if (body instanceof EncryptedResponse) {
             return body;
         }
@@ -52,18 +47,16 @@ public class EncryptionResponseBodyAdvice implements ResponseBodyAdvice<Object> 
             HttpServletRequest httpServletRequest = servletRequest.getServletRequest();
             HttpSession session = httpServletRequest.getSession(false);
 
-            if (session != null && session.getAttribute("CLIENT_PUBLIC_KEY") != null) {
+            if (session != null && session.getAttribute("CLIENT_AES_KEY") != null) {
                 try {
-                    ClientKeyPairDTO clientKey = (ClientKeyPairDTO) session.getAttribute("CLIENT_PUBLIC_KEY");
-                    RSAPublicKey rsaPublicKey = new RSAPublicKey(
-                            clientKey.getE(),
-                            new BigInteger(clientKey.getN()));
+                    byte[] aesKey = (byte[]) session.getAttribute("CLIENT_AES_KEY");
+                    byte[] iv = AESEncryption.generateIV();
 
                     String payload = objectMapper.writeValueAsString(body);
-                    String encryptedPayload = RSAEncryption.encrypt(rsaPublicKey, payload);
-                    String b64Payload = Base64.getEncoder().encodeToString(encryptedPayload.getBytes());
+                    String encryptedPayload = AESEncryption.encrypt(aesKey, iv, payload);
+                    String ivB64 = Base64.getEncoder().encodeToString(iv);
 
-                    EncryptedResponse encryptedResponse = new EncryptedResponse(b64Payload);
+                    EncryptedResponse encryptedResponse = new EncryptedResponse(encryptedPayload, ivB64);
 
                     if (body instanceof String) {
                         response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
@@ -84,5 +77,6 @@ public class EncryptionResponseBodyAdvice implements ResponseBodyAdvice<Object> 
     @AllArgsConstructor
     public static class EncryptedResponse {
         private String encryptedData;
+        private String iv;
     }
 }

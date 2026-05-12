@@ -6,6 +6,7 @@ import sys
 import time
 
 import requests
+import aes_manual
 from Crypto.Util.number import getPrime, inverse
 
 # ══════════════════════════════════════════════════════
@@ -32,6 +33,7 @@ URL_SEGURIDAD = f"{BASE_SEGURIDAD}/api/v1/security/keys/public"
 URL_ROTATE = f"{BASE_SEGURIDAD}/api/v1/security/keys/rotate"
 
 URL_SESSION_KEY = f"{BASE_USUARIO}/api/v1/auth/session-key"
+URL_SESSION_KEY_PLANILLA = f"{BASE_PLANILLA}/api/v1/auth/session-key"
 URL_LOGIN = f"{BASE_USUARIO}/api/v1/auth/login"
 URL_USUARIOS = f"{BASE_USUARIO}/api/v1/usuario-service/usuarios"
 
@@ -111,7 +113,7 @@ def assert_valores_sin_agrupar(respuesta, label, espera_valores=True):
 # ══════════════════════════════════════════════════════
 class CustomRSA:
     @staticmethod
-    def generate_key_pair(bits=1024):
+    def generate_key_pair(bits=2048):
         p = getPrime(bits // 2)
         q = getPrime(bits // 2)
         n = p * q
@@ -156,6 +158,22 @@ class CustomRSA:
 
 
 # ══════════════════════════════════════════════════════
+#  AES-256-CBC MANUAL (para cifrado E2E)
+# ══════════════════════════════════════════════════════
+def aes_encrypt(key: bytes, plaintext: str) -> tuple[str, str]:
+    """Cifra texto plano con AES-256-CBC manual + PKCS#7. Retorna (ciphertext_b64, iv_b64)."""
+    iv = aes_manual.generate_iv()
+    ciphertext = aes_manual.encrypt(key, iv, plaintext)
+    return ciphertext, base64.b64encode(iv).decode("utf-8")
+
+
+def aes_decrypt(key: bytes, b64_ciphertext: str, b64_iv: str) -> str:
+    """Descifra ciphertext AES-256-CBC manual + PKCS#7."""
+    iv = base64.b64decode(b64_iv)
+    return aes_manual.decrypt(key, iv, b64_ciphertext)
+
+
+# ══════════════════════════════════════════════════════
 #  UTILIDADES DE PRESENTACIÓN
 # ══════════════════════════════════════════════════════
 def color_json(s: str) -> str:
@@ -177,12 +195,10 @@ def pretty_json(data) -> str:
     return color_json(json.dumps(data, indent=2, ensure_ascii=False))
 
 
-def decrypt_server_response(resp_json, client_key):
-    if isinstance(resp_json, dict) and "encryptedData" in resp_json:
+def decrypt_server_response(resp_json, aes_key: bytes):
+    if isinstance(resp_json, dict) and "encryptedData" in resp_json and "iv" in resp_json:
         try:
-            b64 = resp_json["encryptedData"]
-            decimal_cipher = base64.b64decode(b64).decode("utf-8")
-            return CustomRSA.decrypt(decimal_cipher, client_key["n"], client_key["d"])
+            return aes_decrypt(aes_key, resp_json["encryptedData"], resp_json["iv"])
         except Exception:
             return str(resp_json)
     return json.dumps(resp_json)
@@ -199,25 +215,25 @@ def section(title: str):
 #  LLAMADA GENÉRICA CON CIFRADO
 # ══════════════════════════════════════════════════════
 def run_step(
-    session,
-    method: str,
-    url: str,
-    body_dict: dict,
-    server_n: int,
-    server_e: int,
-    client_key: dict,
-    headers=None,
-    label="STEP",
-    expected_statuses=(200, 201, 204),
+        session,
+        method: str,
+        url: str,
+        body_dict: dict,
+        server_n: int,
+        server_e: int,
+        aes_key: bytes,
+        headers=None,
+        label="STEP",
+        expected_statuses=(200, 201, 204),
 ):
     """
-    Envía una petición cifrada y muestra el resultado.
+    Envía una petición cifrada con AES-256-CBC y muestra el resultado.
     Retorna (parsed_response | None, status_code).
     """
     print(f"\n{C_TITLE}▶  {label}{C_RESET}")
 
     plain_json = json.dumps(body_dict)
-    encrypted_body = CustomRSA.encrypt(plain_json, server_n, server_e)
+    encrypted_data, iv = aes_encrypt(aes_key, plain_json)
     funcs = {
         "POST": session.post,
         "PUT": session.put,
@@ -229,7 +245,7 @@ def run_step(
 
     try:
         if method in ("POST", "PUT", "DELETE", "PATCH"):
-            resp = func(url, json={"encryptedData": encrypted_body}, headers=headers)
+            resp = func(url, json={"encryptedData": encrypted_data, "iv": iv}, headers=headers)
         else:
             resp = func(url, headers=headers)
     except requests.exceptions.ConnectionError as exc:
@@ -248,7 +264,7 @@ def run_step(
     print(f"  {icon} Status {resp.status_code}{C_RESET}")
 
     # Intentar desencriptar siempre, incluso si hay error
-    decrypted = decrypt_server_response(resp_json, client_key)
+    decrypted = decrypt_server_response(resp_json, aes_key)
 
     if resp.text.strip():
         print(f"  {C_DIM}Respuesta (puedes ver el error aquí):{C_RESET}")
@@ -269,16 +285,18 @@ def run_step(
 
 
 def run_step_raw(
-    session,
-    method: str,
-    url: str,
-    headers=None,
-    params=None,
-    label="STEP RAW",
-    expected_statuses=(200, 201, 204),
+        session,
+        method: str,
+        url: str,
+        aes_key: bytes,
+        headers=None,
+        params=None,
+        label="STEP RAW",
+        expected_statuses=(200, 201, 204),
 ):
     """
     Petición SIN cifrar el body (para endpoints que reciben params o nada).
+    La respuesta sí puede venir cifrada con AES.
     """
     print(f"\n{C_TITLE}▶  {label}{C_RESET}")
     funcs = {
@@ -306,30 +324,44 @@ def run_step_raw(
     success = resp.status_code in expected_statuses
     icon = f"{C_SUCCESS}✔" if success else f"{C_ERROR}✗"
     print(f"  {icon} Status {resp.status_code}{C_RESET}")
+
+    decrypted = decrypt_server_response(resp_json, aes_key)
     if resp.text.strip():
         print(f"  {C_DIM}Respuesta:{C_RESET}")
-        print(f"  {pretty_json(resp_json)}")
+        try:
+            print(f"  {pretty_json(decrypted)}")
+        except Exception:
+            print(f"  {C_VAL}{decrypted}{C_RESET}")
 
     _register(success, label)
 
     if success:
-        return resp_json, resp.status_code
+        try:
+            return json.loads(decrypted), resp.status_code
+        except Exception:
+            return decrypted, resp.status_code
     return None, resp.status_code
 
 
 # ══════════════════════════════════════════════════════
-#  HANDSHAKE RSA CON EL SERVIDOR DE SEGURIDAD
+#  HANDSHAKE AES CON EL SERVIDOR DE SEGURIDAD
 # ══════════════════════════════════════════════════════
 def start_session(session: requests.Session):
-    """Obtiene la llave pública del servidor, registra la llave del cliente."""
+    """Obtiene la llave pública del servidor, genera clave AES-256 y la registra."""
     resp = requests.get(URL_SEGURIDAD)
     server_key = resp.json()
     sn, se = int(server_key["publicN"]), int(server_key["publicE"])
-    ck = CustomRSA.generate_key_pair()
-    reg_payload = json.dumps({"n": str(ck["n"]), "e": str(ck["e"])})
-    enc_reg = CustomRSA.encrypt(reg_payload, sn, se)
-    session.post(URL_SESSION_KEY, json={"encryptedPayload": enc_reg})
-    return sn, se, ck, server_key["id"]
+
+    # Generar clave AES-256 de 32 bytes
+    aes_key = os.urandom(32)
+
+    # Encriptar la clave AES con RSA pública del servidor
+    aes_key_b64 = base64.b64encode(aes_key).decode("utf-8")
+    print(f"  {C_DIM}AES Key (Base64): {aes_key_b64}{C_RESET}")
+    enc_payload = CustomRSA.encrypt(aes_key_b64, sn, se)
+    session.post(URL_SESSION_KEY, json={"encryptedPayload": enc_payload})
+
+    return sn, se, aes_key, server_key["id"]
 
 
 # ══════════════════════════════════════════════════════
@@ -567,7 +599,7 @@ def test_planilla(session, sn, se, ck, headers_admin, origen_digital_id):
     return planilla_id
 
 
-def test_digitalizar(session, sn, se, client_key, headers_admin, planilla_id):
+def test_digitalizar(session, sn, se, ck, headers_admin, planilla_id):
     section("PLANILLA ─ DIGITALIZAR")
     file_path = resolve_test_image_path()
 
@@ -592,7 +624,7 @@ def test_digitalizar(session, sn, se, client_key, headers_admin, planilla_id):
                 resp_json = resp.json()
             except:
                 resp_json = {"raw": resp.text}
-            decrypted = decrypt_server_response(resp_json, client_key)
+            decrypted = decrypt_server_response(resp_json, ck)
             print(f"  {C_DIM}Resultado (Desencriptado):{C_RESET}")
             try:
                 decrypted_json = json.loads(decrypted) if isinstance(decrypted, str) else decrypted
@@ -630,7 +662,7 @@ def test_digitalizar(session, sn, se, client_key, headers_admin, planilla_id):
                 resp_json = resp.json()
             except:
                 resp_json = {"raw": resp.text}
-            decrypted = decrypt_server_response(resp_json, client_key)
+            decrypted = decrypt_server_response(resp_json, ck)
             print(f"  {C_DIM}Resultado OCR/IA Estructura (Desencriptado):{C_RESET}")
             try:
                 print(f"  {C_VAL}{pretty_json(decrypted)}{C_RESET}")
@@ -1350,7 +1382,7 @@ def test_estadisticas_dinamicas(session, sn, se, ck, headers_admin, evento_id_se
 #  BLOQUE 4 ─ MICROSERVICIO ASISTENCIA
 # ══════════════════════════════════════════════════════
 def test_asistencia(
-    session, sn, se, ck, headers_estudiante, headers_admin, planilla_id_seed=1
+        session, sn, se, ck, headers_estudiante, headers_admin, planilla_id_seed=1
 ):
     """
     Los endpoints /entrada, /salida y /justificar usan @RequestParam,
@@ -1767,10 +1799,15 @@ def test_rotacion(session, headers_admin, origen_digital_id):
     time.sleep(2)
 
     # Nueva sesión post-rotación
-    section("TURNO 2 ─ TRAS ROTACIÓN (nueva sesión RSA)")
+    section("TURNO 2 ─ TRAS ROTACIÓN (nueva sesión AES)")
     ts = int(time.time()) % 10000
     sn2, se2, ck2, sid2 = start_session(session)
     print(f"  Nueva sesión con Servidor ID={sid2}")
+
+    # Handshake también con Planilla post-rotación
+    enc_payload_planilla2 = CustomRSA.encrypt(base64.b64encode(ck2).decode("utf-8"), sn2, se2)
+    session.post(URL_SESSION_KEY_PLANILLA, json={"encryptedPayload": enc_payload_planilla2})
+    print(f"  {C_SUCCESS}✔ Sesión AES re-establecida con Planilla{C_RESET}")
 
     # Re-login necesario para obtener un token válido post-rotación
     resp_login = session.post(
@@ -1779,7 +1816,7 @@ def test_rotacion(session, headers_admin, origen_digital_id):
     token2 = None
     try:
         login_data = resp_login.json()
-        # El login ya no pasa por cifrado RSA en este endpoint
+        # El login puede ir en body plano (fallback) o cifrado con AES
         token2 = login_data.get("access_token")
     except Exception:
         pass
@@ -1841,11 +1878,16 @@ if __name__ == "__main__":
     ts = int(time.time()) % 10000
 
     # ── Handshake inicial ──
-    section("HANDSHAKE RSA ─ SESIÓN INICIAL")
+    section("HANDSHAKE AES ─ SESIÓN INICIAL")
     print(f"\n{C_DIM}  Obteniendo llave pública del servidor de seguridad...{C_RESET}")
     try:
         sn, se, ck, sid = start_session(session)
-        print(f"  {C_SUCCESS}✔ Sesión establecida con Servidor ID={sid}{C_RESET}")
+        print(f"  {C_SUCCESS}✔ Sesión AES establecida con Servidor ID={sid}{C_RESET}")
+
+        # Handshake también con Planilla (misma clave AES, misma sesión Redis)
+        enc_payload_planilla = CustomRSA.encrypt(base64.b64encode(ck).decode("utf-8"), sn, se)
+        session.post(URL_SESSION_KEY_PLANILLA, json={"encryptedPayload": enc_payload_planilla})
+        print(f"  {C_SUCCESS}✔ Sesión AES establecida con Planilla{C_RESET}")
     except Exception as exc:
         print(f"  {C_ERROR}✗ Error en handshake: {exc}{C_RESET}")
         sys.exit(1)

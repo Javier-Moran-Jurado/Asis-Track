@@ -5,7 +5,7 @@ services:
     container_name: usuarioservice
     restart: unless-stopped
     depends_on:
-      - db
+      - db-usuario
       - redis
     ports:
       - "${USUARIO_PORT}:8080"
@@ -15,7 +15,7 @@ services:
       - DB_USER=${DB_USER}
       - DB_PASS=${DB_PASS}
       - JPA_DDL=${JPA_DDL}
-      - DB_HOST=jdbc:postgresql://db:5432/${DB_NAME}
+      - DB_HOST=jdbc:postgresql://db-usuario:5432/${DB_NAME}
       - PORT=8080
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -33,7 +33,7 @@ services:
       - "${PLANILLA_PORT}:8080"
       - "${PLANILLA_PORT_ACTUATOR}:8081"
     depends_on:
-      - db
+      - db-planilla
       - redis
     environment:
       - SECRET_KEY=${SECRET_KEY}
@@ -44,11 +44,10 @@ services:
       - DB_USER=${DB_USER}
       - DB_PASS=${DB_PASS}
       - DB_NAME=${DB_NAME}
-      - DB_HOST=jdbc:postgresql://db:5432/${DB_NAME}
+      - DB_HOST=jdbc:postgresql://db-planilla:5432/${DB_NAME}
       - JPA_DDL=${JPA_DDL}
       - PORT=8080
       - PLANILLA_PORT_ACTUATOR=${PLANILLA_PORT_ACTUATOR}
-      - HOMOMORPHIC_A_SETS=${HOMOMORPHIC_A_SETS}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - SECURITY_URL=http://seguridad-service:8085
@@ -72,9 +71,9 @@ services:
     networks:
       - mynetwork
 
-  db:
+  db-usuario:
     image: ${DB_IMAGE}
-    container_name: db
+    container_name: db-usuario
     restart: unless-stopped
     ports:
       - "${DB_HOST_PORT}:5432"
@@ -83,7 +82,37 @@ services:
       - POSTGRES_USER=${DB_USER}
       - POSTGRES_PASSWORD=${DB_PASS}
     volumes:
-      - ./data:/var/lib/postgresql/data
+      - ./data-usuario:/var/lib/postgresql/data
+    networks:
+      - mynetwork
+
+  db-planilla:
+    image: ${DB_IMAGE}
+    container_name: db-planilla
+    restart: unless-stopped
+    ports:
+      - "${DB_HOST_PORT_PLANILLA:-5434}:5432"
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASS}
+    volumes:
+      - ./data-planilla:/var/lib/postgresql/data
+    networks:
+      - mynetwork
+
+  db-seguridad:
+    image: ${DB_IMAGE}
+    container_name: db-seguridad
+    restart: unless-stopped
+    ports:
+      - "${DB_HOST_PORT_SEGURIDAD:-5435}:5432"
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASS}
+    volumes:
+      - ./data-seguridad:/var/lib/postgresql/data
     networks:
       - mynetwork
 
@@ -102,13 +131,13 @@ services:
     container_name: seguridad-service
     restart: unless-stopped
     depends_on:
-      - db
+      - db-seguridad
       - redis
     ports:
       - "${SEGURIDAD_PORT}:8085"
     environment:
       - PORT=8085
-      - DB_URL=jdbc:postgresql://db:5432/${DB_NAME}
+      - DB_URL=jdbc:postgresql://db-seguridad:5432/${DB_NAME}
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASS}
       - MASTER_KEY_E=${MASTER_KEY_E}
