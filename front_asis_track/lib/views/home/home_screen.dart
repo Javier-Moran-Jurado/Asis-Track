@@ -132,33 +132,51 @@ class HomeScreen extends StatelessWidget {
         color: const Color(0xFF7C3AED),
         onTap: () => context.push('/historial'),
       ),
-      if (!esMonitor)
-        esEstudiante
-            ? _ActionCardData(
-                icon: Icons.description_outlined,
-                title: 'Solicitar justificación',
-                subtitle: 'Justifica una inasistencia con evidencia',
-                color: AppTheme.warningColor,
-                onTap: () {
-                  final mock = HistorialAsistencia(
-                    id: 'home_${DateTime.now().millisecondsSinceEpoch}',
-                    fecha: DateTime.now(),
-                    materia: 'Selecciona la materia',
-                    tipoEvento: 'Clase',
-                    asistio: false,
-                    docente: 'Por definir',
-                    ubicacion: 'Por definir',
-                  );
-                  context.push('/justificaciones/nueva', extra: mock);
-                },
-              )
-            : _ActionCardData(
-                icon: Icons.fact_check_outlined,
-                title: 'Ver justificaciones',
-                subtitle: 'Revisa y valida solicitudes pendientes',
-                color: AppTheme.secondaryColor,
-                onTap: () => context.push('/justificaciones'),
-              ),
+      // Solo Estudiante: solicitar justificación
+      if (esEstudiante)
+        _ActionCardData(
+          icon: Icons.description_outlined,
+          title: 'Solicitar justificación',
+          subtitle: 'Justifica una inasistencia con evidencia',
+          color: AppTheme.warningColor,
+          onTap: () {
+            final mock = HistorialAsistencia(
+              id: 'home_${DateTime.now().millisecondsSinceEpoch}',
+              fecha: DateTime.now(),
+              materia: 'Selecciona la materia',
+              tipoEvento: 'Clase',
+              asistio: false,
+              docente: 'Por definir',
+              ubicacion: 'Por definir',
+            );
+            context.push('/justificaciones/nueva', extra: mock);
+          },
+        ),
+      // No Estudiante: ver justificaciones + planillas + dashboard
+      if (!esEstudiante) ...[
+        _ActionCardData(
+          icon: Icons.fact_check_outlined,
+          title: 'Ver justificaciones',
+          subtitle: 'Revisa y valida solicitudes pendientes',
+          color: AppTheme.secondaryColor,
+          onTap: () => context.push('/justificaciones'),
+        ),
+        _ActionCardData(
+          icon: Icons.assignment_outlined,
+          title: 'Planillas',
+          subtitle: 'Gestiona planillas de asistencia',
+          color: const Color(0xFFF59E0B),
+          onTap: () => context.push('/planillas'),
+        ),
+        if (!esMonitor)
+          _ActionCardData(
+            icon: Icons.bar_chart_outlined,
+            title: 'Dashboard',
+            subtitle: 'Estadísticas y gráficos de planillas',
+            color: const Color(0xFF8B5CF6),
+            onTap: () => context.push('/dashboard'),
+          ),
+      ],
     ];
 
     final columns = AppBreakpoints.gridColumns(context);

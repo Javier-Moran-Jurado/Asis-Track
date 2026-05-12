@@ -27,7 +27,7 @@ class MyApp extends StatelessWidget {
       value: authProvider,
       child: MaterialApp.router(
         theme: AppTheme.lightTheme,
-        title: 'Flutter - UCEVA',
+        title: 'Asis-Track',
         routerConfig: appRouter,
         debugShowCheckedModeBanner: false,
       ),

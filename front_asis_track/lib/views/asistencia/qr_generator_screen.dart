@@ -29,6 +29,20 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
   EventoQr? _evento;
   bool _modoDemo = false;
   bool _verificandoUbicacion = false;
+  String? _errorCreacion;
+
+  // Nuevos campos
+  String? _tipoSeleccionado;
+  DateTime? _fechaSeleccionada;
+  TimeOfDay? _horaInicio;
+  TimeOfDay? _horaFin;
+
+  static const List<String> _tiposEvento = [
+    'Clase',
+    'Taller',
+    'Préstamo',
+    'Otro',
+  ];
 
   // Controllers
   final _materiaCtrl = TextEditingController(text: 'Clase de Programación');
@@ -105,13 +119,43 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
       );
       return;
     }
+    // Validar campos nuevos
+    if (_fechaSeleccionada == null) {
+      _mostrarError('Debe seleccionar una fecha.');
+      return;
+    }
+    if (_horaInicio == null) {
+      _mostrarError('Debe seleccionar una hora de inicio.');
+      return;
+    }
+    if (_horaFin == null) {
+      _mostrarError('Debe seleccionar una hora de fin.');
+      return;
+    }
+    if (_horaFin!.hour < _horaInicio!.hour ||
+        (_horaFin!.hour == _horaInicio!.hour &&
+            _horaFin!.minute <= _horaInicio!.minute)) {
+      _mostrarError('La hora de fin debe ser posterior a la hora de inicio.');
+      return;
+    }
+    if (_tipoSeleccionado == null) {
+      _mostrarError('Debe seleccionar un tipo de evento.');
+      return;
+    }
 
-    setState(() => _creandoEvento = true);
+    setState(() {
+      _creandoEvento = true;
+      _errorCreacion = null;
+    });
     try {
       final payload = {
         'materia': _materiaCtrl.text,
         'actividad': _actividadCtrl.text,
         'lugar': _lugarCtrl.text,
+        'tipo': _tipoSeleccionado,
+        'fecha': DateFormat('yyyy-MM-dd').format(_fechaSeleccionada!),
+        'horaInicio': _horaInicio!.format(context),
+        'horaFin': _horaFin!.format(context),
         'zonaId': _zonaSeleccionada!.id,
         'zonaNombre': _zonaSeleccionada!.nombre,
         'latitud': _zonaSeleccionada!.latitud,
@@ -127,32 +171,26 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
       }
     } catch (e) {
       if (mounted) {
-        // Generar evento local (Mock) si el backend no responde o no hay conexión
-        final ahora = DateTime.now();
-        final eventoLocal = EventoQr(
-          tokenQr: 'mock_token_${ahora.millisecondsSinceEpoch}',
-          materia: _materiaCtrl.text,
-          actividad: _actividadCtrl.text,
-          fecha: DateFormat('yyyy-MM-dd').format(ahora),
-          hora: DateFormat('HH:mm').format(ahora),
-          lugar: _lugarCtrl.text,
-          zonaNombre: _zonaSeleccionada?.nombre,
-        );
-
         setState(() {
-          _evento = eventoLocal;
           _creandoEvento = false;
+          _errorCreacion = e.toString().replaceFirst('Exception: ', '');
         });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-                'Generando QR en modo independiente (Backend no disponible)'),
-            backgroundColor: Colors.orange,
-          ),
-        );
       }
     }
+  }
+
+  void _mostrarError(String mensaje) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(mensaje),
+        backgroundColor: AppTheme.errorColor,
+        behavior: SnackBarBehavior.floating,
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 3),
+      ),
+    );
   }
 
   Future<void> _probarUbicacion() async {
@@ -426,6 +464,101 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
             _buildFieldLabel('Lugar / Aula'),
             _buildTextField(_lugarCtrl, 'Ej: Auditorio Central'),
             const SizedBox(height: 24),
+            // ── Tipo de evento ──────────────────────────────────────────
+            _buildFieldLabel('Tipo de evento *'),
+            DropdownButtonFormField<String>(
+              initialValue: _tipoSeleccionado,
+              decoration:
+                  const InputDecoration(hintText: 'Seleccione un tipo'),
+              items: _tiposEvento.map((t) {
+                return DropdownMenuItem(value: t, child: Text(t));
+              }).toList(),
+              onChanged: (val) =>
+                  setState(() => _tipoSeleccionado = val),
+              validator: (val) =>
+                  val == null ? 'El tipo de evento es requerido' : null,
+            ),
+            const SizedBox(height: 16),
+            // ── Fecha ───────────────────────────────────────────────────
+            _buildFieldLabel('Fecha *'),
+            InkWell(
+              onTap: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: _fechaSeleccionada ?? DateTime.now(),
+                  firstDate: DateTime.now(),
+                  lastDate: DateTime.now().add(const Duration(days: 365)),
+                  helpText: 'Selecciona la fecha del evento',
+                );
+                if (picked != null) {
+                  setState(() => _fechaSeleccionada = picked);
+                }
+              },
+              child: Container(
+                width: double.infinity,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      _fechaSeleccionada != null
+                          ? DateFormat('EEEE, d MMMM yyyy', 'es')
+                              .format(_fechaSeleccionada!)
+                          : 'Selecciona una fecha',
+                      style: TextStyle(
+                        color: _fechaSeleccionada != null
+                            ? AppTheme.gray900
+                            : Colors.grey,
+                      ),
+                    ),
+                    const Icon(Icons.calendar_today,
+                        color: AppTheme.primaryColor),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            // ── Horas ───────────────────────────────────────────────────
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildFieldLabel('Hora inicio *'),
+                      _buildTimePicker(
+                        tiempo: _horaInicio,
+                        hint: 'Inicio',
+                        onPicked: (t) =>
+                            setState(() => _horaInicio = t),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildFieldLabel('Hora fin *'),
+                      _buildTimePicker(
+                        tiempo: _horaFin,
+                        hint: 'Fin',
+                        onPicked: (t) =>
+                            setState(() => _horaFin = t),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
             _buildFieldLabel('Zona Geográfica (Requerido)'),
             DropdownButtonFormField<Zona>(
               initialValue: _zonaSeleccionada,
@@ -464,6 +597,16 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
               ),
             ),
             const SizedBox(height: 40),
+            if (_errorCreacion != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Text(
+                  _errorCreacion!,
+                  style: const TextStyle(
+                      color: AppTheme.errorColor, fontSize: 13),
+                  textAlign: TextAlign.center,
+                ),
+              ),
             CustomButton(
               text: 'Generar Código QR',
               isLoading: _creandoEvento,
@@ -574,6 +717,44 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
       decoration: InputDecoration(hintText: hint),
       validator: (val) =>
           val == null || val.isEmpty ? 'Este campo es requerido' : null,
+    );
+  }
+
+  Widget _buildTimePicker({
+    required TimeOfDay? tiempo,
+    required String hint,
+    required ValueChanged<TimeOfDay> onPicked,
+  }) {
+    return InkWell(
+      onTap: () async {
+        final picked = await showTimePicker(
+          context: context,
+          initialTime: tiempo ?? TimeOfDay.now(),
+          helpText: 'Selecciona la hora',
+        );
+        if (picked != null) onPicked(picked);
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              tiempo != null ? tiempo.format(context) : hint,
+              style: TextStyle(
+                color: tiempo != null ? AppTheme.gray900 : Colors.grey,
+              ),
+            ),
+            const Icon(Icons.access_time, color: AppTheme.primaryColor),
+          ],
+        ),
+      ),
     );
   }
 }

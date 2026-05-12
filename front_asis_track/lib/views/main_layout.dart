@@ -17,6 +17,25 @@ class MainLayout extends StatelessWidget {
     }
 
     return Scaffold(
+      appBar: AppBar(
+        title: Row(
+          children: [
+            Image.asset(
+              'assets/icon/logo-asis-track.png',
+              height: 32,
+            ),
+            const SizedBox(width: 10),
+            const Text(
+              'Asis-Track',
+              style: TextStyle(
+                color: AppTheme.primaryColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        automaticallyImplyLeading: false,
+      ),
       body: Row(
         children: [
           _buildNavigationRail(context),
