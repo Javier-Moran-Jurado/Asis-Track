@@ -44,25 +44,44 @@ class _LoginScreenState extends State<LoginScreen> {
     if (success) {
       context.go('/home');
     } else {
-      // El error ya está en auth.errorMessage — mostrarlo en un SnackBar
-      final error = auth.errorMessage ?? 'Error desconocido al iniciar sesión.';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.error_outline, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
-              Expanded(child: Text(error)),
-            ],
-          ),
-          backgroundColor: AppTheme.errorColor,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          margin: const EdgeInsets.all(16),
-          duration: const Duration(seconds: 4),
-        ),
-      );
+      _showErrorSnackBar(auth.errorMessage ?? 'Error desconocido al iniciar sesión.');
     }
+  }
+
+  Future<void> _loginWithGoogle() async {
+    final auth = context.read<AuthProvider>();
+
+    // Limpiar errores previos
+    auth.clearError();
+
+    final success = await auth.loginWithGoogle();
+
+    if (!mounted) return;
+
+    if (success) {
+      context.go('/home');
+    } else if (auth.errorMessage != null) {
+      _showErrorSnackBar(auth.errorMessage!);
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white, size: 20),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: AppTheme.errorColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 4),
+      ),
+    );
   }
 
   @override
@@ -167,6 +186,34 @@ class _LoginScreenState extends State<LoginScreen> {
                     text: 'Ingresar',
                     onPressed: isLoading ? null : _login,
                     isLoading: isLoading,
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ── Botón de Google ──────────────────────────────────────
+                  OutlinedButton.icon(
+                    onPressed: isLoading ? null : _loginWithGoogle,
+                    icon: Image.network(
+                      'https://www.google.com/favicon.ico',
+                      height: 20,
+                      width: 20,
+                      errorBuilder: (_, __, ___) =>
+                          const Icon(Icons.account_circle, size: 20),
+                    ),
+                    label: const Text(
+                      'Iniciar sesión con Google',
+                      style: TextStyle(
+                        color: Colors.black87,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(48),
+                      side: BorderSide(color: Colors.grey.shade300),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      backgroundColor: Colors.white,
+                    ),
                   ),
                   const SizedBox(height: 24),
 

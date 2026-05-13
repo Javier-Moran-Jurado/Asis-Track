@@ -29,7 +29,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalArgumentException(IllegalArgumentException ex) {
         Map<String, Object> response = new HashMap<>();
-        response.put(MENSAJE, "Número de página inválido.");
+        response.put(MENSAJE, ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 

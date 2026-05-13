@@ -58,6 +58,7 @@ public class DataSeeder implements ApplicationRunner {
             {8L, "Luis Vargas", "luis.vargas@uceva.edu.co", "Decan!999", 1005556677L, 3155556677L, "Decano"},
             {9L, "Sofia Castro", "sofia.castro@uceva.edu.co", "Coord*321", 1006667788L, 3166667788L, "Coordinador"},
             {10L, "Diego Herrera", "diego.herrera@uceva.edu.co", "Coord_654", 1007778899L, 3177778899L, "Coordinador"},
+            {230231022L, "Andres David Guevara Martinez", "andres.guevara03@uceva.edu.co", "123456789_Xd", 1234567890L, 3001234567L, "Administrador"},
         };
 
         for (Object[] d : datos) {
