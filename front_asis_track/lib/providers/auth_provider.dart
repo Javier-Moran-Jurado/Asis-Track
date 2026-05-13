@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
+import '../services/google_auth_service.dart';
 
 /// Estados posibles del flujo de autenticación.
 enum AuthStatus {
@@ -127,6 +128,45 @@ class AuthProvider extends ChangeNotifier {
         rol: rol,
       );
       await AuthService.saveUserData(user);
+
+      _currentUser = user;
+      _status = AuthStatus.authenticated;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      _status = AuthStatus.error;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // LOGIN WITH GOOGLE
+  // ══════════════════════════════════════════════════════════════════════════
+
+  /// Realiza el flujo completo de autenticacion con Google:
+  ///
+  /// 1. Google Sign-In → obtiene idToken.
+  /// 2. POST /api/v1/auth/oauth2/google → valida dominio y emite JWTs propios.
+  /// 3. Guarda tokens y datos de usuario (mismo flujo que login manual).
+  ///
+  /// Retorna `true` si el login fue exitoso, `false` en caso de error
+  /// o si el usuario cancelo el picker.
+  Future<bool> loginWithGoogle() async {
+    _status = AuthStatus.loading;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final user = await GoogleAuthService.signInWithGoogle();
+
+      if (user == null) {
+        // Usuario cancelo el picker — no es un error, solo queda en login
+        _status = AuthStatus.unauthenticated;
+        notifyListeners();
+        return false;
+      }
 
       _currentUser = user;
       _status = AuthStatus.authenticated;

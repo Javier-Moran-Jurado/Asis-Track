@@ -1,6 +1,7 @@
 package co.edu.uceva.microserviciousuario.auth.controller;
 
 import co.edu.uceva.microserviciousuario.auth.service.AuthService;
+import co.edu.uceva.microserviciousuario.auth.service.GoogleOAuthService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,11 +19,13 @@ import java.util.Base64;
 public class AuthController {
 
     private final AuthService service;
+    private final GoogleOAuthService googleOAuthService;
     private final SecurityIntegrationService securityIntegrationService;
     private final ObjectMapper objectMapper;
 
-    public AuthController(AuthService service, SecurityIntegrationService securityIntegrationService, ObjectMapper objectMapper) {
+    public AuthController(AuthService service, GoogleOAuthService googleOAuthService, SecurityIntegrationService securityIntegrationService, ObjectMapper objectMapper) {
         this.service = service;
+        this.googleOAuthService = googleOAuthService;
         this.securityIntegrationService = securityIntegrationService;
         this.objectMapper = objectMapper;
     }
@@ -62,5 +65,11 @@ public class AuthController {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(java.util.Map.of("error", "Error al procesar la llave: " + e.getMessage()));
         }
+    }
+
+    @PostMapping("/oauth2/google")
+    public ResponseEntity<TokenResponse> oauth2Google(@RequestBody final GoogleOAuthRequest request) {
+        final TokenResponse token = googleOAuthService.authenticate(request.idToken());
+        return ResponseEntity.ok(token);
     }
 }
