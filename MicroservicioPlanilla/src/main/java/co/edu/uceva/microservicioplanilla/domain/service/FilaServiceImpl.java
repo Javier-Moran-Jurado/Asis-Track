@@ -97,6 +97,50 @@ public class FilaServiceImpl implements IFilaService {
 
     @Override
     @Transactional
+    public Fila createInvitado(Long planillaId, co.edu.uceva.microservicioplanilla.delivery.rest.dto.InvitadoFilaRequest request) {
+        Planilla planilla = planillaRepository.findById(planillaId)
+                .orElseThrow(() -> new IllegalArgumentException("Planilla no encontrada: " + planillaId));
+
+        List<Long> camposValidos = campoRepository.findByPlanillaId(planillaId).stream()
+                .map(Campo::getId)
+                .toList();
+
+        if (request.getDatos() == null || request.getDatos().isEmpty()) {
+            throw new IllegalArgumentException("La fila debe contener al menos un dato");
+        }
+
+        for (var datoReq : request.getDatos()) {
+            if (!camposValidos.contains(datoReq.getCampoId())) {
+                throw new IllegalArgumentException("Campo " + datoReq.getCampoId() + " no pertenece a la planilla " + planillaId);
+            }
+        }
+
+        Integer max = filaRepository.findMaxIndiceByPlanillaId(planillaId);
+        Integer indice = (max != null) ? max + 1 : 0;
+
+        Fila fila = new Fila();
+        fila.setPlanilla(planilla);
+        fila.setIndice(indice);
+        fila.setCodigoUsuario(null);
+
+        List<Dato> datos = new ArrayList<>();
+        for (var datoReq : request.getDatos()) {
+            Campo campo = campoRepository.findById(datoReq.getCampoId())
+                    .orElseThrow(() -> new IllegalArgumentException("Campo no encontrado: " + datoReq.getCampoId()));
+            Dato dato = new Dato();
+            dato.setCampo(campo);
+            dato.setFila(fila);
+            dato.setPosicion(datoReq.getPosicion());
+            dato.setInformacion(datoReq.getInformacion());
+            datos.add(dato);
+        }
+        fila.setDatos(datos);
+
+        return filaRepository.save(fila);
+    }
+
+    @Override
+    @Transactional
     public Fila updateFull(Long id, FilaRequest request) {
         Fila fila = findById(id);
         assertOwnershipOrAdmin(fila);

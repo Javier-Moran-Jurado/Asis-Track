@@ -21,6 +21,7 @@ services:
       - REDIS_PORT=6379
       - SECURITY_URL=http://seguridad-service:8085
       - INTERNAL_SECRET=${INTERNAL_SECRET}
+      - GOOGLE_CLIENT_IDS=${GOOGLE_CLIENT_IDS}
     networks:
       - mynetwork
 

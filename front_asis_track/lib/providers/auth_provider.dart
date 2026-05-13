@@ -146,13 +146,6 @@ class AuthProvider extends ChangeNotifier {
   // ══════════════════════════════════════════════════════════════════════════
 
   /// Realiza el flujo completo de autenticacion con Google:
-  ///
-  /// 1. Google Sign-In → obtiene idToken.
-  /// 2. POST /api/v1/auth/oauth2/google → valida dominio y emite JWTs propios.
-  /// 3. Guarda tokens y datos de usuario (mismo flujo que login manual).
-  ///
-  /// Retorna `true` si el login fue exitoso, `false` en caso de error
-  /// o si el usuario cancelo el picker.
   Future<bool> loginWithGoogle() async {
     _status = AuthStatus.loading;
     _errorMessage = null;
@@ -162,7 +155,6 @@ class AuthProvider extends ChangeNotifier {
       final user = await GoogleAuthService.signInWithGoogle();
 
       if (user == null) {
-        // Usuario cancelo el picker — no es un error, solo queda en login
         _status = AuthStatus.unauthenticated;
         notifyListeners();
         return false;
@@ -205,6 +197,14 @@ class AuthProvider extends ChangeNotifier {
 
   /// Limpia el mensaje de error sin cambiar el estado de autenticación.
   void clearError() {
+    _errorMessage = null;
+    notifyListeners();
+  }
+
+  /// Establece el usuario actual y pasa a estado autenticado.
+  void setUser(UserModel user) {
+    _currentUser = user;
+    _status = AuthStatus.authenticated;
     _errorMessage = null;
     notifyListeners();
   }

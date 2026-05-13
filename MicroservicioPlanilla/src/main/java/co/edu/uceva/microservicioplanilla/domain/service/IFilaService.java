@@ -13,6 +13,7 @@ public interface IFilaService {
     Fila findByPlanillaIdAndIndice(Long planillaId, Integer indice);
     Fila create(FilaRequest request);
     List<Fila> createBatch(List<FilaRequest> requests);
+    Fila createInvitado(Long planillaId, co.edu.uceva.microservicioplanilla.delivery.rest.dto.InvitadoFilaRequest request);
     Fila updateFull(Long id, FilaRequest request);
     Fila patch(Long id, FilaRequest request);
     void deleteById(Long id);

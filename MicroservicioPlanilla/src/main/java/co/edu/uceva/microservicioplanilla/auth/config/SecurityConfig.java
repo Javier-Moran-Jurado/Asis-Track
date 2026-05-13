@@ -35,7 +35,9 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(req ->
-                        req.requestMatchers("/api/v1/auth/**", "/api/v1/planilla-service/reportes/**", "/actuator/**")
+                        req.requestMatchers("/api/v1/auth/**", "/api/v1/planilla-service/reportes/**", "/actuator/**",
+                                        "/api/v1/planilla-service/planillas/*/campos-publico",
+                                        "/api/v1/planilla-service/planillas/*/invitado/filas")
                                 .permitAll()
                                 .anyRequest()
                                 .authenticated()

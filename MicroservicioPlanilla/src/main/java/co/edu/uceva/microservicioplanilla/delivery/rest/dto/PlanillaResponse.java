@@ -13,6 +13,7 @@ public class PlanillaResponse {
     private OrigenResponse origen;
     private Long eventoId;
     private String urlReferencia;
+    private String qrUrl;
     private List<CampoResponse> campos;
     private List<FilaResponse> filas;
 
@@ -22,6 +23,7 @@ public class PlanillaResponse {
         dto.setOrigen(entity.getOrigen() != null ? OrigenResponse.from(entity.getOrigen()) : null);
         dto.setEventoId(entity.getEvento() != null ? entity.getEvento().getId() : null);
         dto.setUrlReferencia(entity.getUrlReferencia());
+        dto.setQrUrl(entity.getQrUrl());
         if (entity.getCampos() != null) {
             dto.setCampos(entity.getCampos().stream().map(CampoResponse::from).toList());
         }

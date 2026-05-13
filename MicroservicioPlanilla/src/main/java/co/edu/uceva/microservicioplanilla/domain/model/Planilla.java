@@ -33,6 +33,9 @@ public class Planilla {
     @Column(name = "url_referencia", columnDefinition = "TEXT")
     private String urlReferencia;
 
+    @Column(name = "qr_url", columnDefinition = "TEXT")
+    private String qrUrl;
+
     @OneToMany(mappedBy = "planilla", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Campo> campos;
 

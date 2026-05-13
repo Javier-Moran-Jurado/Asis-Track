@@ -6,10 +6,12 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class PlanillaRequest {
+public class InvitadoDatoRequest {
     @NotNull
-    private Long origenId;
-    private Long eventoId;
-    private String urlReferencia;
-    private String qrUrl;
+    private Long campoId;
+
+    @NotNull
+    private Integer posicion;
+
+    private String informacion;
 }
