@@ -59,6 +59,7 @@ public class PlanillaRestController {
         return planillaService.findAll().stream().map(PlanillaResponse::from).toList();
     }
 
+    @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Docente', 'Monitor', 'Decano')")
     @PostMapping("/planillas")
     public PlanillaResponse save(@Valid @RequestBody PlanillaRequest request) {

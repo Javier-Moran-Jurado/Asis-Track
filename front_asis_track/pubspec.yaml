@@ -37,15 +37,20 @@ dependencies:
   go_router: ^17.2.0
   mobile_scanner: ^6.0.5
   http: ^1.2.2
+  http_parser: ^4.0.2
   geolocator: ^13.0.2
   permission_handler: ^11.4.0
   intl: ^0.20.2
   shared_preferences: ^2.3.2
   flutter_secure_storage: ^9.2.2
   provider: ^6.1.2
+  flutter_riverpod: ^2.5.1
   fl_chart: ^0.69.2
   google_sign_in: ^6.2.2
   google_sign_in_web: ^0.12.4+3
+  signature: ^6.3.0
+  image_picker: ^1.2.2
+  qr_flutter: ^4.1.0
 
 dev_dependencies:
   flutter_test:

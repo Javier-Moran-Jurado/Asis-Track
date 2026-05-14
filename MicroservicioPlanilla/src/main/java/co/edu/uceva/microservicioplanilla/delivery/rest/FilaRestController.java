@@ -145,6 +145,9 @@ public class FilaRestController {
         } catch (ResponseStatusException rse) {
             throw rse;
         } catch (Exception e) {
+            System.err.println("=== ERROR EN SUBIR FIRMA ===");
+            e.printStackTrace();
+            System.err.println("============================");
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error subiendo firma: " + e.getMessage());
         }
     }

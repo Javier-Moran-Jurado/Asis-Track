@@ -16,12 +16,13 @@ class MainLayout extends StatelessWidget {
     final rol = auth.currentUser?.rol ?? '';
     final showUsuarios = RoleService.canCreateUsers(rol);
     final showEventos = RoleService.canCreateEvents(rol);
-    final showLugares = RoleService.canCreateUsers(rol); // mismo permiso que crear usuarios
+    final showLugares = RoleService.canCreateUsers(rol);
+    final showPlanillas = true;
 
     if (AppBreakpoints.isMobile(context)) {
       return Scaffold(
         body: child,
-        bottomNavigationBar: _buildBottomNav(context, showUsuarios, showEventos, showLugares),
+        bottomNavigationBar: _buildBottomNav(context, showUsuarios, showEventos, showLugares, showPlanillas),
       );
     }
 
@@ -38,7 +39,7 @@ class MainLayout extends StatelessWidget {
       ),
       body: Row(
         children: [
-          _buildNavigationRail(context, showUsuarios, showEventos, showLugares),
+          _buildNavigationRail(context, showUsuarios, showEventos, showLugares, showPlanillas),
           const VerticalDivider(width: 1),
           Expanded(
             child: Center(
@@ -53,9 +54,11 @@ class MainLayout extends StatelessWidget {
     );
   }
 
-  List<_NavItem> _buildItems(bool showUsuarios, bool showEventos, bool showLugares) {
+  List<_NavItem> _buildItems(bool showUsuarios, bool showEventos, bool showLugares, bool showPlanillas) {
     return [
       _NavItem('/home', Icons.home_outlined, Icons.home, 'Inicio'),
+      if (showPlanillas)
+        _NavItem('/planillas', Icons.assignment_outlined, Icons.assignment, 'Planillas'),
       _NavItem('/asistencia', Icons.qr_code_scanner_outlined, Icons.qr_code_scanner, 'Asistencia'),
       _NavItem('/historial', Icons.history_outlined, Icons.history, 'Historial'),
       _NavItem('/justificaciones', Icons.description_outlined, Icons.description, 'Justificaciones'),
@@ -69,8 +72,8 @@ class MainLayout extends StatelessWidget {
     ];
   }
 
-  Widget _buildBottomNav(BuildContext context, bool showUsuarios, bool showEventos, bool showLugares) {
-    final items = _buildItems(showUsuarios, showEventos, showLugares);
+  Widget _buildBottomNav(BuildContext context, bool showUsuarios, bool showEventos, bool showLugares, bool showPlanillas) {
+    final items = _buildItems(showUsuarios, showEventos, showLugares, showPlanillas);
     final location = GoRouterState.of(context).uri.path;
     int idx = 0;
     for (int i = 0; i < items.length; i++) {
@@ -86,8 +89,8 @@ class MainLayout extends StatelessWidget {
     );
   }
 
-  Widget _buildNavigationRail(BuildContext context, bool showUsuarios, bool showEventos, bool showLugares) {
-    final items = _buildItems(showUsuarios, showEventos, showLugares);
+  Widget _buildNavigationRail(BuildContext context, bool showUsuarios, bool showEventos, bool showLugares, bool showPlanillas) {
+    final items = _buildItems(showUsuarios, showEventos, showLugares, showPlanillas);
     final location = GoRouterState.of(context).uri.path;
     int idx = 0;
     for (int i = 0; i < items.length; i++) {

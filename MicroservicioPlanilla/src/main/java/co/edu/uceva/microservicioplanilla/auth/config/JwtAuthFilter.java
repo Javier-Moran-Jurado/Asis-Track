@@ -44,7 +44,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         final String jwt = authHeader.substring(7);
-        final Long codigoUsuario = jwtService.extractCodigo(jwt);
+        Long codigoUsuario = null;
+        try {
+            codigoUsuario = jwtService.extractCodigo(jwt);
+        } catch (Exception e) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.getWriter().write("Token invalido o expirado");
+            return;
+        }
+
         final Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (codigoUsuario == null || authentication != null) {
             filterChain.doFilter(request, response);
