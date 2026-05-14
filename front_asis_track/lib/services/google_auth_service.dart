@@ -10,7 +10,7 @@ import 'auth_service.dart';
 
 /// Servicio de autenticacion con Google OAuth2.
 class GoogleAuthService {
-  static String get _baseUrl => AppConfig.baseUrl;
+  static String get _baseUrl => AppConfig.authUrl;
 
   static final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: <String>['openid', 'email', 'profile'],
@@ -101,15 +101,12 @@ class GoogleAuthService {
       await AuthService.saveUserData(user);
 
       return user;
-    } else if (response.statusCode == 401 || response.statusCode == 403) {
+    } else {
       final body = jsonDecode(response.body) as Map<String, dynamic>?;
       final message = body?['message']?.toString() ??
           body?['error']?.toString() ??
-          'Acceso denegado. Verifica tu correo institucional.';
+          'Error al iniciar sesion con Google (${response.statusCode}).';
       throw Exception(message);
-    } else {
-      throw Exception(
-          'Error al iniciar sesion con Google (${response.statusCode}).');
     }
   }
 

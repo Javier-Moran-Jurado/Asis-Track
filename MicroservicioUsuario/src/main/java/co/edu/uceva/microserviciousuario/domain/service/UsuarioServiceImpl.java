@@ -35,7 +35,29 @@ public class UsuarioServiceImpl implements IUsuarioService {
     @Override
     @Transactional
     public Usuario update(Usuario usuario) {
-        return repository.save(usuario);
+        Usuario existente = repository.findById(usuario.getCodigo())
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con codigo: " + usuario.getCodigo()));
+
+        if (usuario.getNombreCompleto() != null && !usuario.getNombreCompleto().isEmpty()) {
+            existente.setNombreCompleto(usuario.getNombreCompleto());
+        }
+        if (usuario.getCorreo() != null && !usuario.getCorreo().isEmpty()) {
+            existente.setCorreo(usuario.getCorreo());
+        }
+        if (usuario.getContrasena() != null && !usuario.getContrasena().isEmpty()) {
+            existente.setContrasena(usuario.getContrasena());
+        }
+        if (usuario.getCedula() != null) {
+            existente.setCedula(usuario.getCedula());
+        }
+        if (usuario.getTelefono() != null) {
+            existente.setTelefono(usuario.getTelefono());
+        }
+        if (usuario.getRol() != null) {
+            existente.setRol(usuario.getRol());
+        }
+
+        return repository.save(existente);
     }
 
     @Override

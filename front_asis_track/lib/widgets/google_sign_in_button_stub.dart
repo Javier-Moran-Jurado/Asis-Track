@@ -1,6 +1,10 @@
-import 'dart:html' as html;
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:ui' as ui;
+import 'package:flutter/material.dart';
 
-/// Stub vacío para plataformas no-web.
+/// Stub para plataformas no-web.
 void registerFactory() {}
+
+class GoogleSignInButtonWeb extends StatelessWidget {
+  const GoogleSignInButtonWeb({super.key});
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
+}

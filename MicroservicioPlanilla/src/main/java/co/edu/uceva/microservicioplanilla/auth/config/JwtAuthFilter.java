@@ -1,7 +1,5 @@
 package co.edu.uceva.microservicioplanilla.auth.config;
 
-
-import co.edu.uceva.microservicioplanilla.auth.repository.ITokenRepository;
 import co.edu.uceva.microservicioplanilla.auth.service.JwtService;
 
 import jakarta.servlet.FilterChain;
@@ -15,8 +13,6 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -29,8 +25,6 @@ import java.util.List;
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
-    private final UserDetailsService userDetailsService;
-    private final ITokenRepository tokenRepository;
 
     @Override
     protected void doFilterInternal(
@@ -57,29 +51,20 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return;
         }
 
-        final UserDetails userDetails = this.userDetailsService.loadUserByUsername(codigoUsuario.toString());
-        final boolean isTokenValidInDB = tokenRepository.findByToken(jwt)
-                .map(token -> !token.isExpired() && !token.isRevoked())
-                .orElse(false);
-
-        if (isTokenValidInDB) {
-            final boolean isTokenValid = jwtService.isTokenValid(jwt);
-
-            if (isTokenValid) {
-                String rol = jwtService.extractRol(jwt);
-                List<SimpleGrantedAuthority> authorities = List.of(
-                        new SimpleGrantedAuthority("ROLE_" + rol)
-                );
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userDetails,
-                        null,
-                        authorities
-                );
-                authToken.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request)
-                );
-                SecurityContextHolder.getContext().setAuthentication(authToken);
-            }
+        if (jwtService.isTokenValid(jwt)) {
+            String rol = jwtService.extractRol(jwt);
+            List<SimpleGrantedAuthority> authorities = List.of(
+                    new SimpleGrantedAuthority("ROLE_" + rol)
+            );
+            UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                    codigoUsuario.toString(),
+                    null,
+                    authorities
+            );
+            authToken.setDetails(
+                    new WebAuthenticationDetailsSource().buildDetails(request)
+            );
+            SecurityContextHolder.getContext().setAuthentication(authToken);
         }
 
         filterChain.doFilter(request, response);

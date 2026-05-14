@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:html' as html;
 import 'dart:js' as js;
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:ui_web' as ui;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -10,46 +8,7 @@ import '../providers/auth_provider.dart';
 import '../services/google_auth_service.dart';
 import '../themes/app_theme.dart';
 
-/// Registra el HtmlElementView factory para el botón GIS.
-void registerFactory() {
-  ui.platformViewRegistry.registerViewFactory(
-    'google-signin-btn',
-    (int viewId) {
-      final div = html.DivElement()
-        ..id = 'gsi-btn-$viewId'
-        ..style.width = '100%'
-        ..style.height = '100%';
-
-      void tryRender() {
-        final google = js.context['google'];
-        if (google != null) {
-          final accounts = google['accounts'];
-          if (accounts != null) {
-            final id = accounts['id'];
-            if (id != null) {
-              id.callMethod('renderButton', [
-                div,
-                js.JsObject.jsify({
-                  'theme': 'outline',
-                  'size': 'large',
-                  'width': 360,
-                  'text': 'signin_with',
-                })
-              ]);
-              return;
-            }
-          }
-        }
-        html.window.requestAnimationFrame((_) => tryRender());
-      }
-
-      html.window.requestAnimationFrame((_) => tryRender());
-      return div;
-    },
-  );
-}
-
-/// Botón de Google Sign-In para Flutter Web usando GIS nativo.
+/// Botón de Google Sign-In para Flutter Web usando GIS prompt (One Tap, sin popup).
 class GoogleSignInButtonWeb extends StatefulWidget {
   const GoogleSignInButtonWeb({super.key});
 
@@ -75,14 +34,12 @@ class _GoogleSignInButtonWebState extends State<GoogleSignInButtonWeb> {
 
   void _handleSuccess(html.Event event) {
     final token = js.context['googleIdToken'] as String?;
-    if (token != null && token.isNotEmpty) {
+    if (token != null && token.isNotEmpty && !_isLoading) {
       _processToken(token);
     }
   }
 
   Future<void> _processToken(String idToken) async {
-    if (_isLoading) return;
-
     setState(() => _isLoading = true);
 
     final auth = context.read<AuthProvider>();
@@ -104,13 +61,11 @@ class _GoogleSignInButtonWebState extends State<GoogleSignInButtonWeb> {
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.error_outline, color: Colors.white, size: 20),
-            const SizedBox(width: 8),
-            Expanded(child: Text(message)),
-          ],
-        ),
+        content: Row(children: [
+          const Icon(Icons.error_outline, color: Colors.white, size: 20),
+          const SizedBox(width: 8),
+          Expanded(child: Text(message)),
+        ]),
         backgroundColor: AppTheme.errorColor,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -120,26 +75,38 @@ class _GoogleSignInButtonWebState extends State<GoogleSignInButtonWeb> {
     );
   }
 
+  void _signIn() {
+    final google = js.context['google'];
+    if (google != null) {
+      final accounts = google['accounts'];
+      if (accounts != null) {
+        final id = accounts['id'];
+        if (id != null) {
+          id.callMethod('prompt');
+          return;
+        }
+      }
+    }
+    _showError('Google Identity Services no está disponible. Recarga la página.');
+  }
+
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       height: 48,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          const HtmlElementView(viewType: 'google-signin-btn'),
-          if (_isLoading)
-            Container(
-              color: Colors.white.withOpacity(0.8),
-              child: const Center(
-                child: SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              ),
-            ),
-        ],
+      child: OutlinedButton.icon(
+        onPressed: _isLoading ? null : _signIn,
+        icon: _isLoading
+            ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
+            : const Icon(Icons.login, size: 20),
+        label: const Text('Iniciar sesión con Google',
+            style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size.fromHeight(48),
+          side: BorderSide(color: Colors.grey.shade300),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          backgroundColor: Colors.white,
+        ),
       ),
     );
   }

@@ -7,4 +7,5 @@ import java.util.List;
 
 public interface IPlanillaRepository extends JpaRepository<Planilla, Long> {
     List<Planilla> findByEventoId(Long eventoId);
+    long countByEventoId(Long eventoId);
 }

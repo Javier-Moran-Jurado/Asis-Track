@@ -19,6 +19,9 @@ import 'package:front_asis_track/views/planillas/crear_planilla_screen.dart';
 import 'package:front_asis_track/views/planillas/dashboard_screen.dart';
 import 'package:front_asis_track/views/planillas/digitalizar_planilla_screen.dart';
 import 'package:front_asis_track/views/perfil/perfil_screen.dart';
+import 'package:front_asis_track/views/usuarios/usuarios_screen.dart';
+import 'package:front_asis_track/views/eventos/eventos_screen.dart';
+import 'package:front_asis_track/views/lugares/lugares_screen.dart';
 import 'package:front_asis_track/models/evento_qr.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey =
@@ -145,6 +148,27 @@ final GoRouter appRouter = GoRouter(
           pageBuilder: (context, state) => const NoTransitionPage(
             key: ValueKey('key_perfil'),
             child: PerfilScreen(),
+          ),
+        ),
+        GoRoute(
+          path: '/usuarios',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            key: ValueKey('key_usuarios'),
+            child: UsuariosScreen(),
+          ),
+        ),
+        GoRoute(
+          path: '/eventos',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            key: ValueKey('key_eventos'),
+            child: EventosScreen(),
+          ),
+        ),
+        GoRoute(
+          path: '/lugares',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            key: ValueKey('key_lugares'),
+            child: LugaresScreen(),
           ),
         ),
       ],

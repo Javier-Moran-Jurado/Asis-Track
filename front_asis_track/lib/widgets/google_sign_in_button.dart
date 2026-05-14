@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
-import '../services/google_auth_service.dart';
 import '../themes/app_theme.dart';
 import 'google_sign_in_button_stub.dart'
     if (dart.library.html) 'google_sign_in_button_web.dart';
@@ -21,7 +20,6 @@ class _GoogleSignInButtonState extends State<GoogleSignInButton> {
   Future<void> _signInMobile() async {
     setState(() => _isLoading = true);
     final auth = context.read<AuthProvider>();
-    auth.clearError();
 
     final success = await auth.loginWithGoogle();
 
@@ -30,21 +28,19 @@ class _GoogleSignInButtonState extends State<GoogleSignInButton> {
     if (success) {
       context.go('/home');
     } else if (auth.errorMessage != null) {
-      _showErrorSnackBar(auth.errorMessage!);
+      _showError(auth.errorMessage!);
     }
-    setState(() => _isLoading = false);
+    if (mounted) setState(() => _isLoading = false);
   }
 
-  void _showErrorSnackBar(String message) {
+  void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.error_outline, color: Colors.white, size: 20),
-            const SizedBox(width: 8),
-            Expanded(child: Text(message)),
-          ],
-        ),
+        content: Row(children: [
+          const Icon(Icons.error_outline, color: Colors.white, size: 20),
+          const SizedBox(width: 8),
+          Expanded(child: Text(message)),
+        ]),
         backgroundColor: AppTheme.errorColor,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -60,35 +56,16 @@ class _GoogleSignInButtonState extends State<GoogleSignInButton> {
       return const GoogleSignInButtonWeb();
     }
 
-    // Mobile: botón tradicional
     return OutlinedButton.icon(
       onPressed: _isLoading ? null : _signInMobile,
-      icon: Image.network(
-        'https://www.google.com/favicon.ico',
-        height: 20,
-        width: 20,
-        errorBuilder: (_, __, ___) =>
-            const Icon(Icons.account_circle, size: 20),
-      ),
+      icon: const Icon(Icons.login, size: 20),
       label: _isLoading
-          ? const SizedBox(
-              height: 20,
-              width: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : const Text(
-              'Iniciar sesión con Google',
-              style: TextStyle(
-                color: Colors.black87,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
+          : const Text('Iniciar sesión con Google', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),
       style: OutlinedButton.styleFrom(
         minimumSize: const Size.fromHeight(48),
         side: BorderSide(color: Colors.grey.shade300),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         backgroundColor: Colors.white,
       ),
     );

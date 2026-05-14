@@ -3,7 +3,9 @@ package co.edu.uceva.microserviciousuario.auth.controller;
 import co.edu.uceva.microserviciousuario.auth.service.AuthService;
 import co.edu.uceva.microserviciousuario.auth.service.GoogleOAuthService;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpSession;
 import co.edu.uceva.microserviciousuario.domain.service.SecurityIntegrationService;
@@ -31,9 +33,14 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<TokenResponse> authenticate(@RequestBody final LoginRequest request) {
-        final TokenResponse token = service.login(request);
-        return ResponseEntity.ok(token);
+    public ResponseEntity<?> authenticate(@RequestBody final LoginRequest request) {
+        try {
+            final TokenResponse token = service.login(request);
+            return ResponseEntity.ok(token);
+        } catch (BadCredentialsException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(java.util.Map.of("message", "Código o contraseña incorrectos."));
+        }
     }
 
     @PostMapping("/refresh")
@@ -68,8 +75,13 @@ public class AuthController {
     }
 
     @PostMapping("/oauth2/google")
-    public ResponseEntity<TokenResponse> oauth2Google(@RequestBody final GoogleOAuthRequest request) {
-        final TokenResponse token = googleOAuthService.authenticate(request.idToken());
-        return ResponseEntity.ok(token);
+    public ResponseEntity<?> oauth2Google(@RequestBody final GoogleOAuthRequest request) {
+        try {
+            final TokenResponse token = googleOAuthService.authenticate(request.idToken());
+            return ResponseEntity.ok(token);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
+        }
     }
 }

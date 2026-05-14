@@ -22,7 +22,6 @@ logging:
     org.hibernate.SQL: DEBUG
     org.springframework: ERROR
     root: ERROR
-    web: INFO
 
 management:
   endpoints:

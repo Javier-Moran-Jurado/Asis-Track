@@ -2,7 +2,9 @@ package co.edu.uceva.microservicioplanilla.domain.service;
 
 import co.edu.uceva.microservicioplanilla.domain.model.Evento;
 import co.edu.uceva.microservicioplanilla.domain.repository.IEventoRepository;
+import co.edu.uceva.microservicioplanilla.domain.repository.IPlanillaRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -12,6 +14,7 @@ import java.util.List;
 public class EventoServiceImpl implements IEventoService {
 
     private final IEventoRepository repository;
+    private final IPlanillaRepository planillaRepository;
 
     @Override public List<Evento> findAll() { return repository.findAll(); }
 
@@ -35,6 +38,13 @@ public class EventoServiceImpl implements IEventoService {
     public void deleteById(Long id) {
         if (!repository.existsById(id)) {
             throw new RuntimeException("Evento no encontrado con id: " + id);
+        }
+        long planillasCount = planillaRepository.countByEventoId(id);
+        if (planillasCount > 0) {
+            throw new RuntimeException(
+                "No se puede eliminar el evento porque tiene " + planillasCount +
+                " planilla" + (planillasCount == 1 ? "" : "s") + " asociada" + (planillasCount == 1 ? "" : "s") + ". Elimina primero las planillas."
+            );
         }
         repository.deleteById(id);
     }

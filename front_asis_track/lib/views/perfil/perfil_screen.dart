@@ -137,6 +137,18 @@ class PerfilScreen extends StatelessWidget {
                 const SizedBox(height: 24),
               ],
 
+              // ── Crear usuario: solo si tiene permisos ──────────────────
+              if (RoleService.canCreateUsers(rol)) ...[
+                _QuickAccessCard(
+                  icon: Icons.person_add_alt_1,
+                  title: 'Crear usuario',
+                  subtitle: 'Registra una nueva cuenta en el sistema',
+                  color: const Color(0xFF7C3AED),
+                  onTap: () => context.push('/register'),
+                ),
+                const SizedBox(height: 24),
+              ],
+
               // ── Firma digital ───────────────────────────────────────────
               _QuickAccessCard(
                 icon: Icons.draw_outlined,
