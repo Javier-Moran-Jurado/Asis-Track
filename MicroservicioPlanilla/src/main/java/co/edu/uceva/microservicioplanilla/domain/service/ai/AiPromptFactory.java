@@ -20,10 +20,19 @@ public class AiPromptFactory {
               ]
             }
             
+            REGLA DE FIRMAS:
+            Si el nombre del encabezado contiene la palabra "firma"
+            (sin importar mayúsculas o minúsculas), debes:
+              1. Clasificar ese campo con tipo_campo: "signature_file".
+              2. NO incluir "opciones" para ese campo.
+            Cualquier otro campo debe clasificarse según su contenido.
+            
             Reglas:
             - "opciones" solo se incluye para tipos: combo, radio, multivaluecheckbox. Para el resto, omitir el campo.
             - Deduce el tipo usando ÚNICAMENTE estos valores:
-            """ + tiposPermitidos;
+            """ + tiposPermitidos + """
+            
+            Respond ONLY with the JSON. No explanations, no markdown.""";
     }
 
     public String buildTextRecognitionPrompt(String estructuraJson) {
@@ -39,10 +48,21 @@ public class AiPromptFactory {
               { "columna": "Nombre columna", "fila": 2, "valor": "contenido extraído" }
             ]
             
-            Reglas:
+            REGLA DE FIRMAS:
+            Si el nombre de una columna o campo contiene la palabra "firma"
+            (sin importar mayúsculas o minúsculas, por ejemplo: "Firma",
+            "FIRMA", "firma del estudiante", "Firma Docente", etc.),
+            debes:
+              1. NO transcribir, describir ni interpretar el contenido visual de esa celda.
+              2. Dejar su valor como una cadena vacía "".
+            Cualquier otro campo que no contenga "firma" en su nombre
+            debe ser transcrito normalmente.
+            
+            Reglas adicionales:
             - Si una celda está vacía, usar valor null.
-            - Las firmas devuelven su representación base64 como valor.
             - Respetar el número de filas exacto visible en la imagen.
+            
+            Respond ONLY with the JSON. No explanations, no markdown.
             """;
     }
 
@@ -59,11 +79,21 @@ public class AiPromptFactory {
                 "opciones": ["opción1", "opción2"]
               }
             ]
+            
+            REGLA DE FIRMAS:
+            Si el nombre de la columna contiene la palabra "firma"
+            (sin importar mayúsculas o minúsculas), debes:
+              1. Clasificar ese campo con tipo_campo: "signature_file".
+              2. NO incluir "opciones" para ese campo.
+            Cualquier otro campo debe clasificarse según su contenido.
+            
             Reglas:
             - "opciones" solo se incluye para tipos: combo, radio, multivaluecheckbox. Para el resto, omitir el campo.
             - Deduce el tipo usando ÚNICAMENTE estos valores: """ + tiposPermitidos + """
             - "obligatorio": true si visualmente se identifica como requerido (*, negrita, marcador rojo, etc.), false por defecto.
             - Si la imagen no contiene una tabla o planilla clara, devolver un array vacío [].
+            
+            Respond ONLY with the JSON. No explanations, no markdown.
             """;
     }
 
@@ -106,11 +136,19 @@ public class AiPromptFactory {
               "campos": [...]
             }
 
+            REGLA DE FIRMAS:
+            Si el nombre del campo contiene la palabra "firma"
+            (sin importar mayúsculas o minúsculas), debes:
+              1. Clasificar ese campo con tipo_campo: "signature_file".
+              2. NO incluir "opciones" para ese campo.
+            
             Reglas:
             - Usa ÚNICAMENTE estos tipos: """ + tiposPermitidos + """
             - "opciones" solo para combo, radio, multivaluecheckbox. Omitir para otros tipos.
             - Campos comunes de asistencia/eventos: nombre, cédula, correo, firma, fecha, etc.
             - Si no se debe crear evento, todos los campos de evento deben ser null.
+            
+            Respond ONLY with the JSON. No explanations, no markdown.
             """;
     }
 }

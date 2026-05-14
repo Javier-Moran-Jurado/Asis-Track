@@ -47,6 +47,7 @@ public class CampoServiceImpl implements ICampoService {
     }
 
     @Override
+    @Transactional
     public Campo update(Long id, CampoRequest request) {
         Campo existente = findById(id);
         existente.setPlanilla(planillaRepository.findById(request.getPlanillaId())
@@ -55,7 +56,23 @@ public class CampoServiceImpl implements ICampoService {
                 .orElseThrow(() -> new IllegalArgumentException("Tipo de campo no encontrado: " + request.getTipoCampoId())));
         existente.setNombreCampo(request.getNombreCampo());
         existente.setObligatorio(Boolean.TRUE.equals(request.getObligatorio()));
-        return repository.save(existente);
+        Campo saved = repository.save(existente);
+
+        opcionesCampoRepository.deleteByCampo_Id(id);
+        List<String> opciones = request.getOpciones();
+        if (opciones != null && !opciones.isEmpty()) {
+            List<OpcionesCampo> nuevas = new ArrayList<>();
+            for (int j = 0; j < opciones.size(); j++) {
+                OpcionesCampo op = new OpcionesCampo();
+                op.setCampo(saved);
+                op.setValor(opciones.get(j));
+                op.setOrden(j);
+                nuevas.add(op);
+            }
+            opcionesCampoRepository.saveAll(nuevas);
+        }
+
+        return saved;
     }
 
     @Override

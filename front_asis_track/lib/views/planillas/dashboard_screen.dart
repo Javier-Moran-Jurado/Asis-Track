@@ -234,24 +234,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         const SizedBox(height: 8),
         // ── Leyenda de la pastel ──
-        if (isDesktop)
-          Wrap(
-            spacing: 12,
-            runSpacing: 6,
-            children: entries.take(8).map((e) {
-              return Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(width: 10, height: 10, decoration: BoxDecoration(
-                    color: _getPieColor(entries.indexOf(e)),
-                    shape: BoxShape.circle,
-                  )),
-                  const SizedBox(width: 4),
-                  Text('${e.key} (${e.value})', style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                ],
-              );
-            }).toList(),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 160),
+          child: SingleChildScrollView(
+            child: Wrap(
+              spacing: 12,
+              runSpacing: 6,
+              children: entries.asMap().entries.map((entry) {
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(width: 10, height: 10, decoration: BoxDecoration(
+                      color: _getPieColor(entry.key),
+                      shape: BoxShape.circle,
+                    )),
+                    const SizedBox(width: 4),
+                    Text('${entry.value.key} (${entry.value.value})', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                  ],
+                );
+              }).toList(),
+            ),
           ),
+        ),
 
         const SizedBox(height: 20),
         const Text('Distribución por valor',

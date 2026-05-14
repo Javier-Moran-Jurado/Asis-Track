@@ -1,9 +1,16 @@
 package co.edu.uceva.microservicioplanilla.delivery.rest;
 
+import co.edu.uceva.microservicioplanilla.domain.model.Campo;
+import co.edu.uceva.microservicioplanilla.domain.model.Dato;
 import co.edu.uceva.microservicioplanilla.domain.model.Fila;
+import co.edu.uceva.microservicioplanilla.domain.service.ICampoService;
+import co.edu.uceva.microservicioplanilla.domain.service.IDatoService;
 import co.edu.uceva.microservicioplanilla.domain.service.IFilaService;
+import co.edu.uceva.microservicioplanilla.delivery.rest.dto.DatoRequest;
+import co.edu.uceva.microservicioplanilla.delivery.rest.dto.DatoResponse;
 import co.edu.uceva.microservicioplanilla.delivery.rest.dto.FilaRequest;
 import co.edu.uceva.microservicioplanilla.delivery.rest.dto.FilaResponse;
+import co.edu.uceva.microservicioplanilla.service.S3StorageService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +22,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
@@ -26,6 +35,9 @@ import java.util.Map;
 public class FilaRestController {
 
     private final IFilaService filaService;
+    private final S3StorageService s3StorageService;
+    private final ICampoService campoService;
+    private final IDatoService datoService;
 
     @PreAuthorize("hasAnyRole('Administrador', 'Administrativo')")
     @GetMapping
@@ -84,6 +96,60 @@ public class FilaRestController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         filaService.deleteById(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PreAuthorize("isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Monitor')")
+    @PostMapping("/{filaId}/firma")
+    public ResponseEntity<DatoResponse> subirFirma(
+            @PathVariable Long filaId,
+            @RequestParam("campoId") Long campoId,
+            @RequestParam("firmaImage") MultipartFile firmaImage) {
+        Fila fila = filaService.findById(filaId);
+        Campo campo = campoService.findById(campoId);
+
+        if (campo.getPlanilla() == null || fila.getPlanilla() == null ||
+                !campo.getPlanilla().getId().equals(fila.getPlanilla().getId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El campo no pertenece a la planilla de la fila");
+        }
+
+        if (campo.getTipoCampo() == null || !"signature_file".equals(campo.getTipoCampo().getTipo())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El campo no es de tipo firma (signature_file)");
+        }
+
+        try {
+            String key = "planillas/" + fila.getPlanilla().getId() + "/firmas/fila_" + filaId + "_campo_" + campoId + ".png";
+            s3StorageService.upload(firmaImage.getBytes(), key, firmaImage.getContentType() != null ? firmaImage.getContentType() : "image/png");
+            String url = s3StorageService.publicUrl(key);
+
+            List<Dato> datosExistentes = datoService.findByCampoId(campoId);
+            Dato existente = datosExistentes.stream()
+                    .filter(d -> d.getFila().getId().equals(filaId))
+                    .findFirst()
+                    .orElse(null);
+
+            if (existente != null) {
+                DatoRequest req = new DatoRequest();
+                req.setCampoId(campoId);
+                req.setFilaId(filaId);
+                req.setPosicion(existente.getPosicion());
+                req.setInformacion(url);
+                return ResponseEntity.ok(DatoResponse.from(datoService.update(existente.getId(), req)));
+            } else {
+                DatoRequest req = new DatoRequest();
+                req.setCampoId(campoId);
+                req.setFilaId(filaId);
+                req.setPosicion(0);
+                req.setInformacion(url);
+                return ResponseEntity.status(HttpStatus.CREATED).body(DatoResponse.from(datoService.save(req)));
+            }
+        } catch (ResponseStatusException rse) {
+            throw rse;
+        } catch (Exception e) {
+            System.err.println("=== ERROR EN SUBIR FIRMA ===");
+            e.printStackTrace();
+            System.err.println("============================");
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error subiendo firma: " + e.getMessage());
+        }
     }
 
     private Long getCurrentUserCodigo() {

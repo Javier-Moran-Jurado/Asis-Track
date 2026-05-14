@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import '../../models/historial_asistencia.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/justificacion_provider.dart';
-import '../../services/justificacion_service.dart';
 import '../../themes/app_theme.dart';
 import '../../utils/app_breakpoints.dart';
 import '../../widgets/custom_button.dart';
@@ -51,6 +50,33 @@ class _JustificacionScreenState extends State<JustificacionScreen> {
     'Problema de transporte',
     'Otro',
   ];
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Helpers locales (stubs para selección de archivos y envío)
+  // TODO: Integrar file_picker / image_picker para selección real.
+  // ──────────────────────────────────────────────────────────────────────────
+
+  static Future<String?> _seleccionarArchivo() async {
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+    return 'documento_respaldo.pdf';
+  }
+
+  static Future<String?> _seleccionarImagenFirma() async {
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+    return 'firma_usuario.jpg';
+  }
+
+  static Future<bool> _enviarJustificacion({
+    required String asistenciaId,
+    required String motivo,
+    required String descripcion,
+    String? archivo,
+    String? firma,
+  }) async {
+    // TODO: Connect to real backend via JustificacionService.solicitarJustificacion
+    await Future<void>.delayed(const Duration(seconds: 2));
+    return true;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -336,7 +362,7 @@ class _JustificacionScreenState extends State<JustificacionScreen> {
   Widget _buildArchivoSelector(JustificacionProvider prov) {
     return InkWell(
       onTap: () async {
-        final archivo = await JustificacionService.seleccionarArchivo();
+        final archivo = await _seleccionarArchivo();
         if (archivo != null && context.mounted) {
           prov.setArchivo(archivo);
         }
@@ -679,7 +705,7 @@ class _JustificacionScreenState extends State<JustificacionScreen> {
 
     return InkWell(
       onTap: () async {
-        final imagen = await JustificacionService.seleccionarImagenFirma();
+        final imagen = await _seleccionarImagenFirma();
         if (imagen != null && context.mounted) {
           prov.setImagenFirma(imagen);
         }
@@ -748,7 +774,7 @@ class _JustificacionScreenState extends State<JustificacionScreen> {
           onPressed: prov.isFormValid && !prov.isLoading
               ? () async {
                   await prov.enviar(
-                    onSubmit: JustificacionService.enviarJustificacion,
+                    onSubmit: _enviarJustificacion,
                     asistenciaId: widget.asistencia.id,
                   );
                 }

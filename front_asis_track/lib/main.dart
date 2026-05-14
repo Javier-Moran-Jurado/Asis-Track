@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' hide ChangeNotifierProvider;
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'package:front_asis_track/routes/app_router.dart';
@@ -9,7 +10,6 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('es', null);
 
-  // Verificar si hay una sesión activa antes de renderizar la primera pantalla.
   final authProvider = AuthProvider();
   await authProvider.checkAuthStatus();
 
@@ -23,13 +23,15 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider<AuthProvider>.value(
-      value: authProvider,
-      child: MaterialApp.router(
-        theme: AppTheme.lightTheme,
-        title: 'Asis-Track',
-        routerConfig: appRouter,
-        debugShowCheckedModeBanner: false,
+    return ProviderScope(
+      child: ChangeNotifierProvider<AuthProvider>.value(
+        value: authProvider,
+        child: MaterialApp.router(
+          theme: AppTheme.lightTheme,
+          title: 'Asis-Track',
+          routerConfig: appRouter,
+          debugShowCheckedModeBanner: false,
+        ),
       ),
     );
   }

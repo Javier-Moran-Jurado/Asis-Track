@@ -1,6 +1,8 @@
 package co.edu.uceva.microservicioplanilla.delivery.rest;
 
 import co.edu.uceva.microservicioplanilla.domain.model.Campo;
+import co.edu.uceva.microservicioplanilla.domain.model.OpcionesCampo;
+import co.edu.uceva.microservicioplanilla.domain.repository.IOpcionesCampoRepository;
 import co.edu.uceva.microservicioplanilla.domain.service.ICampoService;
 import co.edu.uceva.microservicioplanilla.delivery.rest.dto.CampoRequest;
 import co.edu.uceva.microservicioplanilla.delivery.rest.dto.CampoResponse;
@@ -22,30 +24,42 @@ import java.util.Map;
 public class CampoRestController {
 
     private final ICampoService campoService;
+    private final IOpcionesCampoRepository opcionesCampoRepository;
+
+    private CampoResponse toResponse(Campo entity) {
+        List<OpcionesCampo> opciones = opcionesCampoRepository.findByCampo_IdOrderByOrden(entity.getId());
+        return CampoResponse.from(entity, opciones);
+    }
+
+    private List<CampoResponse> toResponseList(List<Campo> entities) {
+        return entities.stream().map(this::toResponse).toList();
+    }
 
     @GetMapping
     public ResponseEntity<List<CampoResponse>> findAll() {
-        return ResponseEntity.ok(campoService.findAll().stream().map(CampoResponse::from).toList());
+        return ResponseEntity.ok(toResponseList(campoService.findAll()));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<CampoResponse> findById(@PathVariable Long id) {
-        return ResponseEntity.ok(CampoResponse.from(campoService.findById(id)));
+        return ResponseEntity.ok(toResponse(campoService.findById(id)));
     }
 
     @GetMapping("/planilla/{planillaId}")
     public ResponseEntity<List<CampoResponse>> findByPlanillaId(@PathVariable Long planillaId) {
-        return ResponseEntity.ok(campoService.findByPlanillaId(planillaId).stream().map(CampoResponse::from).toList());
+        return ResponseEntity.ok(toResponseList(campoService.findByPlanillaId(planillaId)));
     }
 
     @PostMapping
     public ResponseEntity<CampoResponse> save(@RequestBody CampoRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(CampoResponse.from(campoService.save(request)));
+        Campo saved = campoService.save(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(saved));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<CampoResponse> update(@PathVariable Long id, @RequestBody CampoRequest request) {
-        return ResponseEntity.ok(CampoResponse.from(campoService.update(id, request)));
+        Campo updated = campoService.update(id, request);
+        return ResponseEntity.ok(toResponse(updated));
     }
 
     @DeleteMapping("/{id}")
@@ -58,7 +72,7 @@ public class CampoRestController {
     @PostMapping("/batch")
     public ResponseEntity<?> saveAll(@RequestBody @Size(max = 200) List<CampoRequest> requests) {
         try {
-            List<CampoResponse> saved = campoService.saveAll(requests).stream().map(CampoResponse::from).toList();
+            List<CampoResponse> saved = toResponseList(campoService.saveAll(requests));
             return ResponseEntity.status(HttpStatus.CREATED).body(saved);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("status", 400, "message", e.getMessage()));

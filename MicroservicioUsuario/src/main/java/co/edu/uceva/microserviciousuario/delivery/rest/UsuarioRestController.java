@@ -97,10 +97,10 @@ public class UsuarioRestController {
 
     @PutMapping("/usuarios")
     @PreAuthorize("isAuthenticated() and hasAnyRole('Administrador', 'Administrativo')")
-    public ResponseEntity<Map<String, Object>> update(@Valid @RequestBody Usuario usuario, BindingResult bindingResult) {
+    public ResponseEntity<Map<String, Object>> update(@RequestBody Usuario usuario) {
         Map<String, Object> response = new HashMap<>();
-        if (bindingResult.hasErrors()) {
-            throw new ValidationException(bindingResult);
+        if (usuario.getCodigo() == null) {
+            throw new IllegalArgumentException("El codigo de usuario es obligatorio.");
         }
         usuarioService.findById(usuario.getCodigo()).orElseThrow(
                 () -> new UsuarioNoEncontradoException(usuario.getCodigo())

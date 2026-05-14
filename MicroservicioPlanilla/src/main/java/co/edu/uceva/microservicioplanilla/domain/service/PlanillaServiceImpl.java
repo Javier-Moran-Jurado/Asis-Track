@@ -73,5 +73,6 @@ public class PlanillaServiceImpl implements IPlanillaService {
             planilla.setEvento(evento);
         }
         planilla.setUrlReferencia(request.getUrlReferencia());
+        planilla.setQrUrl(request.getQrUrl());
     }
 }

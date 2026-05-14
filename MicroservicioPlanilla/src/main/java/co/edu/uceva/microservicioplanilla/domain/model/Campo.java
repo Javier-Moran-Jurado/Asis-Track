@@ -36,5 +36,9 @@ public class Campo {
 
     @JsonIgnore
     @OneToMany(mappedBy = "campo", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<OpcionesCampo> opciones;
+
+    @JsonIgnore
+    @OneToMany(mappedBy = "campo", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Dato> datos;
 }

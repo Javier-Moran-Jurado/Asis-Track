@@ -11,4 +11,5 @@ public class PlanillaRequest {
     private Long origenId;
     private Long eventoId;
     private String urlReferencia;
+    private String qrUrl;
 }

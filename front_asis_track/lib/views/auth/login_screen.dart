@@ -6,6 +6,7 @@ import '../../themes/app_theme.dart';
 import '../../utils/app_breakpoints.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
+import '../../widgets/google_sign_in_button.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -190,60 +191,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 16),
 
                   // ── Botón de Google ──────────────────────────────────────
-                  OutlinedButton.icon(
-                    onPressed: isLoading ? null : _loginWithGoogle,
-                    icon: Image.network(
-                      'https://www.google.com/favicon.ico',
-                      height: 20,
-                      width: 20,
-                      errorBuilder: (_, __, ___) =>
-                          const Icon(Icons.account_circle, size: 20),
-                    ),
-                    label: const Text(
-                      'Iniciar sesión con Google',
-                      style: TextStyle(
-                        color: Colors.black87,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(48),
-                      side: BorderSide(color: Colors.grey.shade300),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      backgroundColor: Colors.white,
-                    ),
-                  ),
+                  GoogleSignInButton(),
                   const SizedBox(height: 24),
 
-                  // ── Link a registro ──────────────────────────────────────
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text(
-                        '¿No tienes cuenta? ',
-                        style: TextStyle(color: AppTheme.gray900),
-                      ),
-                      TextButton(
-                        onPressed:
-                            isLoading ? null : () => context.push('/register'),
-                        style: TextButton.styleFrom(
-                          padding: EdgeInsets.zero,
-                          minimumSize: const Size(50, 30),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          alignment: Alignment.centerLeft,
-                        ),
-                        child: const Text(
-                          'Regístrate aquí',
-                          style: TextStyle(
-                            color: AppTheme.primaryColor,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                  // (Registro deshabilitado: solo roles autorizados pueden crear usuarios)
                 ],
               ),
             ),
