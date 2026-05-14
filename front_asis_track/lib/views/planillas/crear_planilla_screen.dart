@@ -8,6 +8,7 @@ import '../../utils/app_breakpoints.dart';
 import '../../widgets/campo_preview.dart';
 import '../../widgets/campo_modal.dart';
 import '../../widgets/error_dialog.dart';
+import '../../widgets/ai_creation_panel.dart';
 
 class CrearPlanillaScreen extends StatefulWidget {
   final int? planillaId;
@@ -17,7 +18,12 @@ class CrearPlanillaScreen extends StatefulWidget {
   State<CrearPlanillaScreen> createState() => _CrearPlanillaScreenState();
 }
 
+enum _ModoCreacion { manual, iaImagen, iaDescripcion }
+
 class _CrearPlanillaScreenState extends State<CrearPlanillaScreen> {
+  // ── Modo de creación ──
+  _ModoCreacion _modo = _ModoCreacion.manual;
+
   // ── Eventos ──
   List<EventoPlanilla> _eventos = [];
   EventoPlanilla? _eventoSeleccionado;
@@ -102,6 +108,65 @@ class _CrearPlanillaScreenState extends State<CrearPlanillaScreen> {
         setState(() => _creando = false);
         ErrorDialog.show(context, 'Error al crear planilla: ${e.toString().replaceFirst("Exception: ", "")}');
       }
+    }
+  }
+
+  // ── Crea borrador y devuelve el id (para modos IA que necesitan planillaId) ──
+  Future<int?> _crearBorrador() async {
+    if (_eventoSeleccionado == null) {
+      ErrorDialog.show(context, 'Selecciona un evento antes de usar IA');
+      return null;
+    }
+    if (_planillaId != null) return _planillaId;
+    setState(() => _creando = true);
+    try {
+      final p = await PlanillaService.crearPlanilla({
+        'eventoId': _eventoSeleccionado!.id,
+        'origenId': 1,
+      });
+      if (mounted) setState(() { _planillaId = p.id; _creando = false; });
+      return p.id;
+    } catch (e) {
+      if (mounted) {
+        setState(() => _creando = false);
+        ErrorDialog.show(context, 'Error creando borrador: ${e.toString().replaceFirst("Exception: ", "")}');
+      }
+      return null;
+    }
+  }
+
+  void _onCamposGeneradosPorIA(List<CampoPreviewModel> campos) {
+    setState(() => _campos = campos);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Row(children: [
+        const Icon(Icons.auto_awesome, color: Colors.white, size: 18),
+        const SizedBox(width: 8),
+        Text('IA detectó ${campos.length} campo(s). Revísalos y confirma.'),
+      ]),
+      backgroundColor: AppTheme.primaryColor,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    ));
+  }
+
+  void _onPlanillaGeneradaPorIA(Planilla planilla) async {
+    setState(() { _planillaId = planilla.id; });
+    // Recargar los campos que el backend ya guardó
+    try {
+      final campos = await CampoService.obtenerCampos(planilla.id!);
+      if (mounted) setState(() => _campos = campos);
+    } catch (_) {}
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Row(children: [
+          const Icon(Icons.auto_awesome, color: Colors.white, size: 18),
+          const SizedBox(width: 8),
+          Text('Planilla generada con ${_campos.length} campo(s). Revísalos y confirma.'),
+        ]),
+        backgroundColor: const Color(0xFF7C3AED),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ));
     }
   }
 
@@ -288,6 +353,12 @@ class _CrearPlanillaScreenState extends State<CrearPlanillaScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      // ── SELECTOR DE MODO (solo en creación nueva) ──
+                      if (!_isEditing && _planillaId == null) ...[
+                        _buildModoSelector(),
+                        const SizedBox(height: 20),
+                      ],
+
                       // ── PASO 1: Selección de evento ──
                       _buildStepHeader(
                         step: 1,
@@ -299,12 +370,37 @@ class _CrearPlanillaScreenState extends State<CrearPlanillaScreen> {
                       _buildEventoSelector(),
                       const SizedBox(height: 24),
 
-                      // ── Botón crear planilla (solo si no existe) ──
-                      if (_planillaId == null && !_isEditing)
+                      // ── Botón crear planilla (modo manual) ──
+                      if (_planillaId == null && !_isEditing && _modo == _ModoCreacion.manual)
                         _buildCrearButton(),
 
+                      // ── Panel IA (modos imagen/descripción, antes de tener planillaId) ──
+                      if (_planillaId == null && !_isEditing && _modo != _ModoCreacion.manual) ...[
+                        _buildIaPanelSinPlanilla(),
+                        const SizedBox(height: 24),
+                      ],
+
+                      // ── Panel IA (modo imagen, cuando ya hay planillaId) ──
+                      if (_planillaId != null && _modo == _ModoCreacion.iaImagen && _campos.isEmpty) ...[
+                        _buildStepHeader(
+                          step: 2,
+                          title: 'Analizar imagen con IA',
+                          subtitle: 'Sube la foto de la planilla para detectar los campos',
+                          isCompleted: false,
+                        ),
+                        const SizedBox(height: 12),
+                        AiCreationPanel(
+                          planillaId: _planillaId!,
+                          eventoSeleccionado: _eventoSeleccionado,
+                          initialMode: AiCreationMode.imagen,
+                          onCamposGenerados: _onCamposGeneradosPorIA,
+                          onPlanillaGenerada: _onPlanillaGeneradaPorIA,
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+
                       // ── PASO 2: Campos ──
-                      if (_planillaId != null) ...[
+                      if (_planillaId != null && (_modo == _ModoCreacion.manual || _campos.isNotEmpty)) ...[
                         _buildStepHeader(
                           step: 2,
                           title: 'Campos de la planilla',
@@ -314,8 +410,6 @@ class _CrearPlanillaScreenState extends State<CrearPlanillaScreen> {
                         const SizedBox(height: 12),
                         _buildCamposSection(),
                         const SizedBox(height: 32),
-
-                        // ── Botones finales ──
                         _buildAcciones(),
                       ],
 
@@ -325,6 +419,153 @@ class _CrearPlanillaScreenState extends State<CrearPlanillaScreen> {
                 ),
               ),
             ),
+    );
+  }
+
+  // ── Selector de modo ──────────────────────────────────────────────────────
+  Widget _buildModoSelector() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('¿Cómo quieres crear la planilla?',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.gray900)),
+          const SizedBox(height: 12),
+          Row(children: [
+            Expanded(child: _modoChip(
+              label: 'Manual',
+              icon: Icons.edit_note_outlined,
+              color: AppTheme.primaryColor,
+              selected: _modo == _ModoCreacion.manual,
+              onTap: () => setState(() => _modo = _ModoCreacion.manual),
+            )),
+            const SizedBox(width: 8),
+            Expanded(child: _modoChip(
+              label: 'IA - Imagen',
+              icon: Icons.image_search_outlined,
+              color: AppTheme.primaryColor,
+              selected: _modo == _ModoCreacion.iaImagen,
+              onTap: () => setState(() => _modo = _ModoCreacion.iaImagen),
+            )),
+            const SizedBox(width: 8),
+            Expanded(child: _modoChip(
+              label: 'IA - Texto',
+              icon: Icons.auto_awesome_outlined,
+              color: const Color(0xFF7C3AED),
+              selected: _modo == _ModoCreacion.iaDescripcion,
+              onTap: () => setState(() => _modo = _ModoCreacion.iaDescripcion),
+            )),
+          ]),
+        ],
+      ),
+    );
+  }
+
+  Widget _modoChip({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        decoration: BoxDecoration(
+          color: selected ? color.withValues(alpha: 0.1) : AppTheme.gray50,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: selected ? color : Colors.grey.shade200,
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, size: 22, color: selected ? color : Colors.grey.shade400),
+          const SizedBox(height: 6),
+          Text(label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+                color: selected ? color : Colors.grey.shade500,
+              )),
+        ]),
+      ),
+    );
+  }
+
+  // ── Panel IA antes de tener planillaId (requiere crear borrador primero) ──
+  Widget _buildIaPanelSinPlanilla() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_eventoSeleccionado == null)
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppTheme.warningColor.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppTheme.warningColor.withValues(alpha: 0.2)),
+            ),
+            child: const Row(children: [
+              Icon(Icons.warning_amber_rounded, color: AppTheme.warningColor, size: 18),
+              SizedBox(width: 8),
+              Expanded(child: Text('Selecciona un evento antes de continuar',
+                  style: TextStyle(fontSize: 13))),
+            ]),
+          )
+        else if (_modo == _ModoCreacion.iaDescripcion) ...[
+          _buildStepHeader(
+            step: 2,
+            title: 'Generar planilla con IA',
+            subtitle: 'Describe el tipo de planilla y la IA la creará completa',
+            isCompleted: false,
+          ),
+          const SizedBox(height: 12),
+          _buildDescripcionDirecta(),
+        ] else ...[
+          SizedBox(
+            height: 50,
+            child: ElevatedButton.icon(
+              onPressed: _creando ? null : () async {
+                final id = await _crearBorrador();
+                if (id != null && mounted) setState(() {});
+              },
+              icon: _creando
+                  ? const SizedBox(width: 18, height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Icon(Icons.add_circle_outline, size: 20),
+              label: Text(_creando ? 'Creando borrador…' : 'Continuar con IA',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                elevation: 0,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  // ── Panel descripción directa (sin planillaId previo) ─────────────────────
+  Widget _buildDescripcionDirecta() {
+    return AiCreationPanel(
+      planillaId: -1, // No usado en modo descripción
+      eventoSeleccionado: _eventoSeleccionado,
+      initialMode: AiCreationMode.descripcion,
+      onPlanillaGenerada: _onPlanillaGeneradaPorIA,
+      onCamposGenerados: _onCamposGeneradosPorIA,
     );
   }
 

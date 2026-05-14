@@ -3,6 +3,7 @@ package co.edu.uceva.microservicioplanilla.service;
 import co.edu.uceva.microservicioplanilla.domain.model.*;
 import co.edu.uceva.microservicioplanilla.domain.repository.IDatoRepository;
 import co.edu.uceva.microservicioplanilla.domain.repository.IFilaRepository;
+import co.edu.uceva.microservicioplanilla.domain.repository.IOpcionesCampoRepository;
 import co.edu.uceva.microservicioplanilla.domain.repository.IPlanillaRepository;
 import co.edu.uceva.microservicioplanilla.domain.repository.ITipoCampoRepository;
 import co.edu.uceva.microservicioplanilla.domain.service.ICampoService;
@@ -41,6 +42,7 @@ public class PlanillaProcessingService {
     private final IFilaRepository filaRepository;
     private final IFilaService filaService;
     private final ICampoService campoService;
+    private final IOpcionesCampoRepository opcionesCampoRepository;
 
     public PlanillaProcessingService(
         S3StorageService s3StorageService,
@@ -51,7 +53,8 @@ public class PlanillaProcessingService {
         IDatoRepository datoRepository,
         IFilaRepository filaRepository,
         IFilaService filaService,
-        ICampoService campoService
+        ICampoService campoService,
+        IOpcionesCampoRepository opcionesCampoRepository
     ) {
         this.s3StorageService = s3StorageService;
         this.compositeAiService = compositeAiService;
@@ -62,6 +65,7 @@ public class PlanillaProcessingService {
         this.filaRepository = filaRepository;
         this.filaService = filaService;
         this.campoService = campoService;
+        this.opcionesCampoRepository = opcionesCampoRepository;
     }
 
     @Transactional
@@ -202,6 +206,13 @@ public class PlanillaProcessingService {
                                     "Tipo de campo no válido: " + tipoCampoStr));
                     cr.setTipoCampoId(tc.getId());
                     cr.setObligatorio(nodo.path("obligatorio").asBoolean(false));
+                    // ── Read opciones from AI response ──
+                    JsonNode opcionesNode = nodo.path("opciones");
+                    if (opcionesNode.isArray()) {
+                        List<String> opts = new ArrayList<>();
+                        opcionesNode.forEach(o -> opts.add(o.asText()));
+                        if (!opts.isEmpty()) cr.setOpciones(opts);
+                    }
                     camposToSave.add(cr);
                 }
             }
@@ -211,7 +222,10 @@ public class PlanillaProcessingService {
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "Respuesta de IA no parseable: " + e.getMessage());
         }
 
-        return campoService.saveAll(camposToSave).stream().map(CampoResponse::from).toList();
+        List<Campo> saved = campoService.saveAll(camposToSave);
+        return saved.stream()
+                .map(c -> CampoResponse.from(c, opcionesCampoRepository.findByCampo_IdOrderByOrden(c.getId())))
+                .toList();
     }
 
     private String getTipoCampoFromEstructura(String estructuraJson, String colName) {

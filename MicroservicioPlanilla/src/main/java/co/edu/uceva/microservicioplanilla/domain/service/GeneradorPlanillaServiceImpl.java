@@ -33,9 +33,10 @@ public class GeneradorPlanillaServiceImpl implements GeneradorPlanillaService {
 
     @Override
     @Transactional
-    public PlanillaResponse generarYGuardarPropuesta(String descripcion, Long lugarId) {
+    public PlanillaResponse generarYGuardarPropuesta(String descripcion, Long lugarId, Long eventoId) {
+        boolean crearEvento = (eventoId == null);
         String tiposPermitidos = compositeAiService.getTiposPermitidosFormateados();
-        String prompt = promptFactory.buildPlanillaFromDescriptionPrompt(descripcion, true, tiposPermitidos);
+        String prompt = promptFactory.buildPlanillaFromDescriptionPrompt(descripcion, crearEvento, tiposPermitidos);
         String rawResponse = compositeAiService.generateFromText(prompt);
 
         String json = extraerJson(rawResponse);
@@ -46,23 +47,30 @@ public class GeneradorPlanillaServiceImpl implements GeneradorPlanillaService {
             throw new RuntimeException("Error parseando respuesta IA: " + e.getMessage());
         }
 
-        // 1. Crear evento
-        JsonNode eventoNode = root.has("nombre_evento") ? root : root.path("evento");
-        String nombreEvento = optText(eventoNode, "nombre_evento");
-        String descEvento = optText(eventoNode, "descripcion_evento");
-        String fechaInicio = optText(eventoNode, "fecha_hora_inicio");
-        String fechaFin = optText(eventoNode, "fecha_hora_fin");
+        // 1. Resolver evento
+        Evento evento;
+        if (eventoId != null) {
+            // Use existing event — skip AI-generated event fields
+            evento = eventoService.findById(eventoId);
+        } else {
+            // Create event from AI response
+            JsonNode eventoNode = root.has("nombre_evento") ? root : root.path("evento");
+            String nombreEvento = optText(eventoNode, "nombre_evento");
+            String descEvento = optText(eventoNode, "descripcion_evento");
+            String fechaInicio = optText(eventoNode, "fecha_hora_inicio");
+            String fechaFin = optText(eventoNode, "fecha_hora_fin");
 
-        Evento evento = new Evento();
-        evento.setNombre(nombreEvento);
-        evento.setDescripcion(descEvento);
-        evento.setFechaHoraInicio(parseIso(fechaInicio));
-        evento.setFechaHoraFin(parseIso(fechaFin));
-        evento.setFechaCreacion(LocalDateTime.now());
-        if (lugarId != null) {
-            lugarRepository.findById(lugarId).ifPresent(evento::setLugar);
+            evento = new Evento();
+            evento.setNombre(nombreEvento);
+            evento.setDescripcion(descEvento);
+            evento.setFechaHoraInicio(parseIso(fechaInicio));
+            evento.setFechaHoraFin(parseIso(fechaFin));
+            evento.setFechaCreacion(LocalDateTime.now());
+            if (lugarId != null) {
+                lugarRepository.findById(lugarId).ifPresent(evento::setLugar);
+            }
+            evento = eventoService.save(evento);
         }
-        evento = eventoService.save(evento);
 
         // 2. Crear planilla
         Origen origenDigital = origenRepository.findByOrigenIgnoreCase("digital")
@@ -95,6 +103,13 @@ public class GeneradorPlanillaServiceImpl implements GeneradorPlanillaService {
                 cr.setTipoCampoId(tc.getId());
                 cr.setNombreCampo(optText(nodo, "nombre_campo"));
                 cr.setObligatorio(nodo.path("obligatorio").asBoolean(false));
+                // ── Read opciones from AI response ──
+                JsonNode opcionesNode = nodo.path("opciones");
+                if (opcionesNode.isArray()) {
+                    List<String> opts = new ArrayList<>();
+                    opcionesNode.forEach(o -> opts.add(o.asText()));
+                    if (!opts.isEmpty()) cr.setOpciones(opts);
+                }
                 campoRequests.add(cr);
             }
             if (!campoRequests.isEmpty()) {

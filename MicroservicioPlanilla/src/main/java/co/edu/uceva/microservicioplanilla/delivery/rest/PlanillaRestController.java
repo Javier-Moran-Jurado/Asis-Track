@@ -6,6 +6,7 @@ import co.edu.uceva.microservicioplanilla.domain.service.ai.CompositeAiService;
 import co.edu.uceva.microservicioplanilla.domain.service.GeneradorPlanillaService;
 import co.edu.uceva.microservicioplanilla.domain.service.ICampoService;
 import co.edu.uceva.microservicioplanilla.domain.service.IPlanillaService;
+import co.edu.uceva.microservicioplanilla.domain.repository.IOpcionesCampoRepository;
 import co.edu.uceva.microservicioplanilla.service.PlanillaProcessingService;
 import co.edu.uceva.microservicioplanilla.service.S3StorageService;
 import co.edu.uceva.microservicioplanilla.delivery.rest.dto.*;
@@ -34,6 +35,7 @@ public class PlanillaRestController {
     private final ICampoService campoService;
     private final S3StorageService s3StorageService;
     private final IFilaService filaService;
+    private final IOpcionesCampoRepository opcionesCampoRepository;
 
     public PlanillaRestController(
         IPlanillaService planillaService,
@@ -42,7 +44,8 @@ public class PlanillaRestController {
         GeneradorPlanillaService generadorPlanillaService,
         ICampoService campoService,
         S3StorageService s3StorageService,
-        IFilaService filaService
+        IFilaService filaService,
+        IOpcionesCampoRepository opcionesCampoRepository
     ) {
         this.planillaService = planillaService;
         this.compositeAiService = compositeAiService;
@@ -51,6 +54,7 @@ public class PlanillaRestController {
         this.campoService = campoService;
         this.s3StorageService = s3StorageService;
         this.filaService = filaService;
+        this.opcionesCampoRepository = opcionesCampoRepository;
     }
 
     @PreAuthorize("isAuthenticated() and hasAnyRole('Administrativo', 'Administrador')")
@@ -143,16 +147,19 @@ public class PlanillaRestController {
         for (CampoRequest cr : campos) {
             cr.setPlanillaId(planillaId);
         }
-        return campoService.saveAll(campos).stream().map(CampoResponse::from).toList();
+        return campoService.saveAll(campos).stream()
+                .map(c -> CampoResponse.from(c, opcionesCampoRepository.findByCampo_IdOrderByOrden(c.getId())))
+                .toList();
     }
 
     @PreAuthorize("isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Monitor')")
     @PostMapping("/planillas/generar-propuesta")
     public PlanillaResponse generarPropuesta(
             @RequestParam("descripcion") String descripcion,
-            @RequestParam(value = "lugarId", required = false) Long lugarId) {
+            @RequestParam(value = "lugarId", required = false) Long lugarId,
+            @RequestParam(value = "eventoId", required = false) Long eventoId) {
         try {
-            return generadorPlanillaService.generarYGuardarPropuesta(descripcion, lugarId);
+            return generadorPlanillaService.generarYGuardarPropuesta(descripcion, lugarId, eventoId);
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error generando propuesta: " + e.getMessage());
         }
@@ -160,7 +167,9 @@ public class PlanillaRestController {
 
     @GetMapping("/planillas/{id}/campos-publico")
     public List<CampoResponse> getCamposPublico(@PathVariable Long id) {
-        return campoService.findByPlanillaId(id).stream().map(CampoResponse::from).toList();
+        return campoService.findByPlanillaId(id).stream()
+                .map(c -> CampoResponse.from(c, opcionesCampoRepository.findByCampo_IdOrderByOrden(c.getId())))
+                .toList();
     }
 
     @PostMapping("/planillas/{planillaId}/invitado/filas")

@@ -174,6 +174,33 @@ class PlanillaService {
     throw Exception(_msg(response));
   }
 
+  /// POST /api/v1/planilla-service/planillas/generar-propuesta
+  /// Sends a text description to the AI and receives a fully-generated planilla
+  /// (with campos already saved) from the backend.
+  static Future<Planilla> generarPropuestaIA({
+    required String descripcion,
+    int? lugarId,
+    int? eventoId,
+  }) async {
+    final t = await _token();
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$_url/api/v1/planilla-service/planillas/generar-propuesta'),
+    );
+    request.headers['Authorization'] = 'Bearer $t';
+    request.headers['ngrok-skip-browser-warning'] = 'true';
+    request.fields['descripcion'] = descripcion;
+    if (lugarId != null) request.fields['lugarId'] = lugarId.toString();
+    if (eventoId != null) request.fields['eventoId'] = eventoId.toString();
+
+    final streamedResponse = await request.send().timeout(const Duration(seconds: 120));
+    final response = await http.Response.fromStream(streamedResponse);
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return Planilla.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    }
+    throw Exception(_msg(response));
+  }
+
   /// POST /api/v1/planilla-service/planillas/{planillaId}/proponer-estructura
   static Future<List<CampoPreviewModel>> proponerEstructura({
     required int planillaId,
