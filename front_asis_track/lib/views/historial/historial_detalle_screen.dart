@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../models/historial_asistencia.dart';
 import '../../providers/auth_provider.dart';
-import '../../services/justificacion_service.dart';
 import '../../services/role_service.dart';
 import '../../themes/app_theme.dart';
 
@@ -300,10 +299,8 @@ class _HistorialDetalleScreenState extends State<HistorialDetalleScreen> {
         final buttons = [
           ElevatedButton.icon(
             onPressed: () async {
-              await JustificacionService.validarJustificacion(
-                justificacionId: a.id,
-                aprobada: true,
-              );
+              // TODO: Connect with real backend when HistorialAsistencia is
+              // backed by a real Justificacion entity with a numeric id.
               if (mounted) {
                 setState(() {
                   _estadoActual = EstadoJustificacion.aprobada;
@@ -323,10 +320,8 @@ class _HistorialDetalleScreenState extends State<HistorialDetalleScreen> {
           ),
           ElevatedButton.icon(
             onPressed: () async {
-              await JustificacionService.validarJustificacion(
-                justificacionId: a.id,
-                aprobada: false,
-              );
+              // TODO: Connect with real backend when HistorialAsistencia is
+              // backed by a real Justificacion entity with a numeric id.
               if (mounted) {
                 setState(() {
                   _estadoActual = EstadoJustificacion.rechazada;

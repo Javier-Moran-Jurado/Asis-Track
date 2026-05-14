@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../models/historial_asistencia.dart';
 import '../../themes/app_theme.dart';
 import '../../utils/app_breakpoints.dart';
+import '../../widgets/dynamic_info_card.dart';
 import 'package:intl/intl.dart';
 
 class HistorialScreen extends StatefulWidget {
@@ -239,154 +240,56 @@ class _HistorialCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Determinar estilo según si asistió o no
     final bool esFalta = !item.asistio;
 
-    return Card(
-      elevation: 0,
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey.shade200),
+    List<StatusChipData> chips = [
+      StatusChipData(
+        text: esFalta ? 'Falta' : 'Presente',
+        color: esFalta ? AppTheme.errorColor : AppTheme.secondaryColor,
+        icon: esFalta ? Icons.close : Icons.check,
       ),
-      color: Colors.white,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Fila superior: Fecha y Tipo de Evento
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    DateFormat('dd MMM yyyy, HH:mm').format(item.fecha),
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  Text(
-                    item.tipoEvento,
-                    style: const TextStyle(
-                      color: AppTheme.primaryColor,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
+    ];
 
-              // Materia
-              Text(
-                item.materia,
-                style: const TextStyle(
-                  color: AppTheme.gray900,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // Fila inferior: Estado de Asistencia y Badge de Justificación
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: esFalta
-                          ? AppTheme.errorColor.withValues(alpha: 0.1)
-                          : AppTheme.secondaryColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          esFalta ? Icons.close : Icons.check,
-                          size: 14,
-                          color: esFalta ? AppTheme.errorColor : AppTheme.secondaryColor,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          esFalta ? 'Falta' : 'Presente',
-                          style: TextStyle(
-                            color: esFalta ? AppTheme.errorColor : AppTheme.secondaryColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (esFalta) ...[
-                    const SizedBox(width: 8),
-                    _JustificacionBadge(estado: item.estadoJustificacion),
-                  ]
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _JustificacionBadge extends StatelessWidget {
-  final EstadoJustificacion estado;
-
-  const _JustificacionBadge({required this.estado});
-
-  @override
-  Widget build(BuildContext context) {
-    Color bgColor;
-    Color textColor;
-    String text;
-
-    switch (estado) {
-      case EstadoJustificacion.ninguna:
-        bgColor = Colors.grey.shade100;
-        textColor = Colors.grey.shade700;
-        text = 'Sin justificar';
-        break;
-      case EstadoJustificacion.pendiente:
-        bgColor = AppTheme.warningColor.withValues(alpha: 0.15);
-        textColor = const Color(0xFFB45309); // Darker amber
-        text = 'Pendiente';
-        break;
-      case EstadoJustificacion.aprobada:
-        bgColor = AppTheme.secondaryColor.withValues(alpha: 0.15);
-        textColor = AppTheme.secondaryColor;
-        text = 'Justificada';
-        break;
-      case EstadoJustificacion.rechazada:
-        bgColor = AppTheme.errorColor.withValues(alpha: 0.15);
-        textColor = AppTheme.errorColor;
-        text = 'Rechazada';
-        break;
+    if (esFalta) {
+      chips.add(_obtenerChipJustificacion(item.estadoJustificacion));
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: textColor.withValues(alpha: 0.3)),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: textColor,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
+    return DynamicInfoCard(
+      title: item.materia,
+      topSubtitle: item.tipoEvento,
+      date: item.fecha,
+      statusChips: chips,
+      onTap: onTap,
     );
   }
+
+  StatusChipData _obtenerChipJustificacion(EstadoJustificacion estado) {
+    switch (estado) {
+      case EstadoJustificacion.ninguna:
+        return StatusChipData(
+          text: 'Sin justificar',
+          color: Colors.grey.shade700,
+          backgroundColor: Colors.grey.shade100,
+        );
+      case EstadoJustificacion.pendiente:
+        return StatusChipData(
+          text: 'Pendiente',
+          color: const Color(0xFFB45309),
+          backgroundColor: AppTheme.warningColor.withValues(alpha: 0.15),
+        );
+      case EstadoJustificacion.aprobada:
+        return StatusChipData(
+          text: 'Justificada',
+          color: AppTheme.secondaryColor,
+          backgroundColor: AppTheme.secondaryColor.withValues(alpha: 0.15),
+        );
+      case EstadoJustificacion.rechazada:
+        return StatusChipData(
+          text: 'Rechazada',
+          color: AppTheme.errorColor,
+          backgroundColor: AppTheme.errorColor.withValues(alpha: 0.15),
+        );
+    }
+  }
 }
+

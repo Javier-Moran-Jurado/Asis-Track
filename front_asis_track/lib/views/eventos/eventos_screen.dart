@@ -5,6 +5,7 @@ import '../../utils/app_breakpoints.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/error_dialog.dart';
+import '../../widgets/dynamic_info_card.dart';
 
 class EventosScreen extends StatefulWidget {
   const EventosScreen({super.key});
@@ -114,7 +115,6 @@ class _EventosScreenState extends State<EventosScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.of(context).size.width > 900;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Gestión de Eventos', style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
@@ -145,7 +145,7 @@ class _EventosScreenState extends State<EventosScreen> {
                           ? Center(child: Text(_error!, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center))
                           : _eventos.isEmpty
                               ? const Center(child: Text('No hay eventos registrados.'))
-                              : isWide ? _buildTable() : _buildList(),
+                               : _buildList(),
                 ),
               ]),
             ),
@@ -155,43 +155,60 @@ class _EventosScreenState extends State<EventosScreen> {
     );
   }
 
-  Widget _buildTable() {
-    return Card(elevation: 2, child: SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(columns: const [
-        DataColumn(label: Text('Nombre')), DataColumn(label: Text('Lugar')), DataColumn(label: Text('Inicio')), DataColumn(label: Text('Fin')), DataColumn(label: Text('Acciones')),
-      ], rows: _eventos.map((e) {
-        return DataRow(cells: [
-          DataCell(Text(e['nombre']?.toString() ?? '', overflow: TextOverflow.ellipsis)),
-          DataCell(Text(_lugarName(e))),
-          DataCell(Text(_fmt(e['fechaHoraInicio']))),
-          DataCell(Text(_fmt(e['fechaHoraFin']))),
-          DataCell(Row(mainAxisSize: MainAxisSize.min, children: [
-            IconButton(icon: const Icon(Icons.edit, size: 20, color: AppTheme.primaryColor), onPressed: () => _showForm(evento: e)),
-            IconButton(icon: const Icon(Icons.delete, size: 20, color: Colors.red), onPressed: () => _confirmDelete(e)),
-          ])),
-        ]);
-      }).toList()),
-    ));
-  }
 
   Widget _buildList() {
-    return ListView.separated(
+    return ListView.builder(
       itemCount: _eventos.length,
-      separatorBuilder: (_, __) => const Divider(),
+      padding: EdgeInsets.zero,
       itemBuilder: (ctx, i) {
         final e = _eventos[i];
-        return ListTile(
-          title: Text(e['nombre']?.toString() ?? ''),
-          subtitle: Text('${_lugarName(e)}  •  ${_fmt(e['fechaHoraInicio'])}'),
-          trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-            IconButton(icon: const Icon(Icons.edit, color: AppTheme.primaryColor), onPressed: () => _showForm(evento: e)),
-            IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => _confirmDelete(e)),
-          ]),
+        final startDt = DateTime.tryParse(e['fechaHoraInicio']?.toString() ?? '');
+        
+        return DynamicInfoCard(
+          title: e['nombre']?.toString() ?? 'Sin nombre',
+          topSubtitle: _lugarName(e),
+          date: startDt,
+          leadingIcon: Icons.calendar_today_outlined,
+          leadingIconColor: AppTheme.primaryColor,
+          extraContent: e['descripcion'] != null && e['descripcion'].toString().isNotEmpty
+              ? Text(
+                  e['descripcion'].toString(),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                )
+              : null,
+          actionButtons: [
+            OutlinedButton.icon(
+              onPressed: () => _showForm(evento: e),
+              icon: const Icon(Icons.edit_outlined, size: 16),
+              label: const Text('Editar'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.primaryColor,
+                side: BorderSide(color: AppTheme.primaryColor.withValues(alpha: 0.3)),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+            ),
+            OutlinedButton.icon(
+              onPressed: () => _confirmDelete(e),
+              icon: const Icon(Icons.delete_outline, size: 16),
+              label: const Text('Eliminar'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.red,
+                side: BorderSide(color: Colors.red.withValues(alpha: 0.3)),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
         );
       },
     );
   }
+
 }
 
 class _EventoForm extends StatefulWidget {

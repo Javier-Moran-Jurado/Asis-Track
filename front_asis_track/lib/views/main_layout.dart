@@ -56,11 +56,9 @@ class MainLayout extends StatelessWidget {
 
   List<_NavItem> _buildItems(bool showUsuarios, bool showEventos, bool showLugares, bool showPlanillas) {
     return [
-      _NavItem('/home', Icons.home_outlined, Icons.home, 'Inicio'),
+      _NavItem('/home', Icons.bar_chart_outlined, Icons.bar_chart, 'Estadísticas'),
       if (showPlanillas)
         _NavItem('/planillas', Icons.assignment_outlined, Icons.assignment, 'Planillas'),
-      _NavItem('/asistencia', Icons.qr_code_scanner_outlined, Icons.qr_code_scanner, 'Asistencia'),
-      _NavItem('/historial', Icons.history_outlined, Icons.history, 'Historial'),
       _NavItem('/justificaciones', Icons.description_outlined, Icons.description, 'Justificaciones'),
       if (showEventos)
         _NavItem('/eventos', Icons.event_outlined, Icons.event, 'Eventos'),

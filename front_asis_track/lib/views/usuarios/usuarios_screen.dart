@@ -7,6 +7,7 @@ import '../../utils/app_breakpoints.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/error_dialog.dart';
+import '../../widgets/dynamic_info_card.dart';
 
 class UsuariosScreen extends StatefulWidget {
   const UsuariosScreen({super.key});
@@ -113,8 +114,6 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.of(context).size.width > 900;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -174,9 +173,7 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
                               )
                             : _usuarios.isEmpty
                                 ? const Center(child: Text('No hay usuarios registrados.'))
-                                : isWide
-                                    ? _buildTable()
-                                    : _buildList(),
+                                : _buildList(),
                   ),
                 ],
               ),
@@ -187,78 +184,79 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
     );
   }
 
-  Widget _buildTable() {
-    return Card(
-      elevation: 2,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          columns: const [
-            DataColumn(label: Text('Código')),
-            DataColumn(label: Text('Nombre')),
-            DataColumn(label: Text('Correo')),
-            DataColumn(label: Text('Rol')),
-            DataColumn(label: Text('Acciones')),
-          ],
-          rows: _usuarios.map((u) {
-            return DataRow(cells: [
-              DataCell(Text(u['codigo']?.toString() ?? '')),
-              DataCell(Text(u['nombreCompleto']?.toString() ?? '')),
-              DataCell(Text(u['correo']?.toString() ?? '')),
-              DataCell(Text(_rolNombre(u['rol']))),
-              DataCell(Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.edit, size: 20, color: AppTheme.primaryColor),
-                    onPressed: () => _showForm(usuario: u),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete, size: 20, color: Colors.red),
-                    onPressed: () => _confirmDelete(u),
-                  ),
-                ],
-              )),
-            ]);
-          }).toList(),
-        ),
-      ),
-    );
-  }
 
   Widget _buildList() {
-    return ListView.separated(
+    return ListView.builder(
       itemCount: _usuarios.length,
-      separatorBuilder: (_, __) => const Divider(),
+      padding: EdgeInsets.zero,
       itemBuilder: (ctx, i) {
         final u = _usuarios[i];
-        return ListTile(
-          leading: CircleAvatar(
-            backgroundColor: AppTheme.primaryColor,
-            child: Text(
-              (u['nombreCompleto']?.toString() ?? '?')[0].toUpperCase(),
-              style: const TextStyle(color: Colors.white),
+        final nombre = u['nombreCompleto']?.toString() ?? 'Sin nombre';
+        final inicial = nombre.isNotEmpty ? nombre[0].toUpperCase() : '?';
+        
+        return DynamicInfoCard(
+          title: nombre,
+          topSubtitle: 'Código: ${u['codigo']}',
+          leadingIcon: Icons.person_outline,
+          leadingIconColor: AppTheme.primaryColor,
+          statusChips: [
+            StatusChipData(
+              text: _rolNombre(u['rol']),
+              color: AppTheme.primaryColor,
+              backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
             ),
-          ),
-          title: Text(u['nombreCompleto']?.toString() ?? ''),
-          subtitle: Text('${u['correo']?.toString() ?? ''} \u2022 ${_rolNombre(u['rol'])}'),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
+          ],
+          extraContent: Row(
             children: [
-              IconButton(
-                icon: const Icon(Icons.edit, color: AppTheme.primaryColor),
-                onPressed: () => _showForm(usuario: u),
-              ),
-              IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red),
-                onPressed: () => _confirmDelete(u),
+              const Icon(Icons.email_outlined, size: 14, color: Colors.grey),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  u['correo']?.toString() ?? '',
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                ),
               ),
             ],
           ),
+          actionButtons: [
+            _buildActionButton(
+              label: 'Editar',
+              icon: Icons.edit_outlined,
+              color: AppTheme.primaryColor,
+              onPressed: () => _showForm(usuario: u),
+            ),
+            _buildActionButton(
+              label: 'Eliminar',
+              icon: Icons.delete_outline,
+              color: Colors.red,
+              onPressed: () => _confirmDelete(u),
+            ),
+          ],
         );
       },
     );
   }
+
+  Widget _buildActionButton({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return OutlinedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 16),
+      label: Text(label),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: color,
+        side: BorderSide(color: color.withValues(alpha: 0.3)),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+
 }
 
 class _UsuarioForm extends StatefulWidget {

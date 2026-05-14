@@ -5,18 +5,68 @@ import '../../providers/auth_provider.dart';
 import '../../services/role_service.dart';
 import '../../themes/app_theme.dart';
 
-class PerfilScreen extends StatelessWidget {
+import '../../services/user_service.dart';
+
+class PerfilScreen extends StatefulWidget {
   const PerfilScreen({super.key});
+
+  @override
+  State<PerfilScreen> createState() => _PerfilScreenState();
+}
+
+class _PerfilScreenState extends State<PerfilScreen> {
+  Map<String, dynamic>? _fullProfile;
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarPerfilCompleto();
+  }
+
+  Future<void> _cargarPerfilCompleto() async {
+    try {
+      final auth = context.read<AuthProvider>();
+      final codigo = auth.currentUser?.codigo;
+      if (codigo == null || codigo.isEmpty) {
+        throw Exception("No hay código de usuario disponible.");
+      }
+
+      final profile = await UserService.getUserById(codigo);
+      if (mounted) {
+        setState(() {
+          _fullProfile = profile;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString().replaceFirst('Exception: ', '');
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final user = auth.currentUser;
 
-    final nombre = user?.nombreCompleto ?? '—';
-    final correo = user?.correo ?? '—';
-    final codigo = user?.codigo ?? '—';
+    // Default values from AuthProvider (JWT)
+    final baseNombre = user?.nombreCompleto ?? '—';
+    final baseCorreo = user?.correo ?? '—';
+    final baseCodigo = user?.codigo ?? '—';
     final rol = user?.rol ?? '';
+
+    // Complete values from backend
+    final nombre = _fullProfile?['nombreCompleto'] as String? ?? baseNombre;
+    final correo = _fullProfile?['correo'] as String? ?? baseCorreo;
+    final codigo = _fullProfile?['codigo']?.toString() ?? baseCodigo;
+    final cedula = _fullProfile?['cedula']?.toString() ?? '—';
+    final telefono = _fullProfile?['telefono']?.toString() ?? '—';
 
     // Iniciales para el avatar
     final partes = nombre.trim().split(' ');
@@ -48,141 +98,135 @@ class PerfilScreen extends StatelessWidget {
         automaticallyImplyLeading: false,
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const SizedBox(height: 16),
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor))
+            : SingleChildScrollView(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    if (_error != null)
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: AppTheme.errorColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppTheme.errorColor.withValues(alpha: 0.3)),
+                        ),
+                        child: Text(
+                          'Error cargando perfil completo:\n$_error',
+                          style: const TextStyle(color: AppTheme.errorColor, fontSize: 13),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
 
-              // ── Avatar ──────────────────────────────────────────────────
-              Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.3),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
+                    // ── Avatar ──────────────────────────────────────────────────
+                    Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.primaryColor.withValues(alpha: 0.3),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: CircleAvatar(
+                        radius: 48,
+                        backgroundColor: AppTheme.primaryColor,
+                        child: Text(
+                          iniciales,
+                          style: const TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
                     ),
+                    const SizedBox(height: 16),
+
+                    // ── Nombre ───────────────────────────────────────────────────
+                    Text(
+                      nombre,
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.gray900,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      correo,
+                      style: const TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // ── Badge de Rol ────────────────────────────────────────────
+                    _RolBadge(rol: rol),
+
+                    const SizedBox(height: 32),
+
+                    // ── Tarjetas de info ────────────────────────────────────────
+                    _InfoCard(
+                      icon: Icons.badge_outlined,
+                      label: 'Código',
+                      value: codigo,
+                    ),
+                    const SizedBox(height: 12),
+                    _InfoCard(
+                      icon: Icons.credit_card_outlined,
+                      label: 'Cédula',
+                      value: cedula,
+                    ),
+                    const SizedBox(height: 12),
+                    _InfoCard(
+                      icon: Icons.phone_outlined,
+                      label: 'Teléfono',
+                      value: telefono,
+                    ),
+                    const SizedBox(height: 12),
+                    _InfoCard(
+                      icon: Icons.email_outlined,
+                      label: 'Correo electrónico',
+                      value: correo,
+                    ),
+                    const SizedBox(height: 12),
+                    _InfoCard(
+                      icon: Icons.school_outlined,
+                      label: 'Rol en el sistema',
+                      value: RoleService.displayLabel(rol),
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    // ── Cerrar sesión ───────────────────────────────────────────
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          await auth.logout();
+                          if (context.mounted) context.go('/login');
+                        },
+                        icon: const Icon(Icons.logout, size: 18),
+                        label: const Text('Cerrar sesión'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          side: const BorderSide(color: Colors.red),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
                   ],
                 ),
-                child: CircleAvatar(
-                  radius: 48,
-                  backgroundColor: AppTheme.primaryColor,
-                  child: Text(
-                    iniciales,
-                    style: const TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
               ),
-              const SizedBox(height: 16),
-
-              // ── Nombre ───────────────────────────────────────────────────
-              Text(
-                nombre,
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.gray900,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                correo,
-                style: const TextStyle(fontSize: 14, color: Colors.grey),
-              ),
-              const SizedBox(height: 12),
-
-              // ── Badge de Rol ────────────────────────────────────────────
-              _RolBadge(rol: rol),
-
-              const SizedBox(height: 32),
-
-              // ── Tarjetas de info ────────────────────────────────────────
-              _InfoCard(
-                icon: Icons.badge_outlined,
-                label: 'Código',
-                value: codigo,
-              ),
-              const SizedBox(height: 12),
-              _InfoCard(
-                icon: Icons.email_outlined,
-                label: 'Correo electrónico',
-                value: correo,
-              ),
-              const SizedBox(height: 12),
-              _InfoCard(
-                icon: Icons.school_outlined,
-                label: 'Rol en el sistema',
-                value: RoleService.displayLabel(rol),
-              ),
-
-              const SizedBox(height: 32),
-
-              // ── Acceso rápido: solo si puede generar QR ─────────────────
-              if (RoleService.canGenerateQr(rol)) ...[
-                _QuickAccessCard(
-                  icon: Icons.qr_code_2,
-                  title: 'Generar asistencia',
-                  subtitle: 'Crea un evento y comparte el código QR',
-                  color: const Color(0xFF10B981),
-                  onTap: () => context.push('/a-generador'),
-                ),
-                const SizedBox(height: 24),
-              ],
-
-              // ── Crear usuario: solo si tiene permisos ──────────────────
-              if (RoleService.canCreateUsers(rol)) ...[
-                _QuickAccessCard(
-                  icon: Icons.person_add_alt_1,
-                  title: 'Crear usuario',
-                  subtitle: 'Registra una nueva cuenta en el sistema',
-                  color: const Color(0xFF7C3AED),
-                  onTap: () => context.push('/register'),
-                ),
-                const SizedBox(height: 24),
-              ],
-
-              // ── Firma digital ───────────────────────────────────────────
-              _QuickAccessCard(
-                icon: Icons.draw_outlined,
-                title: 'Firma digital',
-                subtitle: 'Crea tu firma digitalizada para documentos',
-                color: AppTheme.primaryColor,
-                onTap: () => context.push('/firma'),
-              ),
-              const SizedBox(height: 24),
-
-              // ── Cerrar sesión ───────────────────────────────────────────
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () async {
-                    await auth.logout();
-                    if (context.mounted) context.go('/login');
-                  },
-                  icon: const Icon(Icons.logout, size: 18),
-                  label: const Text('Cerrar sesión'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.red,
-                    side: const BorderSide(color: Colors.red),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -300,84 +344,3 @@ class _InfoCard extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Tarjeta de acceso rápido
-// ─────────────────────────────────────────────────────────────────────────────
-class _QuickAccessCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _QuickAccessCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [color, color.withValues(alpha: 0.75)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: color.withValues(alpha: 0.35),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: Colors.white, size: 24),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.8),
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.chevron_right, color: Colors.white),
-          ],
-        ),
-      ),
-    );
-  }
-}

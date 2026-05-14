@@ -157,4 +157,21 @@ class UserService {
       throw Exception(_extractErrorMessage(response));
     }
   }
+
+  /// GET /api/v1/usuario-service/usuarios/{id}
+  static Future<Map<String, dynamic>> getUserById(String id) async {
+    final token = await _getToken();
+    final uri = Uri.parse('$_baseUrl/api/v1/usuario-service/usuarios/$id');
+
+    final response = await http
+        .get(uri, headers: _headers(token!))
+        .timeout(const Duration(seconds: 30));
+
+    if (response.statusCode == 200) {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return body['usuario'] as Map<String, dynamic>;
+    } else {
+      throw Exception(_extractErrorMessage(response));
+    }
+  }
 }

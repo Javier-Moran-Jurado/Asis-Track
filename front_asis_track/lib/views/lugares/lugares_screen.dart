@@ -6,6 +6,7 @@ import '../../utils/app_breakpoints.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/error_dialog.dart';
+import '../../widgets/dynamic_info_card.dart';
 
 class LugaresScreen extends StatefulWidget {
   const LugaresScreen({super.key});
@@ -75,7 +76,6 @@ class _LugaresScreenState extends State<LugaresScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.of(context).size.width > 900;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Gestión de Lugares', style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
@@ -106,7 +106,7 @@ class _LugaresScreenState extends State<LugaresScreen> {
                           ? Center(child: Text(_error!, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center))
                           : _lugares.isEmpty
                               ? const Center(child: Text('No hay lugares registrados.'))
-                              : isWide ? _buildTable() : _buildList(),
+                               : _buildList(),
                 ),
               ]),
             ),
@@ -116,41 +116,62 @@ class _LugaresScreenState extends State<LugaresScreen> {
     );
   }
 
-  Widget _buildTable() {
-    return Card(elevation: 2, child: SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(columns: const [
-        DataColumn(label: Text('Nombre')), DataColumn(label: Text('Coordenadas')), DataColumn(label: Text('Acciones')),
-      ], rows: _lugares.map((l) {
-        return DataRow(cells: [
-          DataCell(Text(l['nombre']?.toString() ?? '')),
-          DataCell(Text(l['coordenadas']?.toString() ?? '—')),
-          DataCell(Row(mainAxisSize: MainAxisSize.min, children: [
-            IconButton(icon: const Icon(Icons.edit, size: 20, color: AppTheme.primaryColor), onPressed: () => _showForm(lugar: l)),
-            IconButton(icon: const Icon(Icons.delete, size: 20, color: Colors.red), onPressed: () => _confirmDelete(l)),
-          ])),
-        ]);
-      }).toList()),
-    ));
-  }
 
   Widget _buildList() {
-    return ListView.separated(
+    return ListView.builder(
       itemCount: _lugares.length,
-      separatorBuilder: (_, __) => const Divider(),
+      padding: EdgeInsets.zero,
       itemBuilder: (ctx, i) {
         final l = _lugares[i];
-        return ListTile(
-          title: Text(l['nombre']?.toString() ?? ''),
-          subtitle: Text(l['coordenadas']?.toString() ?? 'Sin coordenadas'),
-          trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-            IconButton(icon: const Icon(Icons.edit, color: AppTheme.primaryColor), onPressed: () => _showForm(lugar: l)),
-            IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => _confirmDelete(l)),
-          ]),
+        final coords = l['coordenadas']?.toString();
+        
+        return DynamicInfoCard(
+          title: l['nombre']?.toString() ?? 'Sin nombre',
+          leadingIcon: Icons.place_outlined,
+          leadingIconColor: AppTheme.primaryColor,
+          extraContent: Row(
+            children: [
+              Icon(Icons.location_on_outlined, size: 14, color: Colors.grey.shade500),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  coords ?? 'Sin coordenadas registradas',
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                ),
+              ),
+            ],
+          ),
+          actionButtons: [
+            OutlinedButton.icon(
+              onPressed: () => _showForm(lugar: l),
+              icon: const Icon(Icons.edit_outlined, size: 16),
+              label: const Text('Editar'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.primaryColor,
+                side: BorderSide(color: AppTheme.primaryColor.withValues(alpha: 0.3)),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+            ),
+            OutlinedButton.icon(
+              onPressed: () => _confirmDelete(l),
+              icon: const Icon(Icons.delete_outline, size: 16),
+              label: const Text('Eliminar'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.red,
+                side: BorderSide(color: Colors.red.withValues(alpha: 0.3)),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
         );
       },
     );
   }
+
 }
 
 class _LugarForm extends StatefulWidget {
