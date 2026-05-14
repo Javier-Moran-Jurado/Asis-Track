@@ -13,6 +13,7 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -27,7 +28,7 @@ public class AppConfig {
     public UserDetailsService userDetailsService() {
         return username -> {
             Long codigo = Long.parseLong(username);
-            final Usuario usuario = usuarioRepository.findById(codigo)
+            final Usuario usuario = usuarioRepository.findByCodigo(codigo)
                     .orElseThrow(() -> new UsuarioNoEncontradoException(codigo));
             return org.springframework.security.core.userdetails.User.builder()
                     .username(codigo.toString())
@@ -58,6 +59,7 @@ public class AppConfig {
     public ObjectMapper objectMapper() {
         ObjectMapper mapper = new ObjectMapper();
         mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
         return mapper;
     }
 }

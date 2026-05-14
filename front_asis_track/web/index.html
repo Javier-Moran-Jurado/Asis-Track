@@ -29,18 +29,38 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>front_asis_track</title>
+  <title>Asis-Track</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- Google Identity Services (OAuth2) -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <meta name="google-signin-client_id" content="655549064856-hn07fp0osk2c2luodfo679020gt4od1d.apps.googleusercontent.com">
+
+  <script>
+    window.googleIdToken = null;
+
+    function initGoogleSignIn() {
+      if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) {
+        setTimeout(initGoogleSignIn, 100);
+        return;
+      }
+      google.accounts.id.initialize({
+        client_id: '655549064856-hn07fp0osk2c2luodfo679020gt4od1d.apps.googleusercontent.com',
+        callback: handleCredentialResponse,
+        auto_select: false,
+        cancel_on_tap_outside: true
+      });
+    }
+
+    function handleCredentialResponse(response) {
+      window.googleIdToken = response.credential;
+      window.dispatchEvent(new Event('google-signin-success'));
+    }
+
+    window.addEventListener('load', initGoogleSignIn);
+  </script>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
-
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

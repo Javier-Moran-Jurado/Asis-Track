@@ -11,6 +11,9 @@ app:
     integration:
       url: ${SECURITY_URL:http://localhost:8085}
       secret: ${INTERNAL_SECRET:microservice-internal-secret}
+    oauth2:
+      google:
+        client-ids: ${GOOGLE_CLIENT_IDS:google-oauth-secrets}
 
 logging:
   level:
@@ -19,7 +22,6 @@ logging:
     org.hibernate.SQL: DEBUG
     org.springframework: ERROR
     root: ERROR
-    web: INFO
 
 management:
   endpoints:
