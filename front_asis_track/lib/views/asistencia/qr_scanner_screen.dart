@@ -60,6 +60,31 @@ class _QrScannerScreenState extends State<QrScannerScreen>
     setState(() => _isProcessing = true);
     await _scannerCtrl.stop();
 
+    // Verificar si es un enlace de invitado
+    String? parsedEventoId;
+    try {
+      final uri = Uri.parse(code);
+      if (uri.queryParameters.containsKey('eventoId')) {
+        parsedEventoId = uri.queryParameters['eventoId'];
+      } else if (uri.fragment.isNotEmpty) {
+        final frag = uri.fragment;
+        final fragUri = Uri.parse(frag.startsWith('/') ? frag : '/$frag');
+        if (fragUri.queryParameters.containsKey('eventoId')) {
+          parsedEventoId = fragUri.queryParameters['eventoId'];
+        }
+      }
+    } catch (_) {}
+
+    if (parsedEventoId != null) {
+      if (!mounted) return;
+      await context.push('/invitado?eventoId=$parsedEventoId');
+      if (mounted) {
+        await _scannerCtrl.start();
+        setState(() => _isProcessing = false);
+      }
+      return;
+    }
+
     try {
       // Muestra indicador de carga mientras valida con el backend
       if (!mounted) return;
