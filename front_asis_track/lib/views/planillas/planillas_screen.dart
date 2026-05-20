@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../models/planilla.dart';
+import '../../providers/auth_provider.dart';
 import '../../services/planilla_service.dart';
 import '../../themes/app_theme.dart';
 import '../../utils/app_breakpoints.dart';
@@ -246,6 +248,7 @@ class _PlanillasScreenState extends State<PlanillasScreen> {
   }
 
   Widget _buildHeader() {
+    final isGuest = context.watch<AuthProvider>().isGuest;
     return Row(
       children: [
         Expanded(
@@ -258,46 +261,47 @@ class _PlanillasScreenState extends State<PlanillasScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Gestiona las planillas de asistencia de tus eventos',
+                isGuest ? 'Solo lectura — vista de planillas disponibles' : 'Gestiona las planillas de asistencia de tus eventos',
                 style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
               ),
             ],
           ),
         ),
-        Wrap(
-          spacing: 10,
-          runSpacing: 8,
-          alignment: WrapAlignment.end,
-          children: [
-            OutlinedButton.icon(
-              onPressed: () => context.push('/planilla-digital/eventos'),
-              icon: const Icon(Icons.document_scanner_outlined, size: 18),
-              label: const Text('Digitalizar'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppTheme.primaryColor,
-                side: BorderSide(color: AppTheme.primaryColor.withValues(alpha: 0.3)),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+        if (!isGuest)
+          Wrap(
+            spacing: 10,
+            runSpacing: 8,
+            alignment: WrapAlignment.end,
+            children: [
+              OutlinedButton.icon(
+                onPressed: () => context.push('/planilla-digital/eventos'),
+                icon: const Icon(Icons.document_scanner_outlined, size: 18),
+                label: const Text('Digitalizar'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.primaryColor,
+                  side: BorderSide(color: AppTheme.primaryColor.withValues(alpha: 0.3)),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
               ),
-            ),
-            ElevatedButton.icon(
-              onPressed: () async {
-                await context.push('/planillas/nueva');
-                _cargarPlanillas();
-              },
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('Nueva planilla'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                elevation: 0,
+              ElevatedButton.icon(
+                onPressed: () async {
+                  await context.push('/planillas/nueva');
+                  _cargarPlanillas();
+                },
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Nueva planilla'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  elevation: 0,
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
       ],
     );
   }
@@ -349,24 +353,14 @@ class _PlanillasScreenState extends State<PlanillasScreen> {
               const Text('Sin planillas', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppTheme.gray900)),
               const SizedBox(height: 8),
               Text(
-                'No has creado ninguna planilla todavía.\nPresiona "Nueva planilla" para comenzar.',
+                'No hay planillas disponibles.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 14, color: Colors.grey.shade500, height: 1.5),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: () async {
-                  await context.push('/planillas/nueva');
-                  _cargarPlanillas();
-                },
-                icon: const Icon(Icons.add),
-                label: const Text('Crear planilla'),
               ),
             ],
           ),
         ),
       );
-
 
   Widget _buildList() {
     return RefreshIndicator(
@@ -381,6 +375,7 @@ class _PlanillasScreenState extends State<PlanillasScreen> {
   }
 
   Widget _buildCard(Planilla p) {
+    final isGuest = context.watch<AuthProvider>().isGuest;
     return DynamicInfoCard(
       title: p.nombreEvento ?? 'Planilla #${p.id}',
       leadingIcon: Icons.assignment,
@@ -399,15 +394,16 @@ class _PlanillasScreenState extends State<PlanillasScreen> {
         style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
       ),
       actionButtons: [
-        _buildActionButton(
-          label: 'Editar',
-          icon: Icons.edit_outlined,
-          color: AppTheme.primaryColor,
-          onPressed: () async {
-            await context.push('/planillas/nueva', extra: p.id);
-            _cargarPlanillas();
-          },
-        ),
+        if (!isGuest)
+          _buildActionButton(
+            label: 'Editar',
+            icon: Icons.edit_outlined,
+            color: AppTheme.primaryColor,
+            onPressed: () async {
+              await context.push('/planillas/nueva', extra: p.id);
+              _cargarPlanillas();
+            },
+          ),
         _buildActionButton(
           label: 'Llenar',
           icon: Icons.list_alt,
@@ -420,12 +416,13 @@ class _PlanillasScreenState extends State<PlanillasScreen> {
           color: Colors.green,
           onPressed: () => _mostrarCompartirModal(p),
         ),
-        _buildActionButton(
-          label: 'Eliminar',
-          icon: Icons.delete_outline,
-          color: Colors.red,
-          onPressed: () => _eliminar(p),
-        ),
+        if (!isGuest)
+          _buildActionButton(
+            label: 'Eliminar',
+            icon: Icons.delete_outline,
+            color: Colors.red,
+            onPressed: () => _eliminar(p),
+          ),
       ],
     );
   }

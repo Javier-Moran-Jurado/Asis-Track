@@ -16,13 +16,17 @@ class PerfilScreen extends StatefulWidget {
 
 class _PerfilScreenState extends State<PerfilScreen> {
   Map<String, dynamic>? _fullProfile;
-  bool _isLoading = true;
+  bool _isLoading = false;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    _cargarPerfilCompleto();
+    final auth = context.read<AuthProvider>();
+    if (!auth.isGuest) {
+      _isLoading = true;
+      _cargarPerfilCompleto();
+    }
   }
 
   Future<void> _cargarPerfilCompleto() async {
@@ -208,7 +212,11 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       width: double.infinity,
                       child: OutlinedButton.icon(
                         onPressed: () async {
-                          await auth.logout();
+                          if (auth.isGuest) {
+                            auth.logout();
+                          } else {
+                            await auth.logout();
+                          }
                           if (context.mounted) context.go('/login');
                         },
                         icon: const Icon(Icons.logout, size: 18),
@@ -241,6 +249,7 @@ class _RolBadge extends StatelessWidget {
 
   Color get _color {
     final r = rol.toLowerCase();
+    if (r == 'invitado') return AppTheme.warningColor;
     if (r == 'administrador') return const Color(0xFF7C3AED);
     if (r == 'docente') return const Color(0xFF2563EB);
     if (r == 'monitor') return const Color(0xFF0891B2);
@@ -249,6 +258,7 @@ class _RolBadge extends StatelessWidget {
 
   IconData get _icon {
     final r = rol.toLowerCase();
+    if (r == 'invitado') return Icons.visibility_outlined;
     if (r == 'administrador') return Icons.admin_panel_settings;
     if (r == 'docente') return Icons.person_pin;
     if (r == 'monitor') return Icons.supervised_user_circle;

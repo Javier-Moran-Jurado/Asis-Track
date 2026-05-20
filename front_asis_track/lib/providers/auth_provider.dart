@@ -50,6 +50,7 @@ class AuthProvider extends ChangeNotifier {
 
   bool get isLoading => _status == AuthStatus.loading;
   bool get isAuthenticated => _status == AuthStatus.authenticated;
+  bool get isGuest => _currentUser?.rol == 'Invitado';
 
   // ══════════════════════════════════════════════════════════════════════════
   // VERIFICACIÓN DE SESIÓN AL INICIAR LA APP
@@ -139,6 +140,27 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // LOGIN AS GUEST (local mock, no backend call)
+  // ══════════════════════════════════════════════════════════════════════════
+
+  /// Establece un usuario local con rol 'Invitado' sin llamar al backend.
+  Future<void> loginAsGuest() async {
+    _status = AuthStatus.loading;
+    _errorMessage = null;
+    notifyListeners();
+
+    _currentUser = UserModel(
+      codigo: '0',
+      nombreCompleto: 'Invitado',
+      correo: '',
+      rol: 'Invitado',
+    );
+
+    _status = AuthStatus.authenticated;
+    notifyListeners();
   }
 
   // ══════════════════════════════════════════════════════════════════════════

@@ -49,16 +49,18 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _loginComoInvitado() async {
+    final auth = context.read<AuthProvider>();
+    await auth.loginAsGuest();
+    if (!mounted) return;
+    context.go('/planillas');
+  }
+
   Future<void> _loginWithGoogle() async {
     final auth = context.read<AuthProvider>();
-
-    // Limpiar errores previos
     auth.clearError();
-
     final success = await auth.loginWithGoogle();
-
     if (!mounted) return;
-
     if (success) {
       context.go('/home');
     } else if (auth.errorMessage != null) {
@@ -192,7 +194,26 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // ── Botón de Google ──────────────────────────────────────
                   GoogleSignInButton(),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 8),
+
+                  // ── Botón: Continuar como invitado ──────────────────────────
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: isLoading ? null : _loginComoInvitado,
+                      icon: const Icon(Icons.person_outline, size: 18),
+                      label: const Text('Continuar como invitado'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppTheme.warningColor,
+                        side: BorderSide(color: AppTheme.warningColor.withValues(alpha: 0.5)),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
 
                   // (Registro deshabilitado: solo roles autorizados pueden crear usuarios)
                 ],

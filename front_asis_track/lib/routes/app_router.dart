@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:front_asis_track/views/asistencia/asistencia_detalle_screen.dart';
 import 'package:front_asis_track/views/asistencia/qr_scanner_screen.dart';
 import 'package:front_asis_track/views/asistencia/qr_generator_screen.dart';
+import 'package:front_asis_track/views/asistencia/invitado_screen.dart';
+import 'package:front_asis_track/views/asistencia/invitado_scanner_screen.dart';
 import 'package:front_asis_track/views/auth/login_screen.dart';
 import 'package:front_asis_track/views/auth/register_screen.dart';
 import 'package:front_asis_track/views/historial/historial_detalle_screen.dart';
@@ -44,6 +46,17 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/register',
       builder: (context, state) => const RegisterScreen(),
+    ),
+    GoRoute(
+      path: '/invitado',
+      builder: (context, state) {
+        final eventoId = state.uri.queryParameters['eventoId'];
+        return InvitadoScreen(eventoId: eventoId);
+      },
+    ),
+    GoRoute(
+      path: '/invitado/escanear',
+      builder: (context, state) => const InvitadoScannerScreen(),
     ),
     // ── DIGITALIZACIÓN DE PLANILLAS ──
     GoRoute(

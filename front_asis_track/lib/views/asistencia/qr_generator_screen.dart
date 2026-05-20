@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:intl/intl.dart';
 import '../../models/evento_qr.dart';
 import '../../models/zona.dart';
@@ -674,10 +675,10 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: Colors.grey.shade300),
               ),
-              child: const Icon(
-                Icons.qr_code_2,
-                size: 200,
-                color: Colors.black,
+              child: QrImageView(
+                data: 'https://ambush-goal-narrow.ngrok-free.dev/#/invitado?eventoId=${_evento!.tokenQr}',
+                version: QrVersions.auto,
+                size: 200.0,
               ),
             ),
             const SizedBox(height: 32),
