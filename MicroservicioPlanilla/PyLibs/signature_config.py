@@ -4,9 +4,6 @@ import pytesseract
 
 
 def configure_runtime() -> None:
-    hf_token = environ.get("HF_TOKEN")
-    if hf_token:
-        environ["HF_TOKEN"] = hf_token
     environ["FLAGS_use_mkldnn"] = "0"
     environ["MKLDNN_VERBOSE"] = "0"
     environ["FLAGS_enable_pir_api"] = "0"
