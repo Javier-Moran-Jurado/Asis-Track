@@ -5,6 +5,10 @@ on:
     branches:
       - SCRUM-87-Despliegue-del-frontend
 
+defaults:
+  run:
+    working-directory: ./front_asis_track
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -40,3 +44,4 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           channelId: live
           projectId: asistrack-60b80
+          entryPoint: ./front_asis_track
