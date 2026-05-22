@@ -44,6 +44,8 @@ Este proyecto está preparado para desplegarse en [Railway](https://railway.app)
 | `JPA_DDL` | Estrategia Hibernate | `update` o `validate` |
 | `REDIS_HOST` | Host de Redis | `redis.railway.internal` |
 | `REDIS_PORT` | Puerto de Redis | `6379` |
+| `REDIS_PASSWORD` | Contraseña de Redis (opcional) | `` (vacío si no hay auth) |
+| `REDIS_USER` | Usuario de Redis (opcional) | `default` |
 | `SECURITY_URL` | URL interna del servicio de seguridad | `http://seguridad-service.railway.internal:8085` |
 | `INTERNAL_SECRET` | Secreto compartido entre microservicios | `microservice-internal-secret` |
 | `GOOGLE_CLIENT_IDS` | IDs de clientes OAuth2 de Google | `id1,id2` |
@@ -61,6 +63,8 @@ Este proyecto está preparado para desplegarse en [Railway](https://railway.app)
 | `JPA_DDL` | Estrategia Hibernate | `update` |
 | `REDIS_HOST` | Host de Redis | `redis.railway.internal` |
 | `REDIS_PORT` | Puerto de Redis | `6379` |
+| `REDIS_PASSWORD` | Contraseña de Redis (opcional) | `` (vacío si no hay auth) |
+| `REDIS_USER` | Usuario de Redis (opcional) | `default` |
 | `SECURITY_URL` | URL interna del servicio de seguridad | `http://seguridad-service.railway.internal:8085` |
 | `INTERNAL_SECRET` | Secreto compartido entre microservicios | `microservice-internal-secret` |
 | `AI_PRIMARY_PROVIDER` | Proveedor AI principal | `groq` |
@@ -95,6 +99,8 @@ Este proyecto está preparado para desplegarse en [Railway](https://railway.app)
 | `JWT_SECRET_KEY` | Clave secreta JWT | `ThisIsAVeryLongSecretKey...` |
 | `REDIS_HOST` | Host de Redis | `redis.railway.internal` |
 | `REDIS_PORT` | Puerto de Redis | `6379` |
+| `REDIS_PASSWORD` | Contraseña de Redis (opcional) | `` (vacío si no hay auth) |
+| `REDIS_USER` | Usuario de Redis (opcional) | `default` |
 
 ---
 
