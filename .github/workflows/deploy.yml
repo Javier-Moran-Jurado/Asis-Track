@@ -17,9 +17,6 @@ jobs:
       - name: Checkout código
         uses: actions/checkout@v4
 
-      - name: Instalar Firebase CLI
-        run: npm install -g firebase-tools
-
       - name: Instalar Flutter
         uses: subosito/flutter-action@v2
         with:
