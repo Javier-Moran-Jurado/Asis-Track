@@ -136,7 +136,7 @@ class _HeroQrCard extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           const Text(
-            'Asis-Track',
+            'AsisTrack',
             style: TextStyle(
               color: Colors.white,
               fontSize: 22,

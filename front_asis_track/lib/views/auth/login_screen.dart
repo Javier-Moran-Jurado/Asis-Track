@@ -109,7 +109,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 16),
                   const Text(
-                    'Asis-Track',
+                    'AsisTrack',
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
