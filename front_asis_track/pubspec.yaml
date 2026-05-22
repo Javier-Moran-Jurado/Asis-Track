@@ -72,14 +72,14 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/icon/logo_asis_track.png
+    - assets/icon/logo-nuevo-asistrack.png
 
 flutter_icons:
   android: true
   ios: true
   web:
     generate: true
-  image_path: "assets/icon/logo_asis_track.png"
+  image_path: "assets/icon/logo-nuevo-asistrack.png"
   remove_alpha_ios: true
   adaptive_icon_background: "#ffffff"
-  adaptive_icon_foreground: "assets/icon/logo_asis_track.png"
+  adaptive_icon_foreground: "assets/icon/logo-nuevo-asistrack.png"

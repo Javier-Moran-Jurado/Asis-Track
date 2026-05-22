@@ -1,11 +1,11 @@
 {
-    "name": "front_asis_track",
-    "short_name": "front_asis_track",
+    "name": "AsisTrack",
+    "short_name": "AsisTrack",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "App de seguimiento de asistencia",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
