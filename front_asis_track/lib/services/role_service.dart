@@ -49,8 +49,11 @@ class RoleService {
     return true;
   }
 
-  /// Devuelve `true` si el rol es invitado.
-  static bool isGuest(String rol) => _isGuest(rol);
+  /// Devuelve `true` si el rol es estudiante.
+  static bool isStudent(String rol) {
+    if (_isGuest(rol)) return false;
+    return rol.toLowerCase() == 'estudiante';
+  }
 
   /// Etiqueta legible para mostrar en la UI.
   static String displayLabel(String rol) {

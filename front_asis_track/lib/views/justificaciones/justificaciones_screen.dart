@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../../models/justificacion_model.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/student_provider.dart';
 import '../../services/justificacion_service.dart';
 import '../../services/role_service.dart';
 import '../../themes/app_theme.dart';
@@ -16,7 +18,7 @@ class JustificacionesScreen extends StatefulWidget {
 }
 
 class _JustificacionesScreenState extends State<JustificacionesScreen> {
-  List<Map<String, dynamic>> _justificaciones = [];
+  List<JustificacionModel> _justificaciones = [];
   bool _cargando = true;
   String? _error;
   String _filtroEstado = 'TODOS';
@@ -24,7 +26,21 @@ class _JustificacionesScreenState extends State<JustificacionesScreen> {
   @override
   void initState() {
     super.initState();
-    _cargarJustificaciones();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final auth = context.read<AuthProvider>();
+      final isStudent = RoleService.isStudent(auth.currentUser?.rol ?? '');
+      final codigo = int.tryParse(auth.currentUser?.codigo ?? '');
+      if (isStudent && codigo != null) {
+        context.read<StudentProvider>().cargarJustificaciones(codigo).catchError((e) {
+          debugPrint('Error cargando justificaciones del estudiante: $e');
+        });
+      } else {
+        _cargarJustificaciones().catchError((e) {
+          debugPrint('Error cargando justificaciones: $e');
+        });
+      }
+    });
   }
 
   Future<void> _cargarJustificaciones() async {
@@ -35,16 +51,13 @@ class _JustificacionesScreenState extends State<JustificacionesScreen> {
     try {
       final auth = context.read<AuthProvider>();
       final rol = auth.currentUser?.rol ?? '';
-      final codigo = int.tryParse(auth.currentUser?.codigo ?? '');
       final puedeValidar = RoleService.canValidateJustificacion(rol);
 
-      List<Map<String, dynamic>> data;
+      List<JustificacionModel> data;
       if (puedeValidar) {
         // Admins / Decanos ven todas las justificaciones
-        data = await JustificacionService.obtenerTodas();
-      } else if (codigo != null) {
-        // Estudiantes solo ven las suyas
-        data = await JustificacionService.obtenerPorEstudiante(codigo);
+        final raw = await JustificacionService.obtenerTodas();
+        data = raw.map((e) => JustificacionModel.fromJson(e)).toList();
       } else {
         data = [];
       }
@@ -65,10 +78,21 @@ class _JustificacionesScreenState extends State<JustificacionesScreen> {
     }
   }
 
-  List<Map<String, dynamic>> get _justificacionesFiltradas {
-    if (_filtroEstado == 'TODOS') return _justificaciones;
-    return _justificaciones
-        .where((j) => j['estado']?.toString().toUpperCase() == _filtroEstado)
+  Future<void> _refrescar() async {
+    final auth = context.read<AuthProvider>();
+    final isStudent = RoleService.isStudent(auth.currentUser?.rol ?? '');
+    final codigo = int.tryParse(auth.currentUser?.codigo ?? '');
+    if (isStudent && codigo != null) {
+      await context.read<StudentProvider>().refrescar(codigo);
+    } else {
+      await _cargarJustificaciones();
+    }
+  }
+
+  List<JustificacionModel> _filtrar(List<JustificacionModel> lista) {
+    if (_filtroEstado == 'TODOS') return lista;
+    return lista
+        .where((j) => j.estado.toUpperCase() == _filtroEstado)
         .toList();
   }
 
@@ -100,7 +124,7 @@ class _JustificacionesScreenState extends State<JustificacionesScreen> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           ),
         );
-        _cargarJustificaciones();
+        _refrescar();
       }
     } catch (e) {
       if (mounted) {
@@ -142,7 +166,7 @@ class _JustificacionesScreenState extends State<JustificacionesScreen> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           ),
         );
-        _cargarJustificaciones();
+        _refrescar();
       }
     } catch (e) {
       if (mounted) {
@@ -185,14 +209,14 @@ class _JustificacionesScreenState extends State<JustificacionesScreen> {
     );
   }
 
-  void _mostrarDetalle(Map<String, dynamic> justificacion) {
-    final estado = justificacion['estado']?.toString() ?? 'PENDIENTE';
-    final motivo = justificacion['motivo']?.toString() ?? '';
-    final observaciones = justificacion['observaciones']?.toString() ?? '';
-    final documentoUrl = justificacion['documentoUrl']?.toString() ?? '';
-    final fechaSolicitud = justificacion['fechaSolicitud']?.toString() ?? '';
-    final fechaRevision = justificacion['fechaRevision']?.toString() ?? '';
-    final codigoEstudiante = justificacion['codigoEstudiante']?.toString() ?? '';
+  void _mostrarDetalle(JustificacionModel justificacion) {
+    final estado = justificacion.estado;
+    final motivo = justificacion.motivo;
+    final observaciones = justificacion.observaciones ?? '';
+    final documentoUrl = justificacion.documentoUrl ?? '';
+    final fechaSolicitud = justificacion.fechaSolicitud;
+    final fechaRespuesta = justificacion.fechaRespuesta;
+    final codigoEstudiante = justificacion.codigoEstudiante?.toString() ?? '';
 
     showDialog(
       context: context,
@@ -212,7 +236,7 @@ class _JustificacionesScreenState extends State<JustificacionesScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                'Justificación #${justificacion['id']}',
+                'Justificación #${justificacion.id}',
                 style: const TextStyle(fontSize: 18),
               ),
             ),
@@ -232,10 +256,10 @@ class _JustificacionesScreenState extends State<JustificacionesScreen> {
                   _detailRow('Observaciones', observaciones),
                 if (documentoUrl.isNotEmpty)
                   _detailRow('Documento', documentoUrl),
-                if (fechaSolicitud.isNotEmpty)
+                if (fechaSolicitud != null)
                   _detailRow('Fecha solicitud', _formatearFecha(fechaSolicitud)),
-                if (fechaRevision.isNotEmpty)
-                  _detailRow('Fecha revisión', _formatearFecha(fechaRevision)),
+                if (fechaRespuesta != null)
+                  _detailRow('Fecha revisión', _formatearFecha(fechaRespuesta)),
               ],
             ),
           ),
@@ -271,20 +295,33 @@ class _JustificacionesScreenState extends State<JustificacionesScreen> {
     );
   }
 
-  String _formatearFecha(String isoDate) {
-    try {
-      final dt = DateTime.parse(isoDate);
-      return DateFormat('dd MMM yyyy, HH:mm', 'es').format(dt);
-    } catch (_) {
-      return isoDate;
-    }
+  String _formatearFecha(DateTime? dt) {
+    if (dt == null) return '';
+    return DateFormat('dd MMM yyyy, HH:mm', 'es').format(dt);
   }
 
   @override
   Widget build(BuildContext context) {
     final rol = context.watch<AuthProvider>().currentUser?.rol ?? '';
     final puedeValidar = RoleService.canValidateJustificacion(rol);
-    final filtradas = _justificacionesFiltradas;
+    final isStudent = RoleService.isStudent(rol);
+
+    late final List<JustificacionModel> justificaciones;
+    late final bool cargando;
+    late final String? error;
+
+    if (isStudent) {
+      final prov = context.watch<StudentProvider>();
+      justificaciones = prov.justificaciones;
+      cargando = prov.isLoading;
+      error = prov.errorMessage;
+    } else {
+      justificaciones = _justificaciones;
+      cargando = _cargando;
+      error = _error;
+    }
+
+    final filtradas = _filtrar(justificaciones);
 
     return Scaffold(
       backgroundColor: AppTheme.gray50,
@@ -302,7 +339,7 @@ class _JustificacionesScreenState extends State<JustificacionesScreen> {
           IconButton(
             icon: const Icon(Icons.refresh, color: AppTheme.primaryColor),
             tooltip: 'Actualizar',
-            onPressed: _cargarJustificaciones,
+            onPressed: _refrescar,
           ),
         ],
       ),
@@ -316,17 +353,17 @@ class _JustificacionesScreenState extends State<JustificacionesScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // ── Encabezado ──
-                  _buildHeader(puedeValidar),
+                  _buildHeader(justificaciones.length, puedeValidar),
                   const SizedBox(height: 16),
                   // ── Filtros ──
                   _buildFiltros(),
                   const SizedBox(height: 16),
                   // ── Contenido ──
                   Expanded(
-                    child: _cargando
+                    child: cargando
                         ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor))
-                        : _error != null
-                            ? _buildError()
+                        : error != null
+                            ? _buildError(error)
                             : filtradas.isEmpty
                                 ? _buildEmpty()
                                 : _buildList(filtradas, puedeValidar),
@@ -340,12 +377,12 @@ class _JustificacionesScreenState extends State<JustificacionesScreen> {
     );
   }
 
-  Widget _buildHeader(bool puedeValidar) {
+  Widget _buildHeader(int count, bool puedeValidar) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Justificaciones (${_justificaciones.length})',
+          'Justificaciones ($count)',
           style: const TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -404,7 +441,7 @@ class _JustificacionesScreenState extends State<JustificacionesScreen> {
     );
   }
 
-  Widget _buildError() {
+  Widget _buildError(String errorMsg) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -422,12 +459,12 @@ class _JustificacionesScreenState extends State<JustificacionesScreen> {
                   color: AppTheme.errorColor, size: 40),
             ),
             const SizedBox(height: 16),
-            Text(_error!,
+            Text(errorMsg,
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.grey.shade600)),
             const SizedBox(height: 16),
             ElevatedButton.icon(
-              onPressed: _cargarJustificaciones,
+              onPressed: _refrescar,
               icon: const Icon(Icons.refresh, size: 18),
               label: const Text('Reintentar'),
             ),
@@ -480,9 +517,9 @@ class _JustificacionesScreenState extends State<JustificacionesScreen> {
     );
   }
 
-  Widget _buildList(List<Map<String, dynamic>> items, bool puedeValidar) {
+  Widget _buildList(List<JustificacionModel> items, bool puedeValidar) {
     return RefreshIndicator(
-      onRefresh: _cargarJustificaciones,
+      onRefresh: _refrescar,
       color: AppTheme.primaryColor,
       child: ListView.builder(
         padding: EdgeInsets.zero,
@@ -494,19 +531,14 @@ class _JustificacionesScreenState extends State<JustificacionesScreen> {
     );
   }
 
-  Widget _buildJustificacionCard(Map<String, dynamic> item, bool puedeValidar) {
-    final estado = item['estado']?.toString() ?? 'PENDIENTE';
-    final motivo = item['motivo']?.toString() ?? 'Sin motivo';
-    final id = item['id'] as int? ?? 0;
-    final codigoEstudiante = item['codigoEstudiante']?.toString() ?? '';
-    final observaciones = item['observaciones']?.toString() ?? '';
-    final documentoUrl = item['documentoUrl']?.toString() ?? '';
-    final fechaSolicitud = item['fechaSolicitud']?.toString();
-
-    DateTime? fecha;
-    if (fechaSolicitud != null) {
-      fecha = DateTime.tryParse(fechaSolicitud);
-    }
+  Widget _buildJustificacionCard(JustificacionModel item, bool puedeValidar) {
+    final estado = item.estado;
+    final motivo = item.motivo;
+    final id = item.id;
+    final codigoEstudiante = item.codigoEstudiante?.toString() ?? '';
+    final observaciones = item.observaciones ?? '';
+    final documentoUrl = item.documentoUrl ?? '';
+    final fecha = item.fechaSolicitud;
 
     return DynamicInfoCard(
       title: 'Justificación #$id',

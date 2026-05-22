@@ -16,6 +16,7 @@ class HistorialAsistencia {
   final String? archivoAdjunto;
   final String docente;
   final String ubicacion;
+  final int? eventoId;
 
   const HistorialAsistencia({
     required this.id,
@@ -28,5 +29,6 @@ class HistorialAsistencia {
     this.archivoAdjunto,
     required this.docente,
     required this.ubicacion,
+    this.eventoId,
   });
 }

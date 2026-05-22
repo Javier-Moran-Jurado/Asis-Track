@@ -24,7 +24,7 @@ public class SecurityIntegrationService {
         this.restTemplate = new RestTemplate();
     }
 
-    @Cacheable(value = "securityKeys", key = "'active_private'")
+    @Cacheable(value = "usuario-securityKeys", key = "'active_private'")
     public PrivateKeyResponseDTO fetchCurrentPrivateKey() {
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Internal-Secret", internalSecret);
@@ -41,7 +41,7 @@ public class SecurityIntegrationService {
         return response.getBody();
     }
 
-    @Cacheable(value = "securityKeys", key = "'active_public'")
+    @Cacheable(value = "usuario-securityKeys", key = "'active_public'")
     public PublicKeyResponseDTO fetchCurrentPublicKey() {
         ResponseEntity<PublicKeyResponseDTO> response = restTemplate.exchange(
                 securityUrl + "/api/v1/security/keys/public",
@@ -53,7 +53,7 @@ public class SecurityIntegrationService {
         return response.getBody();
     }
 
-    @Cacheable(value = "securityKeys", key = "'private_' + #id")
+    @Cacheable(value = "usuario-securityKeys", key = "'private_' + #id")
     public PrivateKeyResponseDTO fetchPrivateKeyById(Long id) {
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Internal-Secret", internalSecret);

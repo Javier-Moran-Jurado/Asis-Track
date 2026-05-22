@@ -23,10 +23,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
   void initState() {
     super.initState();
     final auth = context.read<AuthProvider>();
-    if (!auth.isGuest) {
-      _isLoading = true;
-      _cargarPerfilCompleto();
-    }
+    _isLoading = true;
+    _cargarPerfilCompleto();
   }
 
   Future<void> _cargarPerfilCompleto() async {
@@ -212,11 +210,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       width: double.infinity,
                       child: OutlinedButton.icon(
                         onPressed: () async {
-                          if (auth.isGuest) {
-                            auth.logout();
-                          } else {
-                            await auth.logout();
-                          }
+                          await auth.logout();
                           if (context.mounted) context.go('/login');
                         },
                         icon: const Icon(Icons.logout, size: 18),

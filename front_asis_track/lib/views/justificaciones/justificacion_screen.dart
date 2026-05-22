@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../models/historial_asistencia.dart';
+import '../../models/planilla.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/justificacion_provider.dart';
+import '../../providers/student_provider.dart';
+import '../../services/planilla_service.dart';
+import '../../services/upload_file_service.dart';
 import '../../themes/app_theme.dart';
 import '../../utils/app_breakpoints.dart';
 import '../../widgets/custom_button.dart';
@@ -23,6 +28,13 @@ class _JustificacionScreenState extends State<JustificacionScreen> {
   late final JustificacionProvider _provider;
   late final TextEditingController _descripcionController;
   final GlobalKey _firmaKey = GlobalKey();
+  bool _isUploading = false;
+
+  // ── Selector de evento ─────────────────────────────────────────────────
+  List<Planilla> _planillas = [];
+  int? _eventoIdSeleccionado;
+  bool _cargandoPlanillas = false;
+  String? _errorPlanillas;
 
   @override
   void initState() {
@@ -32,6 +44,43 @@ class _JustificacionScreenState extends State<JustificacionScreen> {
     _descripcionController.addListener(() {
       _provider.setDescripcion(_descripcionController.text);
     });
+
+    // Precargar planillas para el dropdown de eventos después del primer frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _cargarPlanillas().catchError((e) {
+          debugPrint('Error cargando planillas: $e');
+        });
+      }
+    });
+
+    // Si la asistencia ya trae un eventoId válido, preseleccionarlo
+    if (widget.asistencia.eventoId != null) {
+      _eventoIdSeleccionado = widget.asistencia.eventoId;
+    }
+  }
+
+  Future<void> _cargarPlanillas() async {
+    setState(() {
+      _cargandoPlanillas = true;
+      _errorPlanillas = null;
+    });
+    try {
+      final planillas = await PlanillaService.obtenerPlanillas();
+      if (mounted) {
+        setState(() {
+          _planillas = planillas;
+          _cargandoPlanillas = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorPlanillas = e.toString().replaceFirst('Exception: ', '');
+          _cargandoPlanillas = false;
+        });
+      }
+    }
   }
 
   @override
@@ -56,26 +105,43 @@ class _JustificacionScreenState extends State<JustificacionScreen> {
   // TODO: Integrar file_picker / image_picker para selección real.
   // ──────────────────────────────────────────────────────────────────────────
 
-  static Future<String?> _seleccionarArchivo() async {
-    await Future<void>.delayed(const Duration(milliseconds: 500));
-    return 'documento_respaldo.pdf';
+  Future<String?> _seleccionarArchivo() async {
+    setState(() => _isUploading = true);
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 85,
+      );
+      if (picked == null) return null;
+
+      final bytes = await picked.readAsBytes();
+      final url = await UploadFileService.uploadFile(
+        bytes: bytes,
+        filename: picked.name,
+        contentType: 'image/jpeg',
+      );
+      return url;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al subir archivo: ${e.toString().replaceFirst("Exception: ", "")}'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
+      return null;
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
+    }
   }
 
   static Future<String?> _seleccionarImagenFirma() async {
     await Future<void>.delayed(const Duration(milliseconds: 500));
     return 'firma_usuario.jpg';
-  }
-
-  static Future<bool> _enviarJustificacion({
-    required String asistenciaId,
-    required String motivo,
-    required String descripcion,
-    String? archivo,
-    String? firma,
-  }) async {
-    // TODO: Connect to real backend via JustificacionService.solicitarJustificacion
-    await Future<void>.delayed(const Duration(seconds: 2));
-    return true;
   }
 
   @override
@@ -113,6 +179,10 @@ class _JustificacionScreenState extends State<JustificacionScreen> {
 
                   // ── Datos de la inasistencia ─────────────────────────────
                   _buildInasistenciaCard(),
+                  const SizedBox(height: 24),
+
+                  // ── Evento / Materia ─────────────────────────────────────
+                  _buildEventoDropdown(),
                   const SizedBox(height: 24),
 
                   // ── Motivo ───────────────────────────────────────────────
@@ -270,6 +340,124 @@ class _JustificacionScreenState extends State<JustificacionScreen> {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
+  // DROPDOWN EVENTO / MATERIA
+  // ══════════════════════════════════════════════════════════════════════════
+  Widget _buildEventoDropdown() {
+    if (_cargandoPlanillas) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: const Row(
+          children: [
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primaryColor),
+            ),
+            SizedBox(width: 12),
+            Text('Cargando materias…', style: TextStyle(color: Colors.grey, fontSize: 14)),
+          ],
+        ),
+      );
+    }
+
+    if (_errorPlanillas != null) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppTheme.errorColor.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.error_outline, color: AppTheme.errorColor, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Error al cargar materias: $_errorPlanillas',
+                style: const TextStyle(color: AppTheme.errorColor, fontSize: 13),
+              ),
+            ),
+            TextButton(
+              onPressed: _cargarPlanillas,
+              child: const Text('Reintentar', style: TextStyle(fontSize: 13)),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final eventos = <int, String>{};
+    for (final p in _planillas) {
+      final id = p.eventoId;
+      final nombre = p.nombreEvento ?? 'Evento ${p.id}';
+      if (id != null) {
+        eventos[id] = nombre;
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Row(
+          children: [
+            Text(
+              'Materia / Evento',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: AppTheme.gray900,
+              ),
+            ),
+            Text(
+              ' *',
+              style: TextStyle(color: AppTheme.errorColor, fontSize: 14),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: DropdownButton<int?>(
+            isExpanded: true,
+            underline: const SizedBox(),
+            value: _eventoIdSeleccionado,
+            hint: const Text(
+              'Selecciona la materia',
+              style: TextStyle(color: Colors.grey),
+            ),
+            items: [
+              const DropdownMenuItem<int?>(
+                value: null,
+                child: Text('Selecciona la materia'),
+              ),
+              ...eventos.entries.map((entry) {
+                return DropdownMenuItem<int?>(
+                  value: entry.key,
+                  child: Text(entry.value),
+                );
+              }),
+            ],
+            onChanged: (value) {
+              setState(() => _eventoIdSeleccionado = value);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
   // DROPDOWN MOTIVO
   // ══════════════════════════════════════════════════════════════════════════
   Widget _buildMotivoDropdown(JustificacionProvider prov) {
@@ -361,12 +549,14 @@ class _JustificacionScreenState extends State<JustificacionScreen> {
 
   Widget _buildArchivoSelector(JustificacionProvider prov) {
     return InkWell(
-      onTap: () async {
-        final archivo = await _seleccionarArchivo();
-        if (archivo != null && context.mounted) {
-          prov.setArchivo(archivo);
-        }
-      },
+      onTap: _isUploading
+          ? null
+          : () async {
+              final archivo = await _seleccionarArchivo();
+              if (archivo != null && context.mounted) {
+                prov.setArchivo(archivo);
+              }
+            },
       borderRadius: BorderRadius.circular(12),
       child: Container(
         width: double.infinity,
@@ -380,17 +570,18 @@ class _JustificacionScreenState extends State<JustificacionScreen> {
             right: BorderSide(color: Colors.grey.shade300, width: 1.5),
             bottom: BorderSide(color: Colors.grey.shade300, width: 1.5),
           ),
-          // Líneas punteadas simuladas con borde normal
-          // (DashedBorder requeriría paquete adicional, se usa borde sólido sutil)
         ),
         child: Column(
           children: [
-            Icon(Icons.cloud_upload_outlined,
-                size: 40, color: Colors.grey.shade400),
+            if (_isUploading)
+              const CircularProgressIndicator(color: AppTheme.primaryColor)
+            else
+              Icon(Icons.cloud_upload_outlined,
+                  size: 40, color: Colors.grey.shade400),
             const SizedBox(height: 12),
-            const Text(
-              'Selecciona un archivo',
-              style: TextStyle(
+            Text(
+              _isUploading ? 'Subiendo archivo…' : 'Selecciona un archivo',
+              style: const TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
                 color: AppTheme.gray900,
@@ -398,7 +589,7 @@ class _JustificacionScreenState extends State<JustificacionScreen> {
             ),
             const SizedBox(height: 6),
             Text(
-              'Formatos: PDF, JPG, PNG',
+              'Formatos: JPG, PNG',
               style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
             ),
           ],
@@ -771,10 +962,24 @@ class _JustificacionScreenState extends State<JustificacionScreen> {
           text: 'Enviar justificación',
           isPrimary: true,
           isLoading: prov.isLoading,
-          onPressed: prov.isFormValid && !prov.isLoading
+          onPressed: prov.isFormValid && !prov.isLoading && _eventoIdSeleccionado != null
               ? () async {
+                  final studentProv = context.read<StudentProvider>();
+                  final authProv = context.read<AuthProvider>();
+                  final codigo = int.tryParse(authProv.currentUser?.codigo ?? '') ?? 0;
                   await prov.enviar(
-                    onSubmit: _enviarJustificacion,
+                    onSubmit: ({
+                      required String asistenciaId,
+                      required String motivo,
+                      required String descripcion,
+                      String? archivo,
+                      String? firma,
+                    }) => studentProv.solicitarJustificacion(
+                      eventoId: _eventoIdSeleccionado!,
+                      codigoEstudiante: codigo,
+                      motivo: '$motivo: $descripcion',
+                      documentoUrl: archivo,
+                    ).then((_) => true),
                     asistenciaId: widget.asistencia.id,
                   );
                 }

@@ -5,7 +5,6 @@ import '../providers/auth_provider.dart';
 import '../services/role_service.dart';
 import '../themes/app_theme.dart';
 import '../utils/app_breakpoints.dart';
-import '../widgets/guest_banner.dart';
 
 class MainLayout extends StatelessWidget {
   final Widget child;
@@ -15,7 +14,6 @@ class MainLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final rol = auth.currentUser?.rol ?? '';
-    final isGuest = RoleService.isGuest(rol);
     final showUsuarios = RoleService.canCreateUsers(rol);
     final showEventos = RoleService.canCreateEvents(rol);
     final showLugares = RoleService.canCreateUsers(rol);
@@ -25,7 +23,6 @@ class MainLayout extends StatelessWidget {
       return Scaffold(
         body: Column(
           children: [
-            if (isGuest) const GuestBanner(),
             Expanded(child: child),
           ],
         ),
@@ -46,7 +43,6 @@ class MainLayout extends StatelessWidget {
       ),
       body: Column(
         children: [
-          if (isGuest) const GuestBanner(),
           Expanded(
             child: Row(
               children: [
@@ -68,16 +64,12 @@ class MainLayout extends StatelessWidget {
     );
   }
 
-  List<_NavItem> _buildItems(bool showUsuarios, bool showEventos, bool showLugares, bool showPlanillas, {bool isGuest = false}) {
+  List<_NavItem> _buildItems(bool showUsuarios, bool showEventos, bool showLugares, bool showPlanillas) {
     return [
-      if (!isGuest)
-        _NavItem('/home', Icons.bar_chart_outlined, Icons.bar_chart, 'Estadísticas'),
-      if (isGuest)
-        _NavItem('/invitado/escanear', Icons.qr_code_scanner_outlined, Icons.qr_code_scanner, 'Asistencia'),
+      _NavItem('/home', Icons.home_outlined, Icons.home, 'Inicio'),
       if (showPlanillas)
         _NavItem('/planillas', Icons.assignment_outlined, Icons.assignment, 'Planillas'),
-      if (!isGuest)
-        _NavItem('/justificaciones', Icons.description_outlined, Icons.description, 'Justificaciones'),
+      _NavItem('/justificaciones', Icons.description_outlined, Icons.description, 'Justificaciones'),
       if (showEventos)
         _NavItem('/eventos', Icons.event_outlined, Icons.event, 'Eventos'),
       if (showLugares)
@@ -89,8 +81,7 @@ class MainLayout extends StatelessWidget {
   }
 
   Widget _buildBottomNav(BuildContext context, bool showUsuarios, bool showEventos, bool showLugares, bool showPlanillas) {
-    final isGuest = (context.watch<AuthProvider>()).isGuest;
-    final items = _buildItems(showUsuarios, showEventos, showLugares, showPlanillas, isGuest: isGuest);
+    final items = _buildItems(showUsuarios, showEventos, showLugares, showPlanillas);
     final location = GoRouterState.of(context).uri.path;
     int idx = 0;
     for (int i = 0; i < items.length; i++) {
@@ -107,8 +98,7 @@ class MainLayout extends StatelessWidget {
   }
 
   Widget _buildNavigationRail(BuildContext context, bool showUsuarios, bool showEventos, bool showLugares, bool showPlanillas) {
-    final isGuest = (context.watch<AuthProvider>()).isGuest;
-    final items = _buildItems(showUsuarios, showEventos, showLugares, showPlanillas, isGuest: isGuest);
+    final items = _buildItems(showUsuarios, showEventos, showLugares, showPlanillas);
     final location = GoRouterState.of(context).uri.path;
     int idx = 0;
     for (int i = 0; i < items.length; i++) {

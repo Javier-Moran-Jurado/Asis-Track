@@ -98,7 +98,6 @@ public class FilaRestController {
         return ResponseEntity.noContent().build();
     }
 
-    @PreAuthorize("isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Monitor')")
     @PostMapping("/{filaId}/firma")
     public ResponseEntity<DatoResponse> subirFirma(
             @PathVariable Long filaId,
@@ -117,15 +116,31 @@ public class FilaRestController {
         }
 
         try {
-            String key = "planillas/" + fila.getPlanilla().getId() + "/firmas/fila_" + filaId + "_campo_" + campoId + ".png";
-            s3StorageService.upload(firmaImage.getBytes(), key, firmaImage.getContentType() != null ? firmaImage.getContentType() : "image/png");
-            String url = s3StorageService.publicUrl(key);
+            Long planillaId = fila.getPlanilla().getId();
 
+            // Look up existing Dato to reuse its S3 key (overwrite instead of creating new)
             List<Dato> datosExistentes = datoService.findByCampoId(campoId);
             Dato existente = datosExistentes.stream()
                     .filter(d -> d.getFila().getId().equals(filaId))
                     .findFirst()
                     .orElse(null);
+
+            // Reuse existing S3 key if available, otherwise generate deterministic key
+            String key;
+            String existingUrl = (existente != null) ? existente.getInformacion() : null;
+            if (existingUrl != null && !existingUrl.isEmpty()) {
+                String baseUrl = s3StorageService.publicUrl("");
+                if (existingUrl.startsWith(baseUrl)) {
+                    key = existingUrl.substring(baseUrl.length());
+                } else {
+                    key = "planillas/" + planillaId + "/firmas/fila_" + filaId + "_campo_" + campoId + ".png";
+                }
+            } else {
+                key = "planillas/" + planillaId + "/firmas/fila_" + filaId + "_campo_" + campoId + ".png";
+            }
+
+            s3StorageService.upload(firmaImage.getBytes(), key, firmaImage.getContentType() != null ? firmaImage.getContentType() : "image/png");
+            String url = s3StorageService.publicUrl(key);
 
             if (existente != null) {
                 DatoRequest req = new DatoRequest();

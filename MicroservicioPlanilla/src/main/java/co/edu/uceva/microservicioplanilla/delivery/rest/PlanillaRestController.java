@@ -1,7 +1,6 @@
 package co.edu.uceva.microservicioplanilla.delivery.rest;
 
 import co.edu.uceva.microservicioplanilla.domain.model.Planilla;
-import co.edu.uceva.microservicioplanilla.domain.service.IFilaService;
 import co.edu.uceva.microservicioplanilla.domain.service.ai.CompositeAiService;
 import co.edu.uceva.microservicioplanilla.domain.service.GeneradorPlanillaService;
 import co.edu.uceva.microservicioplanilla.domain.service.ICampoService;
@@ -34,7 +33,6 @@ public class PlanillaRestController {
     private final GeneradorPlanillaService generadorPlanillaService;
     private final ICampoService campoService;
     private final S3StorageService s3StorageService;
-    private final IFilaService filaService;
     private final IOpcionesCampoRepository opcionesCampoRepository;
 
     public PlanillaRestController(
@@ -44,7 +42,6 @@ public class PlanillaRestController {
         GeneradorPlanillaService generadorPlanillaService,
         ICampoService campoService,
         S3StorageService s3StorageService,
-        IFilaService filaService,
         IOpcionesCampoRepository opcionesCampoRepository
     ) {
         this.planillaService = planillaService;
@@ -53,11 +50,10 @@ public class PlanillaRestController {
         this.generadorPlanillaService = generadorPlanillaService;
         this.campoService = campoService;
         this.s3StorageService = s3StorageService;
-        this.filaService = filaService;
         this.opcionesCampoRepository = opcionesCampoRepository;
     }
 
-    @PreAuthorize("isAuthenticated() and hasAnyRole('Administrativo', 'Administrador')")
+    @PreAuthorize("isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Docente', 'Monitor', 'Decano', 'Estudiante')")
     @GetMapping("/planillas")
     public List<PlanillaResponse> getPlanillas() {
         return planillaService.findAll().stream().map(PlanillaResponse::from).toList();
@@ -71,7 +67,6 @@ public class PlanillaRestController {
         return PlanillaResponse.from(planilla);
     }
 
-    @PreAuthorize("isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Docente', 'Monitor', 'Decano')")
     @GetMapping("/planillas/{id}")
     public PlanillaResponse findById(@PathVariable Long id) {
         return PlanillaResponse.from(planillaService.findById(id));
@@ -165,16 +160,12 @@ public class PlanillaRestController {
         }
     }
 
-    @GetMapping("/planillas/{id}/campos-publico")
-    public List<CampoResponse> getCamposPublico(@PathVariable Long id) {
-        return campoService.findByPlanillaId(id).stream()
-                .map(c -> CampoResponse.from(c, opcionesCampoRepository.findByCampo_IdOrderByOrden(c.getId())))
+    @GetMapping("/planillas/publicas")
+    public List<PlanillaResponse> getPlanillasPublicas() {
+        return planillaService.findAll().stream()
+                .filter(p -> p.getEvento() != null)
+                .map(PlanillaResponse::from)
                 .toList();
-    }
-
-    @PostMapping("/planillas/{planillaId}/invitado/filas")
-    public FilaResponse createInvitadoFila(@PathVariable Long planillaId, @Valid @RequestBody InvitadoFilaRequest request) {
-        return FilaResponse.from(filaService.createInvitado(planillaId, request));
     }
 
     @PreAuthorize("isAuthenticated() and hasAnyRole('Administrativo', 'Administrador', 'Docente', 'Monitor', 'Decano')")

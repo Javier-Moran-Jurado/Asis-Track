@@ -51,30 +51,33 @@ class _InvitadoScannerScreenState extends State<InvitadoScannerScreen>
     setState(() => _isProcessing = true);
     await _scannerCtrl.stop();
 
-    // Parsear el ID del evento o la URL completa
-    String? parsedEventoId;
+    // Parse the QR code: can be a URL like "http://host/#/formulario/5"
+    String? planillaId;
     try {
       final uri = Uri.parse(code);
-      if (uri.queryParameters.containsKey('eventoId')) {
-        parsedEventoId = uri.queryParameters['eventoId'];
-      } else if (uri.fragment.isNotEmpty) {
-        final frag = uri.fragment;
-        final fragUri = Uri.parse(frag.startsWith('/') ? frag : '/$frag');
-        if (fragUri.queryParameters.containsKey('eventoId')) {
-          parsedEventoId = fragUri.queryParameters['eventoId'];
+      if (uri.fragment.isNotEmpty) {
+        final frag = uri.fragment; // e.g. "/formulario/5"
+        final match = RegExp(r'/formulario/(\d+)').firstMatch(frag);
+        if (match != null) {
+          planillaId = match.group(1);
         }
-      } else {
-        parsedEventoId = code;
       }
     } catch (_) {
-      parsedEventoId = code;
+      // ignore parse errors
     }
 
-    if (!mounted) return;
-    // Navegamos al formulario de invitado con el ID obtenido
-    await context.push('/invitado?eventoId=$parsedEventoId');
+    if (planillaId != null) {
+      if (!mounted) return;
+      await context.push('/planillas/llenar', extra: int.tryParse(planillaId));
+    } else {
+      // Unknown QR code — just show message and resume scanning
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Código QR no reconocido. Escanea un código de planilla.'),
+        ));
+      }
+    }
 
-    // Al regresar, reactivamos el escáner
     if (mounted) {
       await _scannerCtrl.start();
       setState(() => _isProcessing = false);
@@ -87,7 +90,7 @@ class _InvitadoScannerScreenState extends State<InvitadoScannerScreen>
       backgroundColor: const Color(0xFF0F172A),
       appBar: AppBar(
         title: const Text(
-          'Registro de Invitados',
+          'Escanear QR de Planilla',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
         ),
         backgroundColor: const Color(0xFF0F172A),
@@ -95,7 +98,7 @@ class _InvitadoScannerScreenState extends State<InvitadoScannerScreen>
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => context.go('/login'),
+          onPressed: () => context.go('/planillas'),
         ),
         actions: [
           IconButton(

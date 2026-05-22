@@ -46,9 +46,8 @@ class CampoService {
   }
 
   static Future<List<CampoPreviewModel>> obtenerCampos(int planillaId) async {
-    final t = await _token();
     final r = await http
-        .get(Uri.parse('$_url/api/v1/planilla-service/campos/planilla/$planillaId'), headers: _h(t!))
+        .get(Uri.parse('$_url/api/v1/planilla-service/campos/planilla/$planillaId'))
         .timeout(const Duration(seconds: 30));
     if (r.statusCode == 200) {
       final List<dynamic> data = jsonDecode(r.body) as List<dynamic>;

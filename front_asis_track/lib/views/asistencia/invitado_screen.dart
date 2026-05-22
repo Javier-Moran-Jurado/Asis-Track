@@ -2,9 +2,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
 import '../../models/evento_qr.dart';
+import '../../providers/auth_provider.dart';
 import '../../services/asistencia_service.dart';
 import '../../themes/app_theme.dart';
 import '../../utils/app_breakpoints.dart';
@@ -147,6 +149,18 @@ class _InvitadoScreenState extends State<InvitadoScreen> {
         backgroundColor: Colors.white,
         foregroundColor: AppTheme.gray900,
         elevation: 0,
+        actions: [
+          TextButton.icon(
+            onPressed: () async {
+              final auth = context.read<AuthProvider>();
+              await auth.logout();
+              if (mounted) context.go('/login');
+            },
+            icon: const Icon(Icons.logout, size: 18),
+            label: const Text('Salir'),
+            style: TextButton.styleFrom(foregroundColor: AppTheme.errorColor),
+          ),
+        ],
       ),
       body: Center(
         child: SingleChildScrollView(
