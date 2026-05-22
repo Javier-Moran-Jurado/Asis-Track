@@ -47,11 +47,22 @@ class PlanillaService {
     throw Exception(_msg(r));
   }
 
+  /// GET /api/v1/planilla-service/planillas/publicas (sin autenticación)
+  static Future<List<Planilla>> obtenerPlanillasPublicas() async {
+    final r = await http
+        .get(Uri.parse('$_url/api/v1/planilla-service/planillas/publicas'))
+        .timeout(const Duration(seconds: 30));
+    if (r.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(r.body) as List<dynamic>;
+      return data.map((j) => Planilla.fromJson(j as Map<String, dynamic>)).toList();
+    }
+    throw Exception(_msg(r));
+  }
+
   /// GET /api/v1/planilla-service/planillas/{id}
   static Future<Planilla> obtenerPlanilla(int id) async {
-    final t = await _token();
     final r = await http
-        .get(Uri.parse('$_url/api/v1/planilla-service/planillas/$id'), headers: _h(t!))
+        .get(Uri.parse('$_url/api/v1/planilla-service/planillas/$id'))
         .timeout(const Duration(seconds: 30));
     if (r.statusCode == 200) {
       return Planilla.fromJson(jsonDecode(r.body) as Map<String, dynamic>);

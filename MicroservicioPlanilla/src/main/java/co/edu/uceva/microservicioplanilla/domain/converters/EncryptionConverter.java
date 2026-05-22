@@ -8,17 +8,34 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import java.math.BigInteger;
 import java.util.Base64;
+import java.util.logging.Logger;
+
 @Component @Converter
 public class EncryptionConverter implements AttributeConverter<String, String> {
+    private static final Logger logger = Logger.getLogger(EncryptionConverter.class.getName());
     private static SecurityIntegrationService securityService;
     @Autowired public void setSecurityService(SecurityIntegrationService s) { EncryptionConverter.securityService = s; }
     @Override public String convertToDatabaseColumn(String attr) {
-        if (attr == null || securityService == null) return attr;
+        logger.info("[EncryptionConverter] convertToDatabaseColumn called. attr=" + attr + ", securityService=" + securityService);
+        if (attr == null || securityService == null) {
+            logger.warning("[EncryptionConverter] Early return. attr=" + attr + ", securityService=" + securityService);
+            return attr;
+        }
         try {
             PublicKeyResponseDTO key = securityService.fetchCurrentPublicKey();
+            logger.info("[EncryptionConverter] fetchCurrentPublicKey OK. key.id=" + (key != null ? key.getId() : "NULL") + ", key.publicE=" + (key != null ? key.getPublicE() : "NULL") + ", key.publicN=" + (key != null ? key.getPublicN() : "NULL"));
+            if (key == null || key.getPublicE() == null || key.getPublicN() == null) {
+                throw new IllegalStateException("PublicKeyResponseDTO or its fields are null");
+            }
             RSAPublicKey pub = new RSAPublicKey(key.getPublicE(), new BigInteger(key.getPublicN()));
-            return key.getId() + ":" + Base64.getEncoder().encodeToString(RSAEncryption.encrypt(pub, attr).getBytes());
-        } catch(Exception e) { return null; }
+            String encrypted = RSAEncryption.encrypt(pub, attr);
+            logger.info("[EncryptionConverter] encrypt OK. encrypted length=" + (encrypted != null ? encrypted.length() : 0));
+            return key.getId() + ":" + Base64.getEncoder().encodeToString(encrypted.getBytes());
+        } catch(Exception e) {
+            logger.severe("[EncryptionConverter] ENCRYPTION FAILED: " + e.getClass().getName() + " - " + e.getMessage());
+            e.printStackTrace();
+            throw new IllegalStateException("Failed to encrypt field via EncryptionConverter", e);
+        }
     }
     @Override public String convertToEntityAttribute(String db) {
         if (db == null || securityService == null) return db;
@@ -28,6 +45,10 @@ public class EncryptionConverter implements AttributeConverter<String, String> {
             PrivateKeyResponseDTO dto = securityService.fetchPrivateKeyById(Long.parseLong(p[0]));
             RSAPrivateKey pk = new RSAPrivateKey(new BigInteger(dto.getPublicN()), new BigInteger(dto.getPrivateD()));
             return RSAEncryption.decrypt(pk, new String(Base64.getDecoder().decode(p[1])));
-        } catch(Exception e) { return null; }
+        } catch(Exception e) {
+            logger.severe("[EncryptionConverter] DECRYPTION FAILED: " + e.getClass().getName() + " - " + e.getMessage());
+            e.printStackTrace();
+            throw new IllegalStateException("Failed to decrypt field via EncryptionConverter", e);
+        }
     }
 }

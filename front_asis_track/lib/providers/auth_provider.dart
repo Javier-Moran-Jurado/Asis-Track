@@ -50,7 +50,6 @@ class AuthProvider extends ChangeNotifier {
 
   bool get isLoading => _status == AuthStatus.loading;
   bool get isAuthenticated => _status == AuthStatus.authenticated;
-  bool get isGuest => _currentUser?.rol == 'Invitado';
 
   // ══════════════════════════════════════════════════════════════════════════
   // VERIFICACIÓN DE SESIÓN AL INICIAR LA APP
@@ -64,13 +63,22 @@ class AuthProvider extends ChangeNotifier {
   Future<void> checkAuthStatus() async {
     final hasToken = await AuthService.hasValidToken();
 
-    if (hasToken) {
-      _currentUser = await AuthService.getUserFromPrefs();
-      _status = AuthStatus.authenticated;
-    } else {
+    if (!hasToken) {
       _status = AuthStatus.unauthenticated;
+      notifyListeners();
+      return;
     }
 
+    final expired = await AuthService.isTokenExpired();
+    if (expired) {
+      await AuthService.clearAllStorage();
+      _status = AuthStatus.unauthenticated;
+      notifyListeners();
+      return;
+    }
+
+    _currentUser = await AuthService.getUserFromPrefs();
+    _status = AuthStatus.authenticated;
     notifyListeners();
   }
 
@@ -101,8 +109,8 @@ class AuthProvider extends ChangeNotifier {
 
       // ── 2. Decodificar JWT ─────────────────────────────────────────────
       final claims = AuthService.decodeJwtPayload(accessToken);
-      //  El backend pone el código en el campo `jti` (JWT ID).
-      final codigoFromToken = claims['jti']?.toString() ?? codigo;
+      //  El backend pone el código en el campo `sub`.
+      final codigoFromToken = claims['sub']?.toString() ?? codigo;
       final nombreCompleto = claims['nombre_completo']?.toString() ?? '';
       final rol = claims['rol']?.toString() ?? '';
 
@@ -140,27 +148,6 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return false;
     }
-  }
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // LOGIN AS GUEST (local mock, no backend call)
-  // ══════════════════════════════════════════════════════════════════════════
-
-  /// Establece un usuario local con rol 'Invitado' sin llamar al backend.
-  Future<void> loginAsGuest() async {
-    _status = AuthStatus.loading;
-    _errorMessage = null;
-    notifyListeners();
-
-    _currentUser = UserModel(
-      codigo: '0',
-      nombreCompleto: 'Invitado',
-      correo: '',
-      rol: 'Invitado',
-    );
-
-    _status = AuthStatus.authenticated;
-    notifyListeners();
   }
 
   // ══════════════════════════════════════════════════════════════════════════

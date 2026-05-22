@@ -148,6 +148,7 @@ class HomeScreen extends StatelessWidget {
               asistio: false,
               docente: 'Por definir',
               ubicacion: 'Por definir',
+              eventoId: null,
             );
             context.push('/justificaciones/nueva', extra: mock);
           },

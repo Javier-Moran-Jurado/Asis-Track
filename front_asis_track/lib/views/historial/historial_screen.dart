@@ -16,8 +16,10 @@ class HistorialScreen extends StatefulWidget {
 class _HistorialScreenState extends State<HistorialScreen> {
   DateTime? _fechaDesde;
   DateTime? _fechaHasta;
+  int? _eventoIdSeleccionado;
 
-  // Mock data para el prototipo
+  // TODO: Reemplazar con datos reales del backend cuando exista el endpoint
+  // GET /api/v1/planilla-service/asistencia/estudiante/{codigo}
   late List<HistorialAsistencia> _historialCompleto;
   late List<HistorialAsistencia> _historialFiltrado;
 
@@ -33,6 +35,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
         asistio: true,
         docente: 'Ing. María López',
         ubicacion: 'Laboratorio 3 - Edificio C',
+        eventoId: 1,
       ),
       HistorialAsistencia(
         id: '2',
@@ -44,6 +47,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
         motivoJustificacion: 'Cita médica',
         docente: 'Lic. Carlos Ruiz',
         ubicacion: 'Aula 204 - Edificio A',
+        eventoId: 2,
       ),
       HistorialAsistencia(
         id: '3',
@@ -54,6 +58,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
         estadoJustificacion: EstadoJustificacion.ninguna,
         docente: 'Ing. Roberto Gómez',
         ubicacion: 'Aula Virtual',
+        eventoId: 3,
       ),
       HistorialAsistencia(
         id: '4',
@@ -63,21 +68,27 @@ class _HistorialScreenState extends State<HistorialScreen> {
         asistio: true,
         docente: 'Dra. Ana Torres',
         ubicacion: 'Auditorio Principal',
+        eventoId: 4,
       ),
     ];
     _historialFiltrado = List.from(_historialCompleto);
   }
 
-  void _filtrarPorFecha() {
-    setState(() {
-      if (_fechaDesde == null && _fechaHasta == null) {
-        _historialFiltrado = List.from(_historialCompleto);
-        return;
+  Map<int, String> get _eventosDisponibles {
+    final map = <int, String>{};
+    for (final item in _historialCompleto) {
+      if (item.eventoId != null) {
+        map[item.eventoId!] = item.materia;
       }
+    }
+    return map;
+  }
 
+  void _aplicarFiltros() {
+    setState(() {
       _historialFiltrado = _historialCompleto.where((item) {
         final date = DateTime(item.fecha.year, item.fecha.month, item.fecha.day);
-        
+
         bool pasaFiltroDesde = true;
         if (_fechaDesde != null) {
           final desde = DateTime(_fechaDesde!.year, _fechaDesde!.month, _fechaDesde!.day);
@@ -90,7 +101,12 @@ class _HistorialScreenState extends State<HistorialScreen> {
           pasaFiltroHasta = date.isAtSameMomentAs(hasta) || date.isBefore(hasta);
         }
 
-        return pasaFiltroDesde && pasaFiltroHasta;
+        bool pasaFiltroEvento = true;
+        if (_eventoIdSeleccionado != null) {
+          pasaFiltroEvento = item.eventoId == _eventoIdSeleccionado;
+        }
+
+        return pasaFiltroDesde && pasaFiltroHasta && pasaFiltroEvento;
       }).toList();
     });
   }
@@ -122,7 +138,7 @@ class _HistorialScreenState extends State<HistorialScreen> {
         _fechaDesde = range.start;
         _fechaHasta = range.end;
       });
-      _filtrarPorFecha();
+      _aplicarFiltros();
     }
   }
 
@@ -130,8 +146,9 @@ class _HistorialScreenState extends State<HistorialScreen> {
     setState(() {
       _fechaDesde = null;
       _fechaHasta = null;
+      _eventoIdSeleccionado = null;
     });
-    _filtrarPorFecha();
+    _aplicarFiltros();
   }
 
   @override
@@ -158,47 +175,86 @@ class _HistorialScreenState extends State<HistorialScreen> {
               color: Colors.white,
               border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
             ),
-            child: Row(
+            child: Column(
               children: [
-                Expanded(
-                  child: InkWell(
-                    onTap: () => _seleccionarRango(context),
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey.shade300),
+                Row(
+                  children: [
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => _seleccionarRango(context),
                         borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.calendar_month, color: AppTheme.primaryColor, size: 20),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              _fechaDesde != null && _fechaHasta != null
-                                  ? '${DateFormat('dd/MM/yy').format(_fechaDesde!)} - ${DateFormat('dd/MM/yy').format(_fechaHasta!)}'
-                                  : 'Filtrar por fechas',
-                              style: TextStyle(
-                                color: _fechaDesde != null ? AppTheme.gray900 : Colors.grey.shade600,
-                                fontSize: 14,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                        ],
+                          child: Row(
+                            children: [
+                              const Icon(Icons.calendar_month, color: AppTheme.primaryColor, size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _fechaDesde != null && _fechaHasta != null
+                                      ? '${DateFormat('dd/MM/yy').format(_fechaDesde!)} - ${DateFormat('dd/MM/yy').format(_fechaHasta!)}'
+                                      : 'Filtrar por fechas',
+                                  style: TextStyle(
+                                    color: _fechaDesde != null ? AppTheme.gray900 : Colors.grey.shade600,
+                                    fontSize: 14,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
+                    ),
+                    if (_fechaDesde != null || _fechaHasta != null || _eventoIdSeleccionado != null) ...[
+                      const SizedBox(width: 8),
+                      IconButton(
+                        onPressed: _limpiarFiltros,
+                        icon: const Icon(Icons.clear, color: Colors.grey),
+                        tooltip: 'Limpiar filtros',
+                      ),
+                    ]
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<int?>(
+                      isExpanded: true,
+                      value: _eventoIdSeleccionado,
+                      hint: const Text(
+                        'Filtrar por materia / evento',
+                        style: TextStyle(color: Colors.grey, fontSize: 14),
+                      ),
+                      icon: const Icon(Icons.arrow_drop_down, color: Colors.grey),
+                      items: [
+                        const DropdownMenuItem<int?>(
+                          value: null,
+                          child: Text('Todas las materias'),
+                        ),
+                        ..._eventosDisponibles.entries.map((entry) {
+                          return DropdownMenuItem<int?>(
+                            value: entry.key,
+                            child: Text(entry.value, style: const TextStyle(fontSize: 14)),
+                          );
+                        }),
+                      ],
+                      onChanged: (value) {
+                        setState(() => _eventoIdSeleccionado = value);
+                        _aplicarFiltros();
+                      },
                     ),
                   ),
                 ),
-                if (_fechaDesde != null || _fechaHasta != null) ...[
-                  const SizedBox(width: 8),
-                  IconButton(
-                    onPressed: _limpiarFiltros,
-                    icon: const Icon(Icons.clear, color: Colors.grey),
-                    tooltip: 'Limpiar filtros',
-                  ),
-                ]
               ],
             ),
           ),

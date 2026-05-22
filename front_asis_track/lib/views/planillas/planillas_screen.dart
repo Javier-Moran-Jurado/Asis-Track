@@ -6,6 +6,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../models/planilla.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/planilla_service.dart';
+import '../../services/role_service.dart';
 import '../../themes/app_theme.dart';
 import '../../utils/app_breakpoints.dart';
 import '../../widgets/error_dialog.dart';
@@ -214,6 +215,11 @@ class _PlanillasScreenState extends State<PlanillasScreen> {
             tooltip: 'Actualizar',
             onPressed: _cargarPlanillas,
           ),
+          IconButton(
+            icon: const Icon(Icons.qr_code_scanner, color: AppTheme.primaryColor),
+            tooltip: 'Escanear QR',
+            onPressed: () => context.push('/planillas/escaner'),
+          ),
         ],
       ),
       body: SafeArea(
@@ -248,7 +254,8 @@ class _PlanillasScreenState extends State<PlanillasScreen> {
   }
 
   Widget _buildHeader() {
-    final isGuest = context.watch<AuthProvider>().isGuest;
+    final auth = context.watch<AuthProvider>();
+    final esEstudiante = RoleService.isStudent(auth.currentUser?.rol ?? '');
     return Row(
       children: [
         Expanded(
@@ -261,13 +268,13 @@ class _PlanillasScreenState extends State<PlanillasScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                isGuest ? 'Solo lectura — vista de planillas disponibles' : 'Gestiona las planillas de asistencia de tus eventos',
+                'Gestiona las planillas de asistencia de tus eventos',
                 style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
               ),
             ],
           ),
         ),
-        if (!isGuest)
+        if (!esEstudiante)
           Wrap(
             spacing: 10,
             runSpacing: 8,
@@ -375,7 +382,7 @@ class _PlanillasScreenState extends State<PlanillasScreen> {
   }
 
   Widget _buildCard(Planilla p) {
-    final isGuest = context.watch<AuthProvider>().isGuest;
+    final esEstudiante = RoleService.isStudent((context.watch<AuthProvider>()).currentUser?.rol ?? '');
     return DynamicInfoCard(
       title: p.nombreEvento ?? 'Planilla #${p.id}',
       leadingIcon: Icons.assignment,
@@ -394,7 +401,7 @@ class _PlanillasScreenState extends State<PlanillasScreen> {
         style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
       ),
       actionButtons: [
-        if (!isGuest)
+        if (!esEstudiante)
           _buildActionButton(
             label: 'Editar',
             icon: Icons.edit_outlined,
@@ -416,7 +423,7 @@ class _PlanillasScreenState extends State<PlanillasScreen> {
           color: Colors.green,
           onPressed: () => _mostrarCompartirModal(p),
         ),
-        if (!isGuest)
+        if (!esEstudiante)
           _buildActionButton(
             label: 'Eliminar',
             icon: Icons.delete_outline,
