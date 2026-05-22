@@ -1,14 +1,24 @@
 import 'package:flutter/foundation.dart';
 
+import 'app_config_web.dart'
+    if (dart.library.io) 'app_config_io.dart';
+
+/// Configuración centralizada de URLs.
+///
+/// En web, lee la variable de entorno inyectada en runtime vía env-config.js.
+/// En mobile/desktop, usa un fallback local.
 class AppConfig {
-  static const String _prodUrl = 'https://ambush-goal-narrow.ngrok-free.dev';
-  static const String _devAuthUrl = 'http://localhost:8080';
-  static const String _devPlanillaUrl = 'http://localhost:8084';
+  static String get apiBaseUrl => kIsWeb ? getWebApiBaseUrl() : getIoApiBaseUrl();
 
-  static String get authUrl => kDebugMode ? _devAuthUrl : _prodUrl;
-  static String get usuarioUrl => kDebugMode ? _devAuthUrl : _prodUrl;
-  static String get planillaUrl => kDebugMode ? _devPlanillaUrl : _prodUrl;
+  @Deprecated('Usa apiBaseUrl')
+  static String get authUrl => apiBaseUrl;
 
-  @Deprecated('Usa authUrl, usuarioUrl o planillaUrl según corresponda')
-  static String get baseUrl => authUrl;
+  @Deprecated('Usa apiBaseUrl')
+  static String get usuarioUrl => apiBaseUrl;
+
+  @Deprecated('Usa apiBaseUrl')
+  static String get planillaUrl => apiBaseUrl;
+
+  @Deprecated('Usa apiBaseUrl')
+  static String get baseUrl => apiBaseUrl;
 }
