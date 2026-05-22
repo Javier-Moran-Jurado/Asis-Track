@@ -1,14 +1,4 @@
 services:
-  flutter-web:
-    build:
-      context: ./front_asis_track
-    container_name: flutter-web
-    restart: unless-stopped
-    environment:
-      - API_BASE_URL=${API_BASE_URL:-http://nginx-gateway}
-    networks:
-      - mynetwork
-
   nginx-gateway:
     build: ./nginx-gateway
     container_name: nginx-gateway
@@ -17,12 +7,10 @@ services:
       - "${NGINX_PORT:-80}:${NGINX_PORT:-80}"
     environment:
       - NGINX_PORT=${NGINX_PORT:-80}
-      - UPSTREAM_FLUTTER=flutter-web:80
       - UPSTREAM_USUARIO=usuarioservice:8080
       - UPSTREAM_PLANILLA=planilla-service:8080
       - UPSTREAM_SEGURIDAD=seguridad-service:8085
     depends_on:
-      - flutter-web
       - usuarioservice
       - planilla-service
       - seguridad-service

@@ -6,7 +6,6 @@ Este proyecto está preparado para desplegarse en [Railway](https://railway.app)
 
 | Servicio | Imagen / Build | Tipo de Servicio | Exposición |
 |---|---|---|---|
-| `flutter-web` | `front_asis_track/Dockerfile` | Web | Pública (o privada detrás de nginx-gateway) |
 | `nginx-gateway` | `nginx-gateway/Dockerfile` | Web | Pública (único punto de entrada) |
 | `usuarioservice` | `MicroservicioUsuario/Dockerfile` | Private | Privada (solo via nginx-gateway) |
 | `planilla-service` | `MicroservicioPlanilla/Dockerfile` | Private | Privada (solo via nginx-gateway) |
@@ -22,18 +21,11 @@ Este proyecto está preparado para desplegarse en [Railway](https://railway.app)
 
 ## Variables de Entorno por Servicio
 
-### `flutter-web`
-
-| Variable | Descripción | Ejemplo Railway |
-|---|---|---|
-| `API_BASE_URL` | URL pública del `nginx-gateway` (sin trailing slash) | `https://nginx-gateway.up.railway.app` |
-
 ### `nginx-gateway`
 
 | Variable | Descripción | Ejemplo Railway |
 |---|---|---|
 | `NGINX_PORT` | Railway inyecta `$PORT`; mapea a este valor | `${PORT}` |
-| `UPSTREAM_FLUTTER` | Host interno del servicio `flutter-web` | `flutter-web.railway.internal` |
 | `UPSTREAM_USUARIO` | Host interno del `usuarioservice` | `usuarioservice.railway.internal:8080` |
 | `UPSTREAM_PLANILLA` | Host interno del `planilla-service` | `planilla-service.railway.internal:8080` |
 | `UPSTREAM_SEGURIDAD` | Host interno del `seguridad-service` | `seguridad-service.railway.internal:8085` |
@@ -111,15 +103,12 @@ Este proyecto está preparado para desplegarse en [Railway](https://railway.app)
 - El `nginx-gateway` **solo expone** `GET /api/v1/security/keys/public` del `seguridad-service`.
 - Los endpoints `/private`, `/rotate` y `/private/{id}` del `seguridad-service` **nunca** pasan por el gateway. Los microservicios los consumen directamente via **Private Networking** interna de Railway (`seguridad-service.railway.internal:8085`).
 - Todos los backends (`usuarioservice`, `planilla-service`, `seguridad-service`) deben ser **Private** en Railway (sin dominio público).
-- El `flutter-web` lee `API_BASE_URL` en **runtime** via `env-config.js`, generado por el `entrypoint.sh` del contenedor. No requiere recompilación si cambia el dominio.
-
 ---
 
 ## URLs del Gateway (Nginx)
 
 | Ruta | Destino |
 |---|---|
-| `/` | `flutter-web` (frontend estático) |
 | `/api/v1/auth/**` | `usuarioservice` |
 | `/api/v1/usuario-service/**` | `usuarioservice` |
 | `/api/v1/planilla-service/**` | `planilla-service` |
