@@ -12,6 +12,7 @@ defaults:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    environment: Flutter
 
     steps:
       - name: Checkout código
