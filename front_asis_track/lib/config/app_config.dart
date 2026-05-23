@@ -1,30 +1,24 @@
 import 'package:flutter/foundation.dart';
 
-/// Configuración de URLs del backend.
+import 'app_config_web.dart'
+    if (dart.library.io) 'app_config_io.dart';
+
+/// Configuración centralizada de URLs.
 ///
-/// En desarrollo local (por defecto) apunta a localhost:8080 / :8084.
-/// En producción se sobreescribe vía --dart-define al compilar:
-///
-///   flutter build web --release \
-///     --dart-define=AUTH_URL=https://tu-url-ngrok.com \
-///     --dart-define=PLANILLA_URL=https://tu-url-ngrok.com
-///
-/// Si no se pasan las variables, el fallback es localhost.
+/// En web, lee la variable de entorno inyectada en runtime vía env-config.js.
+/// En mobile/desktop, usa un fallback local.
 class AppConfig {
-  static const String _defaultAuthUrl = 'http://localhost:8080';
-  static const String _defaultPlanillaUrl = 'http://localhost:8084';
+  static String get apiBaseUrl => kIsWeb ? getWebApiBaseUrl() : getIoApiBaseUrl();
 
-  static String get authUrl =>
-      const String.fromEnvironment('AUTH_URL', defaultValue: _defaultAuthUrl);
+  @Deprecated('Usa apiBaseUrl')
+  static String get authUrl => apiBaseUrl;
 
-  static String get usuarioUrl =>
-      const String.fromEnvironment('AUTH_URL', defaultValue: _defaultAuthUrl);
+  @Deprecated('Usa apiBaseUrl')
+  static String get usuarioUrl => apiBaseUrl;
 
-  static String get planillaUrl => const String.fromEnvironment(
-        'PLANILLA_URL',
-        defaultValue: _defaultPlanillaUrl,
-      );
+  @Deprecated('Usa apiBaseUrl')
+  static String get planillaUrl => apiBaseUrl;
 
-  @Deprecated('Usa authUrl, usuarioUrl o planillaUrl según corresponda')
-  static String get baseUrl => authUrl;
+  @Deprecated('Usa apiBaseUrl')
+  static String get baseUrl => apiBaseUrl;
 }

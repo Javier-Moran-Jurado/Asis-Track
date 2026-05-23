@@ -19,7 +19,7 @@ String _msg(http.Response r) {
 }
 
 class CampoService {
-  static String get _url => AppConfig.planillaUrl;
+  static String get _url => AppConfig.apiBaseUrl;
 
   static Future<String?> _token() async {
     final t = await AuthService.getAccessToken();

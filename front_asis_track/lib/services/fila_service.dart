@@ -18,7 +18,7 @@ String _msg(http.Response r) {
 }
 
 class FilaService {
-  static String get _url => AppConfig.planillaUrl;
+  static String get _url => AppConfig.apiBaseUrl;
 
   /// GET /api/v1/planilla-service/filas/planilla/{planillaId}
   static Future<List<Map<String, dynamic>>> obtenerFilas(int planillaId) async {

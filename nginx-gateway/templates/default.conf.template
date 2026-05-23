@@ -1,0 +1,41 @@
+server {
+    listen ${NGINX_PORT};
+    server_name localhost;
+
+    # ── Auth / Usuario Service ──
+    location /api/v1/auth/ {
+        proxy_pass http://${UPSTREAM_USUARIO}/api/v1/auth/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /api/v1/usuario-service/ {
+        proxy_pass http://${UPSTREAM_USUARIO}/api/v1/usuario-service/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # ── Planilla Service ──
+    location /api/v1/planilla-service/ {
+        proxy_pass http://${UPSTREAM_PLANILLA}/api/v1/planilla-service/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # ── Seguridad Service: SOLO llave pública ──
+    # Las rutas /private, /rotate y /private/{id} NUNCA pasan por el gateway.
+    # Los microservicios las consumen directamente por red interna.
+    location /api/v1/security/keys/public {
+        proxy_pass http://${UPSTREAM_SEGURIDAD}/api/v1/security/keys/public;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

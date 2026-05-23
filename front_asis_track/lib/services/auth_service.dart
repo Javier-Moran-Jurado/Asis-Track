@@ -13,8 +13,7 @@ import '../models/user_model.dart';
 /// En web, usa SharedPreferences como fallback para tokens debido a
 /// limitaciones de flutter_secure_storage_web con el Web Crypto API.
 class AuthService {
-  static String get _authUrl => AppConfig.authUrl;
-  static String get _usuarioUrl => AppConfig.usuarioUrl;
+  static String get _baseUrl => AppConfig.apiBaseUrl;
 
   // ── Keys ──
   static const String _keyAccessToken = 'access_token';
@@ -119,7 +118,7 @@ class AuthService {
     String codigo,
     String contrasena,
   ) async {
-    final uri = Uri.parse('$_authUrl/api/v1/auth/login');
+    final uri = Uri.parse('$_baseUrl/api/v1/auth/login');
 
     try {
       final response = await http
@@ -165,7 +164,7 @@ class AuthService {
     String codigo,
     String accessToken,
   ) async {
-    final uri = Uri.parse('$_usuarioUrl/api/v1/usuario-service/usuarios/$codigo');
+    final uri = Uri.parse('$_baseUrl/api/v1/usuario-service/usuarios/$codigo');
 
     try {
       final response = await http.get(

@@ -20,7 +20,7 @@ String _msg(http.Response r) {
 ///
 /// Conecta con: /api/v1/planilla-service/reportes
 class ReporteService {
-  static String get _url => AppConfig.planillaUrl;
+  static String get _url => AppConfig.apiBaseUrl;
 
   static Future<String?> _token() async {
     final t = await AuthService.getAccessToken();

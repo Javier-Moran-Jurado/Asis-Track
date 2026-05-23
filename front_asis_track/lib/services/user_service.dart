@@ -35,7 +35,7 @@ String _extractErrorMessage(http.Response response) {
 
 /// Servicio para operaciones CRUD de usuarios (requiere rol admin/administrativo).
 class UserService {
-  static String get _baseUrl => AppConfig.usuarioUrl;
+  static String get _baseUrl => AppConfig.apiBaseUrl;
 
   static Future<String?> _getToken() async {
     final token = await AuthService.getAccessToken();

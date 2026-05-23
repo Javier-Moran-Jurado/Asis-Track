@@ -10,7 +10,7 @@ import 'auth_service.dart';
 
 /// Servicio de autenticacion con Google OAuth2.
 class GoogleAuthService {
-  static String get _baseUrl => AppConfig.authUrl;
+  static String get _baseUrl => AppConfig.apiBaseUrl;
 
   static final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: <String>['openid', 'email', 'profile'],
