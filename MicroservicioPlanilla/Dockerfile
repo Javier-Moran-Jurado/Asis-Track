@@ -31,11 +31,10 @@ RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir paddlepaddle==3.2.0 -i https://www.paddlepaddle.org.cn/packages/stable/cpu/ \
     && pip install --no-cache-dir "paddleocr[all]" \
     && pip install --no-cache-dir pytesseract \
-    && pip install --no-cache-dir tesseract \
     && pip install --no-cache-dir -r /build/requirements.txt
 
 # ── Etapa 3: Imagen Final (Runtime) ──
-FROM eclipse-temurin:17-jdk-jammy
+FROM eclipse-temurin:17-jre
 WORKDIR /app
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -52,4 +51,4 @@ ENV TESSERACT_CMD=/usr/bin/tesseract
 COPY MicroservicioPlanilla/PyLibs /app/PyLibs
 COPY --from=java-builder /app/MicroservicioPlanilla/target/*.jar app.jar
 EXPOSE 8080
-ENTRYPOINT ["java","-jar","app.jar"]
+ENTRYPOINT ["java", "-Xmx512m", "-Xms256m", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=50.0", "-jar", "app.jar"]
