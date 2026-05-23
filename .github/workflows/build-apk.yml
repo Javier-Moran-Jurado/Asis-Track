@@ -23,7 +23,7 @@ jobs:
 
       - run: flutter pub get
 
-      - run: flutter build apk --release --build-number=${{ github.run_number }}
+      - run: flutter build apk --release --build-number=${{ github.run_number }} --dart-define=API_BASE_URL=${{ secrets.API_BASE_URL }}
 
       - name: Subir APK como artifact
         uses: actions/upload-artifact@v4

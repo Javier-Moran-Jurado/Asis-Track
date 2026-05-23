@@ -1,4 +1,7 @@
-String getIoApiBaseUrl() {
-  // Fallback para mobile/desktop (no soporta env-config.js)
-  return 'http://localhost';
+String getApiBaseUrl() {
+  const url = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://localhost',
+  );
+  return url;
 }

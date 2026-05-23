@@ -1,6 +1,6 @@
 import 'dart:js' as js;
 
-String getWebApiBaseUrl() {
+String getApiBaseUrl() {
   try {
     final env = js.context['env'];
     if (env != null) {

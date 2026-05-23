@@ -29,6 +29,14 @@ jobs:
       - name: Compilar Flutter Web
         run: flutter build web --release
 
+      - name: Generar env-config.js
+        run: |
+          cat <<EOF > build/web/env-config.js
+          window.env = {
+            API_BASE_URL: "${{ secrets.API_BASE_URL }}"
+          };
+          EOF
+
       - name: Desplegar en Firebase
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
