@@ -1,0 +1,39 @@
+name: Deploy Flutter Web to Firebase
+
+on:
+  push:
+    branches:
+      - SCRUM-87-Despliegue-del-frontend
+
+defaults:
+  run:
+    working-directory: ./front_asis_track
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Instalar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.x'
+          channel: stable
+
+      - name: Instalar dependencias Flutter
+        run: flutter pub get
+
+      - name: Compilar Flutter Web
+        run: flutter build web --release
+
+      - name: Desplegar en Firebase
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          channelId: live
+          projectId: asistrack-60b80
+          entryPoint: ./front_asis_track

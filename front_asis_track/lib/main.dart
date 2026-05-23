@@ -37,7 +37,7 @@ class MyApp extends StatelessWidget {
         ],
         child: MaterialApp.router(
           theme: AppTheme.lightTheme,
-          title: 'Asis-Track',
+          title: 'AsisTrack',
           routerConfig: createAppRouter(authProvider),
           debugShowCheckedModeBanner: false,
         ),

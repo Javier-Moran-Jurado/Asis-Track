@@ -36,7 +36,7 @@ class MainLayout extends StatelessWidget {
           children: [
             Image.asset('assets/icon/logo_asis_track.png', height: 32),
             const SizedBox(width: 10),
-            const Text('Asis-Track', style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
+            const Text('AsisTrack', style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
           ],
         ),
         automaticallyImplyLeading: false,
