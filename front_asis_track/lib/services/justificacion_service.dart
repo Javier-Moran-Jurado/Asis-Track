@@ -64,6 +64,9 @@ class JustificacionService {
     if (r.statusCode == 201 || r.statusCode == 200) {
       return jsonDecode(r.body) as Map<String, dynamic>;
     }
+    if (r.statusCode == 401) {
+      await AuthService.handleUnauthorized();
+    }
     throw Exception(_msg(r));
   }
 
@@ -93,6 +96,9 @@ class JustificacionService {
         .timeout(const Duration(seconds: 30));
     if (r.statusCode == 200) {
       return jsonDecode(r.body) as Map<String, dynamic>;
+    }
+    if (r.statusCode == 401) {
+      await AuthService.handleUnauthorized();
     }
     throw Exception(_msg(r));
   }
@@ -124,6 +130,9 @@ class JustificacionService {
     if (r.statusCode == 200) {
       return jsonDecode(r.body) as Map<String, dynamic>;
     }
+    if (r.statusCode == 401) {
+      await AuthService.handleUnauthorized();
+    }
     throw Exception(_msg(r));
   }
 
@@ -142,6 +151,9 @@ class JustificacionService {
         .timeout(const Duration(seconds: 30));
     if (r.statusCode == 200) {
       return jsonDecode(r.body) as Map<String, dynamic>;
+    }
+    if (r.statusCode == 401) {
+      await AuthService.handleUnauthorized();
     }
     throw Exception(_msg(r));
   }
@@ -163,6 +175,9 @@ class JustificacionService {
       final list = jsonDecode(r.body) as List<dynamic>;
       return list.map((e) => e as Map<String, dynamic>).toList();
     }
+    if (r.statusCode == 401) {
+      await AuthService.handleUnauthorized();
+    }
     throw Exception(_msg(r));
   }
 
@@ -182,6 +197,9 @@ class JustificacionService {
     if (r.statusCode == 200) {
       final list = jsonDecode(r.body) as List<dynamic>;
       return list.map((e) => e as Map<String, dynamic>).toList();
+    }
+    if (r.statusCode == 401) {
+      await AuthService.handleUnauthorized();
     }
     throw Exception(_msg(r));
   }
@@ -203,6 +221,9 @@ class JustificacionService {
       final list = jsonDecode(r.body) as List<dynamic>;
       return list.map((e) => e as Map<String, dynamic>).toList();
     }
+    if (r.statusCode == 401) {
+      await AuthService.handleUnauthorized();
+    }
     throw Exception(_msg(r));
   }
 
@@ -222,6 +243,9 @@ class JustificacionService {
     if (r.statusCode == 200) {
       final list = jsonDecode(r.body) as List<dynamic>;
       return list.map((e) => e as Map<String, dynamic>).toList();
+    }
+    if (r.statusCode == 401) {
+      await AuthService.handleUnauthorized();
     }
     throw Exception(_msg(r));
   }

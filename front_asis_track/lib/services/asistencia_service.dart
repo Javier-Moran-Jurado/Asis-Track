@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
 import '../models/evento_qr.dart';
 import '../models/zona.dart';
+import 'auth_service.dart';
 
 /// Servicio que se comunica con el microservicio de asistencia.
 /// BASE_URL apunta al gateway/backend real; ajústala según el entorno.
@@ -34,6 +35,8 @@ class AsistenciaService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         return EventoQr.fromJson({...data, 'tokenQr': tokenQr});
+      } else if (response.statusCode == 401) {
+        await AuthService.handleUnauthorized();
       } else if (response.statusCode == 410) {
         throw Exception('El código QR ha expirado.');
       } else {
@@ -85,6 +88,8 @@ class AsistenciaService {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         return data['mensaje'] as String? ??
             'Asistencia registrada exitosamente.';
+      } else if (response.statusCode == 401) {
+        await AuthService.handleUnauthorized();
       } else if (response.statusCode == 409) {
         throw Exception('Ya registraste tu asistencia para este evento.');
       } else if (response.statusCode == 410) {
@@ -149,6 +154,8 @@ class AsistenciaService {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         return EventoQr.fromJson(data);
+      } else if (response.statusCode == 401) {
+        await AuthService.handleUnauthorized();
       } else {
         throw Exception('Error al crear el evento (${response.statusCode})');
       }

@@ -40,7 +40,13 @@ class _FormularioInvitadoScreenState extends State<FormularioInvitadoScreen> {
   @override
   void initState() {
     super.initState();
-    _loadData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _loadData().catchError((e) {
+          debugPrint('Error cargando datos del formulario invitado: $e');
+        });
+      }
+    });
   }
 
   Future<void> _loadData() async {

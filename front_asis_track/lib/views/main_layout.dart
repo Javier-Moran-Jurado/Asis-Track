@@ -21,7 +21,11 @@ class MainLayout extends StatelessWidget {
 
     if (AppBreakpoints.isMobile(context)) {
       return Scaffold(
-        body: child,
+        body: Column(
+          children: [
+            Expanded(child: child),
+          ],
+        ),
         bottomNavigationBar: _buildBottomNav(context, showUsuarios, showEventos, showLugares, showPlanillas),
       );
     }
@@ -37,16 +41,22 @@ class MainLayout extends StatelessWidget {
         ),
         automaticallyImplyLeading: false,
       ),
-      body: Row(
+      body: Column(
         children: [
-          _buildNavigationRail(context, showUsuarios, showEventos, showLugares, showPlanillas),
-          const VerticalDivider(width: 1),
           Expanded(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1400),
-                child: child,
-              ),
+            child: Row(
+              children: [
+                _buildNavigationRail(context, showUsuarios, showEventos, showLugares, showPlanillas),
+                const VerticalDivider(width: 1),
+                Expanded(
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1400),
+                      child: child,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -56,7 +66,7 @@ class MainLayout extends StatelessWidget {
 
   List<_NavItem> _buildItems(bool showUsuarios, bool showEventos, bool showLugares, bool showPlanillas) {
     return [
-      _NavItem('/home', Icons.bar_chart_outlined, Icons.bar_chart, 'Estadísticas'),
+      _NavItem('/home', Icons.home_outlined, Icons.home, 'Inicio'),
       if (showPlanillas)
         _NavItem('/planillas', Icons.assignment_outlined, Icons.assignment, 'Planillas'),
       _NavItem('/justificaciones', Icons.description_outlined, Icons.description, 'Justificaciones'),

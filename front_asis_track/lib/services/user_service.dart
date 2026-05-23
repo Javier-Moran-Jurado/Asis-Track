@@ -63,6 +63,8 @@ class UserService {
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       return data['usuarios'] as List<dynamic>? ?? [];
+    } else if (response.statusCode == 401) {
+      await AuthService.handleUnauthorized();
     } else {
       throw Exception(_extractErrorMessage(response));
     }
@@ -99,6 +101,8 @@ class UserService {
 
     if (response.statusCode == 201) {
       return jsonDecode(response.body) as Map<String, dynamic>;
+    } else if (response.statusCode == 401) {
+      await AuthService.handleUnauthorized();
     } else {
       throw Exception(_extractErrorMessage(response));
     }
@@ -135,6 +139,8 @@ class UserService {
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body) as Map<String, dynamic>;
+    } else if (response.statusCode == 401) {
+      await AuthService.handleUnauthorized();
     } else {
       throw Exception(_extractErrorMessage(response));
     }
@@ -153,7 +159,9 @@ class UserService {
         )
         .timeout(const Duration(seconds: 30));
 
-    if (response.statusCode != 200) {
+    if (response.statusCode == 401) {
+      await AuthService.handleUnauthorized();
+    } else if (response.statusCode != 200) {
       throw Exception(_extractErrorMessage(response));
     }
   }
@@ -170,6 +178,8 @@ class UserService {
     if (response.statusCode == 200) {
       final body = jsonDecode(response.body) as Map<String, dynamic>;
       return body['usuario'] as Map<String, dynamic>;
+    } else if (response.statusCode == 401) {
+      await AuthService.handleUnauthorized();
     } else {
       throw Exception(_extractErrorMessage(response));
     }

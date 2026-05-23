@@ -112,9 +112,13 @@ public class DatoServiceImpl implements IDatoService {
 
     private void assertOwnershipOrAdmin(Fila fila) {
         Long currentUser = getCurrentUserCodigo();
-        boolean isOwner = fila.getCodigoUsuario() != null && fila.getCodigoUsuario().equals(currentUser);
         boolean isAdmin = isAdmin();
-        if (!isOwner && !isAdmin) {
+        if (isAdmin) {
+            return;
+        }
+        boolean isOwner = fila.getCodigoUsuario() != null && fila.getCodigoUsuario().equals(currentUser);
+        boolean isGuestFila = fila.getCodigoUsuario() == null && currentUser == null;
+        if (!isOwner && !isGuestFila) {
             throw new AccessDeniedException("No autorizado para modificar este dato");
         }
     }

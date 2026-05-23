@@ -51,14 +51,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _loginWithGoogle() async {
     final auth = context.read<AuthProvider>();
-
-    // Limpiar errores previos
     auth.clearError();
-
     final success = await auth.loginWithGoogle();
-
     if (!mounted) return;
-
     if (success) {
       context.go('/home');
     } else if (auth.errorMessage != null) {
@@ -192,7 +187,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // ── Botón de Google ──────────────────────────────────────
                   GoogleSignInButton(),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
 
                   // (Registro deshabilitado: solo roles autorizados pueden crear usuarios)
                 ],
