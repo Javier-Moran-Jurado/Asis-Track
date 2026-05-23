@@ -3,7 +3,7 @@ name: Deploy Flutter Web to Firebase
 on:
   push:
     branches:
-      - SCRUM-87-Despliegue-del-frontend
+      - develop
 
 defaults:
   run:

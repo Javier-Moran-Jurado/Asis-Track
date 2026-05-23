@@ -3,7 +3,7 @@ name: Build APK
 on:
   push:
     branches:
-      - SCRUM-87-Despliegue-del-frontend
+      - develop
 
 defaults:
   run:
