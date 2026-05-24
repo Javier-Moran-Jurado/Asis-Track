@@ -40,11 +40,11 @@ class _DigitizationScreenState extends ConsumerState<DigitizationScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _pickImage());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _pickImage(ImageSource.camera));
   }
 
-  Future<void> _pickImage() async {
-    final img = await _picker.pickImage(source: ImageSource.camera, imageQuality: 85);
+  Future<void> _pickImage(ImageSource source) async {
+    final img = await _picker.pickImage(source: source, imageQuality: 85);
     if (img == null) return;
     final bytes = await img.readAsBytes();
     if (!mounted) return;
@@ -331,11 +331,23 @@ class _DigitizationScreenState extends ConsumerState<DigitizationScreen> {
                 Column(
                   children: [
                     ElevatedButton.icon(
-                      onPressed: _pickImage,
+                      onPressed: () => _pickImage(ImageSource.camera),
                       icon: const Icon(Icons.photo_camera_outlined),
-                      label: const Text('Tomar/Seleccionar imagen'),
+                      label: const Text('Tomar foto'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primaryColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ElevatedButton.icon(
+                      onPressed: () => _pickImage(ImageSource.gallery),
+                      icon: const Icon(Icons.image_search),
+                      label: const Text('Seleccionar planilla (Galería)'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.secondaryColor,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

@@ -81,7 +81,7 @@ class MainLayout extends StatelessWidget {
   }
 
   Widget _buildBottomNav(BuildContext context, bool showUsuarios, bool showEventos, bool showLugares, bool showPlanillas) {
-    final items = _buildItems(showUsuarios, showEventos, showLugares, showPlanillas);
+    final items = _buildItems(false, showEventos, showLugares, showPlanillas);
     final location = GoRouterState.of(context).uri.path;
     int idx = 0;
     for (int i = 0; i < items.length; i++) {
