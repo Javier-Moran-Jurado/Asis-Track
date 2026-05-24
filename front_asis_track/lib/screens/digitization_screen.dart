@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -44,13 +45,36 @@ class _DigitizationScreenState extends ConsumerState<DigitizationScreen> {
   }
 
   Future<void> _pickImage(ImageSource source) async {
-    final img = await _picker.pickImage(source: source, imageQuality: 85);
+    final img = await _picker.pickImage(
+      source: source,
+      imageQuality: 100, // Sin compresión para imágenes grandes
+      maxWidth: null,
+      maxHeight: null,
+    );
     if (img == null) return;
     final bytes = await img.readAsBytes();
     if (!mounted) return;
     setState(() {
       _imageBytes = bytes;
       _imageName = img.name;
+      _error = null;
+    });
+    await _digitize();
+  }
+
+  Future<void> _seleccionarArchivoExplorador() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf', 'zip'],
+      withData: true,
+    );
+    if (result == null || result.files.isEmpty) return;
+    final file = result.files.first;
+    if (file.bytes == null) return;
+    if (!mounted) return;
+    setState(() {
+      _imageBytes = file.bytes;
+      _imageName = file.name;
       _error = null;
     });
     await _digitize();
@@ -329,29 +353,38 @@ class _DigitizationScreenState extends ConsumerState<DigitizationScreen> {
                 const CircularProgressIndicator(color: AppTheme.primaryColor)
               else
                 Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     ElevatedButton.icon(
                       onPressed: () => _pickImage(ImageSource.camera),
-                      icon: const Icon(Icons.photo_camera_outlined),
+                      icon: const Icon(Icons.photo_camera_outlined, size: 20),
                       label: const Text('Tomar foto'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primaryColor,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        alignment: Alignment.center,
                       ),
                     ),
                     const SizedBox(height: 12),
                     ElevatedButton.icon(
-                      onPressed: () => _pickImage(ImageSource.gallery),
-                      icon: const Icon(Icons.image_search),
-                      label: const Text('Seleccionar planilla (Galería)'),
+                      onPressed: _seleccionarArchivoExplorador,
+                      icon: const Icon(Icons.folder_open_outlined, size: 20),
+                      label: const Text('Seleccionar planilla'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.secondaryColor,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        alignment: Alignment.center,
                       ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Formatos: JPG, PNG, PDF, ZIP',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 11, color: Colors.grey),
                     ),
                   ],
                 ),

@@ -130,11 +130,22 @@ class _EventosScreenState extends State<EventosScreen> {
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 Row(children: [
                   Expanded(child: Text('Eventos (${_eventos.length})', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
-                  ElevatedButton.icon(
+                  ElevatedButton(
                     onPressed: () => _showForm(),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Nuevo evento'),
-                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor, foregroundColor: Colors.white),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.add, size: 18),
+                        SizedBox(width: 6),
+                        Text('Nuevo evento'),
+                      ],
+                    ),
                   ),
                 ]),
                 const SizedBox(height: 16),
