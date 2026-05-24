@@ -109,7 +109,7 @@ class _DigitalizarPlanillaScreenState extends State<DigitalizarPlanillaScreen> {
   Future<void> _subirArchivoPDF() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['pdf'],
+      allowedExtensions: ['pdf', 'zip', 'png', 'jpg', 'jpeg'],
     );
     if (result == null || result.files.isEmpty) return;
 
@@ -577,13 +577,13 @@ class _DigitalizarPlanillaScreenState extends State<DigitalizarPlanillaScreen> {
                 ),
                 const SizedBox(height: 12),
                 CustomButton(
-                  text: 'Subir archivo (PDF)',
+                  text: 'Subir archivo',
                   isPrimary: false,
                   icon: Icons.upload_file_outlined,
                   onPressed: _subirArchivoPDF,
                 ),
                 const SizedBox(height: 12),
-                Text('Formatos: JPG, PNG, PDF',
+                Text('Formatos permitidos: JPG, PNG, PDF, ZIP',
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade400)),
               ],
             ),

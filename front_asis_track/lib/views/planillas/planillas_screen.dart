@@ -277,7 +277,7 @@ class _PlanillasScreenState extends State<PlanillasScreen> {
         ? Wrap(
             spacing: 10,
             runSpacing: 10,
-            alignment: isMobile ? WrapAlignment.start : WrapAlignment.end,
+            alignment: isMobile ? WrapAlignment.center : WrapAlignment.end,
             children: [
               OutlinedButton.icon(
                 onPressed: () => context.push('/planilla-digital/eventos'),
@@ -316,7 +316,7 @@ class _PlanillasScreenState extends State<PlanillasScreen> {
         children: [
           headerContent,
           if (!esEstudiante) const SizedBox(height: 16),
-          if (!esEstudiante) buttons,
+          if (!esEstudiante) Center(child: buttons),
         ],
       );
     }
