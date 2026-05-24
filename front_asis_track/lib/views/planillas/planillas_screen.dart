@@ -265,11 +265,15 @@ class _PlanillasScreenState extends State<PlanillasScreen> {
               Text(
                 'Planillas (${_planillas.length})',
                 style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.gray900),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 4),
               Text(
                 'Gestiona las planillas de asistencia de tus eventos',
                 style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),

@@ -95,7 +95,12 @@ class _LugaresScreenState extends State<LugaresScreen> {
                     onPressed: () => _showForm(),
                     icon: const Icon(Icons.add),
                     label: const Text('Nuevo lugar'),
-                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor, foregroundColor: Colors.white),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
                   ),
                 ]),
                 const SizedBox(height: 16),

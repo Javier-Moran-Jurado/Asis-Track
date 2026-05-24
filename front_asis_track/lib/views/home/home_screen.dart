@@ -155,20 +155,6 @@ class HomeScreen extends StatelessWidget {
         ),
       // No Estudiante: ver justificaciones + planillas + dashboard
       if (!esEstudiante) ...[
-        _ActionCardData(
-          icon: Icons.fact_check_outlined,
-          title: 'Ver justificaciones',
-          subtitle: 'Revisa y valida solicitudes pendientes',
-          color: AppTheme.secondaryColor,
-          onTap: () => context.push('/justificaciones'),
-        ),
-        _ActionCardData(
-          icon: Icons.assignment_outlined,
-          title: 'Planillas',
-          subtitle: 'Gestiona planillas de asistencia',
-          color: const Color(0xFFF59E0B),
-          onTap: () => context.push('/planillas'),
-        ),
         if (!esMonitor)
           _ActionCardData(
             icon: Icons.bar_chart_outlined,
