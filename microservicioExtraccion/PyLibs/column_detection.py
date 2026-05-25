@@ -66,17 +66,7 @@ def find_firma_position_tesseract(img_bgr: np.ndarray, verbose: bool = False) ->
 
 
 def find_firma_position(img_bgr: np.ndarray, verbose: bool = False) -> dict | None:
-    """Busca 'Firma' usando PaddleOCR primario, Tesseract como fallback."""
-    try:
-        from paddle_detector import PaddleColumnDetector
-        detector = PaddleColumnDetector()
-        result = detector.find_firma(img_bgr)
-        if result is not None:
-            return result
-        logger.info("[find_firma_position] PaddleOCR falló, probando Tesseract fallback...")
-    except Exception as e:
-        logger.warning(f"[find_firma_position] Error con PaddleOCR: {e}, usando Tesseract fallback")
-
+    """Busca 'Firma' usando Tesseract OCR."""
     return find_firma_position_tesseract(img_bgr, verbose=verbose)
 
 

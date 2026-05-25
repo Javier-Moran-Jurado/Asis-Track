@@ -4,9 +4,7 @@ import pytesseract
 
 
 def configure_runtime() -> None:
-    environ["FLAGS_use_mkldnn"] = "0"
-    environ["MKLDNN_VERBOSE"] = "0"
-    environ["FLAGS_enable_pir_api"] = "0"
+    pass
 
 
 def configure_tesseract(
