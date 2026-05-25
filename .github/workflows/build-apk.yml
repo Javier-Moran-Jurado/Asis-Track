@@ -3,7 +3,7 @@ name: Build APK
 on:
   push:
     branches:
-      - develop
+      - SCRUM-89-Conexión-a-la-aplicación-móvil
 
 defaults:
   run:

@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 
 import 'app_config_web.dart'
     if (dart.library.io) 'app_config_io.dart';
@@ -10,15 +9,11 @@ import 'app_config_web.dart'
 class AppConfig {
   static String get apiBaseUrl => getApiBaseUrl();
 
-  @Deprecated('Usa apiBaseUrl')
-  static String get authUrl => apiBaseUrl;
+  static String get authUrl => 'https://usuario-production-df89.up.railway.app';
 
-  @Deprecated('Usa apiBaseUrl')
-  static String get usuarioUrl => apiBaseUrl;
+  static String get usuarioUrl => 'https://usuario-production-df89.up.railway.app';
 
-  @Deprecated('Usa apiBaseUrl')
-  static String get planillaUrl => apiBaseUrl;
+  static String get planillaUrl => 'https://planilla-production-89a5.up.railway.app';
 
-  @Deprecated('Usa apiBaseUrl')
-  static String get baseUrl => apiBaseUrl;
+  static String get seguridadUrl => 'https://seguridad-production-e075.up.railway.app';
 }

@@ -89,15 +89,45 @@ class _LugaresScreenState extends State<LugaresScreen> {
             child: Padding(
               padding: AppBreakpoints.responsivePadding(context),
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                Row(children: [
-                  Expanded(child: Text('Lugares (${_lugares.length})', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
-                  ElevatedButton.icon(
-                    onPressed: () => _showForm(),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Nuevo lugar'),
-                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor, foregroundColor: Colors.white),
-                  ),
-                ]),
+                AppBreakpoints.isMobile(context)
+                    ? Column(
+                        children: [
+                          Text('Lugares (${_lugares.length})',
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 16),
+                          Center(
+                            child: ElevatedButton.icon(
+                              onPressed: () => _showForm(),
+                              icon: const Icon(Icons.add),
+                              label: const Text('Nuevo lugar'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.primaryColor,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : Row(
+                        children: [
+                          Expanded(
+                              child: Text('Lugares (${_lugares.length})',
+                                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+                          ElevatedButton.icon(
+                            onPressed: () => _showForm(),
+                            icon: const Icon(Icons.add),
+                            label: const Text('Nuevo lugar'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.primaryColor,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                          ),
+                        ],
+                      ),
                 const SizedBox(height: 16),
                 Expanded(
                   child: _isLoading
@@ -241,7 +271,7 @@ class _LugarFormState extends State<_LugarForm> {
         return;
       }
       final pos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
       );
       _latCtrl.text = pos.latitude.toStringAsFixed(6);
       _lngCtrl.text = pos.longitude.toStringAsFixed(6);
@@ -279,10 +309,12 @@ class _LugarFormState extends State<_LugarForm> {
         );
       }
       widget.onSave();
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(widget.lugar != null ? 'Lugar actualizado' : 'Lugar creado'),
-        backgroundColor: AppTheme.secondaryColor,
-      ));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(widget.lugar != null ? 'Lugar actualizado' : 'Lugar creado'),
+          backgroundColor: AppTheme.secondaryColor,
+        ));
+      }
     } catch (e) {
       if (mounted) ErrorDialog.show(context, e.toString().replaceFirst('Exception: ', ''));
     } finally {

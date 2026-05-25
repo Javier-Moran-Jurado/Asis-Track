@@ -1,6 +1,4 @@
-import 'dart:async' show TimeoutException;
 import 'dart:convert';
-import 'dart:io' show SocketException;
 import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
 import 'auth_service.dart';
@@ -35,7 +33,7 @@ String _extractErrorMessage(http.Response response) {
 
 /// Servicio para operaciones CRUD de usuarios (requiere rol admin/administrativo).
 class UserService {
-  static String get _baseUrl => AppConfig.apiBaseUrl;
+  static String get _baseUrl => AppConfig.usuarioUrl;
 
   static Future<String?> _getToken() async {
     final token = await AuthService.getAccessToken();

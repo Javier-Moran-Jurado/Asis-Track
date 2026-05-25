@@ -13,7 +13,7 @@ import '../models/user_model.dart';
 /// En web, usa SharedPreferences como fallback para tokens debido a
 /// limitaciones de flutter_secure_storage_web con el Web Crypto API.
 class AuthService {
-  static String get _baseUrl => AppConfig.apiBaseUrl;
+  static String get _baseUrl => AppConfig.authUrl;
 
   // ── Keys ──
   static const String _keyAccessToken = 'access_token';

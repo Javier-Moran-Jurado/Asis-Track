@@ -215,7 +215,7 @@ class _CampoModalState extends State<CampoModal> {
                       ),
                     )
                   : DropdownButtonFormField<TipoCampoModel>(
-                      value: _tipoSeleccionado,
+                      initialValue: _tipoSeleccionado,
                       decoration: InputDecoration(
                         hintText: 'Selecciona un tipo',
                         prefixIcon: Icon(

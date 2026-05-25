@@ -20,7 +20,7 @@ String _msg(http.Response r) {
 ///
 /// Conecta con el backend real: /api/v1/planilla-service/justificaciones
 class JustificacionService {
-  static String get _url => AppConfig.apiBaseUrl;
+  static String get _url => AppConfig.planillaUrl;
 
   static Future<String?> _token() async {
     final t = await AuthService.getAccessToken();

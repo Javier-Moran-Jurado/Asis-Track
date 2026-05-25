@@ -1,6 +1,4 @@
-import 'dart:async' show TimeoutException;
 import 'dart:convert';
-import 'dart:io' show SocketException;
 import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
@@ -10,13 +8,11 @@ import 'auth_service.dart';
 
 /// Servicio de autenticacion con Google OAuth2.
 class GoogleAuthService {
-  static String get _baseUrl => AppConfig.apiBaseUrl;
+  static String get _baseUrl => AppConfig.authUrl;
 
   static final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: <String>['openid', 'email', 'profile'],
-    clientId: kIsWeb
-        ? '655549064856-hn07fp0osk2c2luodfo679020gt4od1d.apps.googleusercontent.com'
-        : null,
+    clientId: kIsWeb ? null : null, // Evitar inicialización doble en Web
     serverClientId: kIsWeb
         ? null
         : '655549064856-hn07fp0osk2c2luodfo679020gt4od1d.apps.googleusercontent.com',

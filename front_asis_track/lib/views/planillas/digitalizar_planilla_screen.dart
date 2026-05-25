@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
@@ -89,7 +90,12 @@ class _DigitalizarPlanillaScreenState extends State<DigitalizarPlanillaScreen> {
   Future<void> _seleccionarImagen({required bool desdeCamara}) async {
     setState(() => _procesandoImagen = true);
     final source = desdeCamara ? ImageSource.camera : ImageSource.gallery;
-    final img = await _picker.pickImage(source: source, imageQuality: 85);
+    final img = await _picker.pickImage(
+      source: source,
+      imageQuality: 85,
+      maxWidth: 2000,
+      maxHeight: 2000,
+    );
     if (img == null) {
       if (mounted) setState(() => _procesandoImagen = false);
       return;
@@ -103,6 +109,78 @@ class _DigitalizarPlanillaScreenState extends State<DigitalizarPlanillaScreen> {
       _procesandoImagen = false;
       _planillaDigitalizada = null;
     });
+  }
+
+  Future<void> _subirArchivoPDF() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf', 'zip', 'png', 'jpg', 'jpeg'],
+      withData: true, // Necesario para leer bytes en mobile
+    );
+    if (result == null || result.files.isEmpty) return;
+
+    final file = result.files.first;
+    if (file.bytes == null) {
+      if (mounted) ErrorDialog.show(context, 'No se pudo leer el archivo');
+      return;
+    }
+
+    // Comprimir si es imagen grande
+    Uint8List bytes = file.bytes!;
+    final lower = file.name.toLowerCase();
+    if (!lower.endsWith('.pdf') && !lower.endsWith('.zip') && bytes.length > 3 * 1024 * 1024) {
+      try {
+        final codec = await ui.instantiateImageCodec(bytes, targetWidth: 2000, targetHeight: 2000);
+        final frame = await codec.getNextFrame();
+        final byteData = await frame.image.toByteData(format: ui.ImageByteFormat.png);
+        if (byteData != null) bytes = byteData.buffer.asUint8List();
+      } catch (_) {}
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _imagenFile = XFile(file.name, bytes: bytes);
+      _imagenBytes = bytes;
+      _procesandoImagen = false;
+      _planillaDigitalizada = null;
+    });
+  }
+
+  void _mostrarDialogoSeleccionImagen() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Seleccionar imagen', textAlign: TextAlign.center),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: AppTheme.primaryColor),
+              title: const Text('Tomar foto'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _seleccionarImagen(desdeCamara: true);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: AppTheme.primaryColor),
+              title: const Text('Seleccionar de galería'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _seleccionarImagen(desdeCamara: false);
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _limpiar() {
@@ -148,39 +226,54 @@ class _DigitalizarPlanillaScreenState extends State<DigitalizarPlanillaScreen> {
       _planillaDigitalizada = null;
     });
 
+    int? planillaId;
+
     try {
       final nuevaPlanilla = await PlanillaService.crearPlanilla({
         'eventoId': _eventoSeleccionado!.id,
         'origenId': 1,
       });
-      final planillaId = nuevaPlanilla.id;
+      planillaId = nuevaPlanilla.id;
       if (planillaId == null) {
         throw Exception('No se pudo crear la planilla');
       }
 
-      final mimeType = _inferMimeType(_imagenFile!.name, _imagenFile!.mimeType);
-      setState(() {
-        _cargandoCampos = true;
-      });
+      final mimeType = _inferMimeType(_imagenFile!.name, null);
+      setState(() => _cargandoCampos = true);
 
-      final campos = await PlanillaService.proponerEstructura(
-        planillaId: planillaId,
-        fileBytes: _imagenBytes!,
-        filename: _imagenFile!.name,
-        contentType: mimeType,
-      );
+      List<CampoPreviewModel> campos;
+      try {
+        campos = await PlanillaService.proponerEstructura(
+          planillaId: planillaId,
+          fileBytes: _imagenBytes!,
+          filename: _imagenFile!.name,
+          contentType: mimeType,
+        );
+      } catch (e) {
+        try { await PlanillaService.eliminarPlanilla(planillaId); } catch (_) {}
+        rethrow;
+      }
+
       if (campos.isEmpty) {
+        try { await PlanillaService.eliminarPlanilla(planillaId); } catch (_) {}
         throw Exception('No se detectaron campos en la planilla');
       }
 
       final estructuraJson = _buildEstructuraJsonFromCampos(campos);
-      final planilla = await PlanillaService.digitalizarPlanilla(
-        planillaId: planillaId,
-        fileBytes: _imagenBytes!,
-        filename: _imagenFile!.name,
-        estructuraJson: estructuraJson,
-        contentType: mimeType,
-      );
+
+      Planilla planilla;
+      try {
+        planilla = await PlanillaService.digitalizarPlanilla(
+          planillaId: planillaId,
+          fileBytes: _imagenBytes!,
+          filename: _imagenFile!.name,
+          estructuraJson: estructuraJson,
+          contentType: mimeType,
+        );
+      } catch (e) {
+        try { await PlanillaService.eliminarPlanilla(planillaId); } catch (_) {}
+        rethrow;
+      }
 
       if (mounted) {
         setState(() {
@@ -372,7 +465,7 @@ class _DigitalizarPlanillaScreenState extends State<DigitalizarPlanillaScreen> {
     }
 
     return DropdownButtonFormField<EventoPlanilla>(
-      value: _eventoSeleccionado,
+      initialValue: _eventoSeleccionado,
       isExpanded: true,
       decoration: InputDecoration(
         labelText: 'Evento',
@@ -509,24 +602,21 @@ class _DigitalizarPlanillaScreenState extends State<DigitalizarPlanillaScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _ImageActionButton(
-                      icon: Icons.camera_alt_outlined,
-                      label: 'Tomar foto',
-                      onTap: () => _seleccionarImagen(desdeCamara: true),
-                    ),
-                    const SizedBox(width: 24),
-                    _ImageActionButton(
-                      icon: Icons.photo_library_outlined,
-                      label: 'Seleccionar\nimagen',
-                      onTap: () => _seleccionarImagen(desdeCamara: false),
-                    ),
-                  ],
+                CustomButton(
+                  text: 'Tomar/Seleccionar imagen',
+                  isPrimary: true,
+                  icon: Icons.camera_alt_outlined,
+                  onPressed: () => _mostrarDialogoSeleccionImagen(),
                 ),
                 const SizedBox(height: 12),
-                Text('Formatos: JPG, PNG',
+                CustomButton(
+                  text: 'Subir archivo',
+                  isPrimary: false,
+                  icon: Icons.upload_file_outlined,
+                  onPressed: _subirArchivoPDF,
+                ),
+                const SizedBox(height: 12),
+                Text('Formatos permitidos: JPG, PNG, PDF, ZIP',
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade400)),
               ],
             ),
@@ -1217,62 +1307,17 @@ class _DigitalizarPreviewScreenState extends State<DigitalizarPreviewScreen> {
   }
 }
 
-class _ImageActionButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _ImageActionButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        width: 120,
-        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
-        decoration: BoxDecoration(
-          color: AppTheme.primaryColor.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-              color: AppTheme.primaryColor.withValues(alpha: 0.2)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: AppTheme.primaryColor, size: 36),
-            const SizedBox(height: 10),
-            Text(label,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.primaryColor)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _BeforeAfterSlider extends StatefulWidget {
   final Widget left;
   final Widget right;
   final String leftLabel;
   final String rightLabel;
-  final double initialRatio;
 
   const _BeforeAfterSlider({
     required this.left,
     required this.right,
     required this.leftLabel,
     required this.rightLabel,
-    this.initialRatio = 0.5,
   });
 
   @override
@@ -1285,7 +1330,7 @@ class _BeforeAfterSliderState extends State<_BeforeAfterSlider> {
   @override
   void initState() {
     super.initState();
-    _ratio = widget.initialRatio.clamp(0.15, 0.85);
+    _ratio = 0.5;
   }
 
   void _updateRatio(double width, double dx) {

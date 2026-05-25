@@ -22,7 +22,6 @@ class _PerfilScreenState extends State<PerfilScreen> {
   @override
   void initState() {
     super.initState();
-    final auth = context.read<AuthProvider>();
     _isLoading = true;
     _cargarPerfilCompleto();
   }

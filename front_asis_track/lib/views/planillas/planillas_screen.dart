@@ -256,29 +256,28 @@ class _PlanillasScreenState extends State<PlanillasScreen> {
   Widget _buildHeader() {
     final auth = context.watch<AuthProvider>();
     final esEstudiante = RoleService.isStudent(auth.currentUser?.rol ?? '');
-    return Row(
+    final isMobile = AppBreakpoints.isMobile(context);
+
+    final headerContent = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Planillas (${_planillas.length})',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.gray900),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Gestiona las planillas de asistencia de tus eventos',
-                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-              ),
-            ],
-          ),
+        Text(
+          'Planillas (${_planillas.length})',
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.gray900),
         ),
-        if (!esEstudiante)
-          Wrap(
+        const SizedBox(height: 4),
+        Text(
+          'Gestiona las planillas de asistencia de tus eventos',
+          style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+        ),
+      ],
+    );
+
+    final buttons = !esEstudiante
+        ? Wrap(
             spacing: 10,
-            runSpacing: 8,
-            alignment: WrapAlignment.end,
+            runSpacing: 10,
+            alignment: isMobile ? WrapAlignment.center : WrapAlignment.end,
             children: [
               OutlinedButton.icon(
                 onPressed: () => context.push('/planilla-digital/eventos'),
@@ -308,7 +307,25 @@ class _PlanillasScreenState extends State<PlanillasScreen> {
                 ),
               ),
             ],
-          ),
+          )
+        : const SizedBox.shrink();
+
+    if (isMobile) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          headerContent,
+          if (!esEstudiante) const SizedBox(height: 16),
+          if (!esEstudiante) Center(child: buttons),
+        ],
+      );
+    }
+
+    return Row(
+      children: [
+        Expanded(child: headerContent),
+        if (!esEstudiante) const SizedBox(width: 16),
+        if (!esEstudiante) buttons,
       ],
     );
   }

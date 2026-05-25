@@ -50,6 +50,7 @@ dependencies:
   google_sign_in_web: ^0.12.4+3
   signature: ^6.3.0
   image_picker: ^1.2.2
+  file_picker: ^8.1.0
   qr_flutter: ^4.1.0
 
 dev_dependencies:

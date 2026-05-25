@@ -154,7 +154,8 @@ class _InvitadoScreenState extends State<InvitadoScreen> {
             onPressed: () async {
               final auth = context.read<AuthProvider>();
               await auth.logout();
-              if (mounted) context.go('/login');
+              if (!mounted) return;
+              context.go('/login');
             },
             icon: const Icon(Icons.logout, size: 18),
             label: const Text('Salir'),

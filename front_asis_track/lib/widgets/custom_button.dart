@@ -5,6 +5,7 @@ class CustomButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final bool isPrimary;
   final bool isLoading;
+  final IconData? icon;
 
   const CustomButton({
     super.key,
@@ -12,19 +13,22 @@ class CustomButton extends StatelessWidget {
     required this.onPressed,
     this.isPrimary = true,
     this.isLoading = false,
+    this.icon,
   });
 
   @override
   Widget build(BuildContext context) {
     if (isPrimary) {
-      return ElevatedButton(
+      return ElevatedButton.icon(
         onPressed: isLoading ? null : onPressed,
-        child: _buildContent(),
+        icon: icon != null ? Icon(icon, size: 18) : null,
+        label: _buildContent(),
       );
     } else {
-      return OutlinedButton(
+      return OutlinedButton.icon(
         onPressed: isLoading ? null : onPressed,
-        child: _buildContent(),
+        icon: icon != null ? Icon(icon, size: 18) : null,
+        label: _buildContent(),
       );
     }
   }

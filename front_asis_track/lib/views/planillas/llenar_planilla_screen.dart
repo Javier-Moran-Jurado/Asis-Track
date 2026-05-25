@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -630,7 +629,7 @@ class _FilaFormModalState extends State<_FilaFormModal> {
 
       case 'combo':
         return DropdownButtonFormField<String>(
-          value: _selectedValues[campo.id!],
+          initialValue: _selectedValues[campo.id!],
           decoration: InputDecoration(
             labelText: label,
             prefixIcon: const Icon(Icons.arrow_drop_down_circle_outlined, size: 20, color: AppTheme.primaryColor),
@@ -647,14 +646,24 @@ class _FilaFormModalState extends State<_FilaFormModal> {
           const SizedBox(height: 8),
           Container(
             decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(10)),
-            child: Column(children: campo.opciones.map((opt) => RadioListTile<String>(
-              title: Text(opt, style: const TextStyle(fontSize: 14)),
-              value: opt,
-              groupValue: _selectedValues[campo.id!],
-              onChanged: (val) => setState(() => _selectedValues[campo.id!] = val),
-              activeColor: AppTheme.primaryColor,
-              dense: true,
-            )).toList()),
+            child: Column(children: campo.opciones.map((opt) {
+              final isSelected = _selectedValues[campo.id!] == opt;
+              return InkWell(
+                onTap: () => setState(() => _selectedValues[campo.id!] = opt),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Row(children: [
+                    Icon(
+                      isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                      color: isSelected ? AppTheme.primaryColor : Colors.grey,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(opt, style: const TextStyle(fontSize: 14)),
+                  ]),
+                ),
+              );
+            }).toList()),
           ),
         ]);
 

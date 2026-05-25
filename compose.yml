@@ -83,6 +83,17 @@ services:
       - S3_BUCKET=${S3_BUCKET}
       - S3_PUBLIC_BASE_URL=${S3_PUBLIC_BASE_URL}
       - S3_PRESIGN_TTL=${S3_PRESIGN_TTL}
+      - EXTRACCION_SERVICE_URL=http://extraccion-service:8000
+    networks:
+      - mynetwork
+
+  extraccion-service:
+    image: ${EXTRACCION_IMAGE}
+    build: ./microservicioExtraccion
+    container_name: extraccion-service
+    restart: unless-stopped
+    environment:
+      - TESSERACT_CMD=/usr/bin/tesseract
     networks:
       - mynetwork
 
