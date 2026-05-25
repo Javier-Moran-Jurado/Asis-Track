@@ -285,9 +285,9 @@ class PlanillaNotifier extends StateNotifier<PlanillaDigitalState> {
     final dx = (viewportSize.width - imgW * fitScale) / 2;
     final dy = (viewportSize.height - imgH * fitScale) / 2;
 
-    transformationController.value = Matrix4.identity()
-      ..translateByDouble(dx, dy)
-      ..scaleByDouble(fitScale);
+    final matrix = Matrix4.diagonal3Values(fitScale, fitScale, 1.0);
+    matrix.setTranslationRaw(dx, dy, 0.0);
+    transformationController.value = matrix;
   }
 
   Rect clampToImage(Rect rect) {
