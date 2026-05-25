@@ -35,6 +35,9 @@ RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir opencv-python-headless \
     && pip install --no-cache-dir -r /build/requirements.txt
 
+# Pre-descargar modelos de PaddleOCR para evitar timeouts en el primer request
+RUN python3 -c "from paddleocr import PaddleOCR; PaddleOCR(use_angle_cls=False, lang='en')"
+
 # ── Etapa 3: Imagen Final (Runtime) ──
 FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
@@ -48,6 +51,7 @@ RUN apt-get update \
         tesseract-ocr-spa \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=python-builder /opt/venv /opt/venv
+COPY --from=python-builder /root/.paddleocr /root/.paddleocr
 ENV PATH="/opt/venv/bin:$PATH"
 ENV TESSERACT_CMD=/usr/bin/tesseract
 COPY MicroservicioPlanilla/PyLibs /app/PyLibs
