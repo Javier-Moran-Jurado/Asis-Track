@@ -44,6 +44,12 @@ management:
 
 server:
   port: ${PORT:8080}
+  # ── Timeouts de Tomcat al m\u00e1ximo para llamadas largas de IA/OCR ──
+  # Sincronizado con proxy_read_timeout de Nginx (600s = 10 min)
+  tomcat:
+    connection-timeout: 600000       # 600 s en ms: espera para que el cliente envíe la request
+    async-timeout: 600000            # 600 s en ms: max espera de tareas asíncronas (@Async)
+    keep-alive-timeout: 600000       # 600 s en ms: mantiene la conexión HTTP Keep-Alive viva
 
 spring:
   application:

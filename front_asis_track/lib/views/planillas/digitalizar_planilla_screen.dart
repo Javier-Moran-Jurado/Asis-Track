@@ -238,7 +238,7 @@ class _DigitalizarPlanillaScreenState extends State<DigitalizarPlanillaScreen> {
         throw Exception('No se pudo crear la planilla');
       }
 
-      final mimeType = _inferMimeType(_imagenFile!.name, _imagenFile!.mimeType);
+      final mimeType = _inferMimeType(_imagenFile!.name, null);
       setState(() => _cargandoCampos = true);
 
       List<CampoPreviewModel> campos;
