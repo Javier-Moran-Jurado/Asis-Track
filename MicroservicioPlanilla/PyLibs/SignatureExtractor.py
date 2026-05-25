@@ -9,7 +9,6 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-from paddleocr import TextDetection
 
 try:
     from .column_detection import find_cell_bounds, find_firma_position

@@ -28,8 +28,6 @@ RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 COPY MicroservicioPlanilla/requirements.txt /build/requirements.txt
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir paddlepaddle==3.2.0 -i https://www.paddlepaddle.org.cn/packages/stable/cpu/ \
-    && pip install --no-cache-dir "paddleocr[all]" \
     && pip install --no-cache-dir pytesseract \
     && pip install --no-cache-dir --upgrade setuptools wheel \
     && pip install --no-cache-dir opencv-python-headless \
@@ -52,9 +50,6 @@ RUN apt-get update \
 COPY --from=python-builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 ENV TESSERACT_CMD=/usr/bin/tesseract
-
-# Pre-descargar modelos de PaddleOCR directamente en la imagen final para evitar problemas de COPY
-RUN python3 -c "import numpy as np; from paddleocr import PaddleOCR; ocr = PaddleOCR(use_angle_cls=False, lang='en'); ocr.ocr(np.zeros((100, 100, 3), dtype=np.uint8))"
 
 COPY MicroservicioPlanilla/PyLibs /app/PyLibs
 COPY --from=java-builder /app/MicroservicioPlanilla/target/*.jar app.jar
