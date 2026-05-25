@@ -18,6 +18,9 @@ RUN apt-get update \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Pre-descargar modelo español de PaddleOCR durante build (evita descarga en runtime)
+RUN python -c "from paddleocr import PaddleOCR; ocr = PaddleOCR(lang='es', show_log=False, use_gpu=False); del ocr"
+
 COPY PyLibs/ ./PyLibs/
 COPY main.py .
 
