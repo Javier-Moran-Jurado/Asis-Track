@@ -12,9 +12,7 @@ class GoogleAuthService {
 
   static final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: <String>['openid', 'email', 'profile'],
-    clientId: kIsWeb
-        ? '655549064856-hn07fp0osk2c2luodfo679020gt4od1d.apps.googleusercontent.com'
-        : null,
+    clientId: kIsWeb ? null : null, // Evitar inicialización doble en Web
     serverClientId: kIsWeb
         ? null
         : '655549064856-hn07fp0osk2c2luodfo679020gt4od1d.apps.googleusercontent.com',

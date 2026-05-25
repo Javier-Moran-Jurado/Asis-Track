@@ -135,6 +135,8 @@ class _GoogleSignInButtonWebState extends State<GoogleSignInButtonWeb> {
       return;
     }
 
+    _processing = true;
+
     // Usamos un Completer para manejar el callback del token de forma segura.
     // El Completer garantiza que solo se completa UNA vez aunque el callback
     // se llame varias veces (previniendo "Future already completed").
@@ -180,9 +182,13 @@ class _GoogleSignInButtonWebState extends State<GoogleSignInButtonWeb> {
       if (idToken != null && idToken.isNotEmpty) {
         js.context['googleIdToken'] = idToken;
         _processToken(idToken);
+      } else {
+        _processing = false;
+        if (mounted) setState(() => _isLoading = false);
       }
     }).catchError((_) {
-      // Error ya manejado por error_callback
+      _processing = false;
+      if (mounted) setState(() => _isLoading = false);
     });
   }
 
