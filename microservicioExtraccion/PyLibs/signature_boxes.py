@@ -1,36 +1,29 @@
 import cv2
 import numpy as np
-from typing import NamedTuple
-
-
-class SignatureBox(NamedTuple):
-    poly: np.ndarray
-    touches_top: bool
-    touches_bottom: bool
 
 
 def extract_signature_boxes(
     firma_col: np.ndarray, enhanced: np.ndarray, row_bounds: list[tuple[int, int]]
-) -> list[SignatureBox]:
-    final_signature_boxes: list[SignatureBox] = []
-
-    row_w = firma_col.shape[1]
-    binary_full = cv2.adaptiveThreshold(
-        enhanced, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
-        cv2.THRESH_BINARY_INV, 21, 10
-    )
-    _k_hlines = cv2.getStructuringElement(cv2.MORPH_RECT, (40, 1))
-    _k_dilate = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+) -> list[tuple[np.ndarray, bool, bool]]:
+    final_signature_boxes = []
 
     for y1, y2 in row_bounds:
         row_h = y2 - y1
+        row_w = firma_col.shape[1]
 
-        binary = binary_full[y1:y2, 0:row_w]
+        row_img = enhanced[y1:y2, 0:row_w]
+        gray_row = cv2.cvtColor(row_img, cv2.COLOR_BGR2GRAY)
 
-        h_lines = cv2.morphologyEx(binary, cv2.MORPH_OPEN, _k_hlines)
+        binary = cv2.adaptiveThreshold(
+            gray_row, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 21, 10
+        )
+
+        h_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (40, 1))
+        h_lines = cv2.morphologyEx(binary, cv2.MORPH_OPEN, h_kernel)
         ink = cv2.subtract(binary, h_lines)
 
-        dilated = cv2.dilate(ink, _k_dilate, iterations=2)
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+        dilated = cv2.dilate(ink, kernel, iterations=2)
 
         contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         if not contours:
@@ -97,45 +90,42 @@ def extract_signature_boxes(
             dtype=np.int32,
         )
 
-        final_signature_boxes.append(
-            SignatureBox(poly=poly_box, touches_top=ink_touches_top, touches_bottom=ink_touches_bottom)
-        )
+        final_signature_boxes.append((poly_box, ink_touches_top, ink_touches_bottom))
 
     return final_signature_boxes
 
 
 def merge_split_signatures(
-    boxes: list[SignatureBox]
-) -> list[SignatureBox]:
+    boxes: list[tuple[np.ndarray, bool, bool]]
+) -> list[tuple[np.ndarray, bool, bool]]:
     if len(boxes) <= 1:
         return boxes
 
-    box_heights = [int(box.poly[2][1]) - int(box.poly[0][1]) for box in boxes]
+    box_heights = [int(p[2][1]) - int(p[0][1]) for p, _, _ in boxes]
     median_box_h = np.median(box_heights) if box_heights else 50
 
-    merged: list[SignatureBox] = [boxes[0]]
+    merged = [boxes[0]]
     for item in boxes[1:]:
-        prev = merged[-1]
+        poly, touches_top, touches_bottom = item
+        prev_poly, prev_touches_top, prev_touches_bottom = merged[-1]
 
-        prev_h = int(prev.poly[2][1]) - int(prev.poly[0][1])
-        curr_h = int(item.poly[2][1]) - int(item.poly[0][1])
+        prev_h = int(prev_poly[2][1]) - int(prev_poly[0][1])
+        curr_h = int(poly[2][1]) - int(poly[0][1])
 
-        gap = int(item.poly[0][1]) - int(prev.poly[2][1])
+        gap = int(poly[0][1]) - int(prev_poly[2][1])
         both_fragments = prev_h < median_box_h * 0.85 and curr_h < median_box_h * 0.85
-        is_split = prev.touches_bottom and item.touches_top and both_fragments and gap < 5
+        is_split = prev_touches_bottom and touches_top and both_fragments and gap < 5
 
         if is_split:
-            new_x1 = min(int(prev.poly[0][0]), int(item.poly[0][0]))
-            new_y1 = min(int(prev.poly[0][1]), int(item.poly[0][1]))
-            new_x2 = max(int(prev.poly[2][0]), int(item.poly[2][0]))
-            new_y2 = max(int(prev.poly[2][1]), int(item.poly[2][1]))
+            new_x1 = min(int(prev_poly[0][0]), int(poly[0][0]))
+            new_y1 = min(int(prev_poly[0][1]), int(poly[0][1]))
+            new_x2 = max(int(prev_poly[2][0]), int(poly[2][0]))
+            new_y2 = max(int(prev_poly[2][1]), int(poly[2][1]))
             merged_poly = np.array(
                 [[new_x1, new_y1], [new_x2, new_y1], [new_x2, new_y2], [new_x1, new_y2]],
                 dtype=np.int32,
             )
-            merged[-1] = SignatureBox(
-                poly=merged_poly, touches_top=prev.touches_top, touches_bottom=item.touches_bottom
-            )
+            merged[-1] = (merged_poly, prev_touches_top, touches_bottom)
         else:
             merged.append(item)
 
