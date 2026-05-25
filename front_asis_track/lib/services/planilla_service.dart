@@ -20,7 +20,7 @@ String _msg(http.Response r) {
 }
 
 class PlanillaService {
-  static String get _url => AppConfig.apiBaseUrl;
+  static String get _url => AppConfig.planillaUrl;
 
   static Future<String?> _token() async {
     final t = await AuthService.getAccessToken();

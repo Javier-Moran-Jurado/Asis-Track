@@ -17,7 +17,7 @@ String _extractMessage(http.Response response) {
 }
 
 class EventService {
-  static String get _baseUrl => AppConfig.apiBaseUrl;
+  static String get _baseUrl => AppConfig.planillaUrl;
 
   static Future<String?> _token() async {
     final t = await AuthService.getAccessToken();

@@ -11,7 +11,7 @@ import 'auth_service.dart';
 /// BASE_URL apunta al gateway/backend real; ajústala según el entorno.
 class AsistenciaService {
   // Ajustado para funcionar en dispositivo físico (moto g52), web o escritorio.
-  static String get _baseUrl => AppConfig.apiBaseUrl;
+  static String get _baseUrl => AppConfig.planillaUrl;
 
 
   // ─────────────────────────────────────────────────────────────────────────
