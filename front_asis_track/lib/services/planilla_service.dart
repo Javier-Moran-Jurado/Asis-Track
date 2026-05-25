@@ -177,7 +177,7 @@ class PlanillaService {
       contentType: MediaType.parse(contentType),
     ));
 
-    final streamedResponse = await request.send().timeout(const Duration(seconds: 120));
+    final streamedResponse = await request.send().timeout(const Duration(seconds: 180));
     final response = await http.Response.fromStream(streamedResponse);
     if (response.statusCode == 200 || response.statusCode == 201) {
       return Planilla.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
@@ -233,7 +233,7 @@ class PlanillaService {
       contentType: MediaType.parse(contentType),
     ));
 
-    final streamedResponse = await request.send().timeout(const Duration(seconds: 120));
+    final streamedResponse = await request.send().timeout(const Duration(seconds: 180));
     final response = await http.Response.fromStream(streamedResponse);
     if (response.statusCode == 200 || response.statusCode == 201) {
       final List<dynamic> data = jsonDecode(response.body) as List<dynamic>;

@@ -90,7 +90,12 @@ class _DigitalizarPlanillaScreenState extends State<DigitalizarPlanillaScreen> {
   Future<void> _seleccionarImagen({required bool desdeCamara}) async {
     setState(() => _procesandoImagen = true);
     final source = desdeCamara ? ImageSource.camera : ImageSource.gallery;
-    final img = await _picker.pickImage(source: source, imageQuality: 85);
+    final img = await _picker.pickImage(
+      source: source,
+      imageQuality: 85,
+      maxWidth: 2000,
+      maxHeight: 2000,
+    );
     if (img == null) {
       if (mounted) setState(() => _procesandoImagen = false);
       return;
@@ -110,19 +115,32 @@ class _DigitalizarPlanillaScreenState extends State<DigitalizarPlanillaScreen> {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf', 'zip', 'png', 'jpg', 'jpeg'],
+      withData: true, // Necesario para leer bytes en mobile
     );
     if (result == null || result.files.isEmpty) return;
 
     final file = result.files.first;
     if (file.bytes == null) {
-      ErrorDialog.show(context, 'No se pudo leer el archivo');
+      if (mounted) ErrorDialog.show(context, 'No se pudo leer el archivo');
       return;
+    }
+
+    // Comprimir si es imagen grande
+    Uint8List bytes = file.bytes!;
+    final lower = file.name.toLowerCase();
+    if (!lower.endsWith('.pdf') && !lower.endsWith('.zip') && bytes.length > 3 * 1024 * 1024) {
+      try {
+        final codec = await ui.instantiateImageCodec(bytes, targetWidth: 2000, targetHeight: 2000);
+        final frame = await codec.getNextFrame();
+        final byteData = await frame.image.toByteData(format: ui.ImageByteFormat.png);
+        if (byteData != null) bytes = byteData.buffer.asUint8List();
+      } catch (_) {}
     }
 
     if (!mounted) return;
     setState(() {
-      _imagenFile = XFile(file.name, bytes: file.bytes);
-      _imagenBytes = file.bytes;
+      _imagenFile = XFile(file.name, bytes: bytes);
+      _imagenBytes = bytes;
       _procesandoImagen = false;
       _planillaDigitalizada = null;
     });
@@ -208,39 +226,54 @@ class _DigitalizarPlanillaScreenState extends State<DigitalizarPlanillaScreen> {
       _planillaDigitalizada = null;
     });
 
+    int? planillaId;
+
     try {
       final nuevaPlanilla = await PlanillaService.crearPlanilla({
         'eventoId': _eventoSeleccionado!.id,
         'origenId': 1,
       });
-      final planillaId = nuevaPlanilla.id;
+      planillaId = nuevaPlanilla.id;
       if (planillaId == null) {
         throw Exception('No se pudo crear la planilla');
       }
 
       final mimeType = _inferMimeType(_imagenFile!.name, _imagenFile!.mimeType);
-      setState(() {
-        _cargandoCampos = true;
-      });
+      setState(() => _cargandoCampos = true);
 
-      final campos = await PlanillaService.proponerEstructura(
-        planillaId: planillaId,
-        fileBytes: _imagenBytes!,
-        filename: _imagenFile!.name,
-        contentType: mimeType,
-      );
+      List<CampoPreviewModel> campos;
+      try {
+        campos = await PlanillaService.proponerEstructura(
+          planillaId: planillaId,
+          fileBytes: _imagenBytes!,
+          filename: _imagenFile!.name,
+          contentType: mimeType,
+        );
+      } catch (e) {
+        try { await PlanillaService.eliminarPlanilla(planillaId); } catch (_) {}
+        rethrow;
+      }
+
       if (campos.isEmpty) {
+        try { await PlanillaService.eliminarPlanilla(planillaId); } catch (_) {}
         throw Exception('No se detectaron campos en la planilla');
       }
 
       final estructuraJson = _buildEstructuraJsonFromCampos(campos);
-      final planilla = await PlanillaService.digitalizarPlanilla(
-        planillaId: planillaId,
-        fileBytes: _imagenBytes!,
-        filename: _imagenFile!.name,
-        estructuraJson: estructuraJson,
-        contentType: mimeType,
-      );
+
+      Planilla planilla;
+      try {
+        planilla = await PlanillaService.digitalizarPlanilla(
+          planillaId: planillaId,
+          fileBytes: _imagenBytes!,
+          filename: _imagenFile!.name,
+          estructuraJson: estructuraJson,
+          contentType: mimeType,
+        );
+      } catch (e) {
+        try { await PlanillaService.eliminarPlanilla(planillaId); } catch (_) {}
+        rethrow;
+      }
 
       if (mounted) {
         setState(() {

@@ -66,22 +66,22 @@ class MainLayout extends StatelessWidget {
 
   List<_NavItem> _buildItems(bool showUsuarios, bool showEventos, bool showLugares, bool showPlanillas) {
     return [
-      _NavItem('/home', Icons.home_outlined, Icons.home, 'Inicio'),
+      _NavItem('/home',          Icons.home_outlined,        Icons.home,        'Inicio',         'Inicio'),
       if (showPlanillas)
-        _NavItem('/planillas', Icons.assignment_outlined, Icons.assignment, 'Planillas'),
-      _NavItem('/justificaciones', Icons.description_outlined, Icons.description, 'Justificaciones'),
+        _NavItem('/planillas',   Icons.assignment_outlined,  Icons.assignment,  'Planillas',      'Planillas'),
+      _NavItem('/justificaciones', Icons.description_outlined, Icons.description, 'Justificaciones', 'Justif.'),
       if (showEventos)
-        _NavItem('/eventos', Icons.event_outlined, Icons.event, 'Eventos'),
+        _NavItem('/eventos',     Icons.event_outlined,       Icons.event,       'Eventos',        'Eventos'),
       if (showLugares)
-        _NavItem('/lugares', Icons.place_outlined, Icons.place, 'Lugares'),
+        _NavItem('/lugares',     Icons.place_outlined,       Icons.place,       'Lugares',        'Lugares'),
       if (showUsuarios)
-        _NavItem('/usuarios', Icons.people_outline, Icons.people, 'Usuarios'),
-      _NavItem('/perfil', Icons.person_outline, Icons.person, 'Perfil'),
+        _NavItem('/usuarios',    Icons.people_outline,       Icons.people,      'Usuarios',       'Usuarios'),
+      _NavItem('/perfil',        Icons.person_outline,       Icons.person,      'Perfil',         'Perfil'),
     ];
   }
 
   Widget _buildBottomNav(BuildContext context, bool showUsuarios, bool showEventos, bool showLugares, bool showPlanillas) {
-    final items = _buildItems(false, showEventos, showLugares, showPlanillas);
+    final items = _buildItems(showUsuarios, showEventos, showLugares, showPlanillas);
     final location = GoRouterState.of(context).uri.path;
     int idx = 0;
     for (int i = 0; i < items.length; i++) {
@@ -93,7 +93,14 @@ class MainLayout extends StatelessWidget {
       onTap: (i) => context.go(items[i].path),
       selectedItemColor: AppTheme.primaryColor,
       unselectedItemColor: Colors.grey,
-      items: items.map((i) => BottomNavigationBarItem(icon: Icon(i.icon), activeIcon: Icon(i.activeIcon), label: i.label)).toList(),
+      selectedFontSize: 10,
+      unselectedFontSize: 10,
+      iconSize: 22,
+      items: items.map((i) => BottomNavigationBarItem(
+        icon: Icon(i.icon),
+        activeIcon: Icon(i.activeIcon),
+        label: i.shortLabel,
+      )).toList(),
     );
   }
 
@@ -123,5 +130,6 @@ class _NavItem {
   final IconData icon;
   final IconData activeIcon;
   final String label;
-  _NavItem(this.path, this.icon, this.activeIcon, this.label);
+  final String shortLabel;
+  _NavItem(this.path, this.icon, this.activeIcon, this.label, this.shortLabel);
 }
