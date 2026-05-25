@@ -31,6 +31,8 @@ RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir paddlepaddle==3.2.0 -i https://www.paddlepaddle.org.cn/packages/stable/cpu/ \
     && pip install --no-cache-dir "paddleocr[all]" \
     && pip install --no-cache-dir pytesseract \
+    && pip install --no-cache-dir --upgrade setuptools wheel \
+    && pip install --no-cache-dir opencv-python-headless \
     && pip install --no-cache-dir -r /build/requirements.txt
 
 # ── Etapa 3: Imagen Final (Runtime) ──
