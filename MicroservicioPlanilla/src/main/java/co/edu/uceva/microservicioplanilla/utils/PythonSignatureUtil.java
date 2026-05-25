@@ -17,8 +17,12 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import org.springframework.web.multipart.MultipartFile;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class PythonSignatureUtil {
 
+    private static final Logger log = LoggerFactory.getLogger(PythonSignatureUtil.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Duration DEFAULT_TIMEOUT = Duration.ofMinutes(2);
 
@@ -54,10 +58,12 @@ public class PythonSignatureUtil {
         Objects.requireNonNull(imageBytes, "imageBytes no puede ser nulo");
         Objects.requireNonNull(scriptPath, "scriptPath no puede ser nulo");
 
+        log.info("[PythonSignatureUtil] Iniciando extracción de firmas. Script: {}", scriptPath);
         Path normalizedOutputDir = resolveOutputDir(outputDir);
         Files.createDirectories(normalizedOutputDir);
 
         String encodedImage = Base64.getEncoder().encodeToString(imageBytes);
+        log.info("[PythonSignatureUtil] Imagen convertida a Base64. Tamaño: {} caracteres", encodedImage.length());
 
         List<String> command = new ArrayList<>();
         command.add("python");
@@ -67,6 +73,8 @@ public class PythonSignatureUtil {
         command.add("--output-dir");
         command.add(normalizedOutputDir.toString());
         command.add("--no-overlay");
+        
+        log.info("[PythonSignatureUtil] Ejecutando comando: python {} --image-base64 - --output-dir {} --no-overlay", scriptPath, normalizedOutputDir);
 
         ProcessBuilder processBuilder = new ProcessBuilder(command);
         processBuilder.redirectErrorStream(true);
@@ -76,9 +84,11 @@ public class PythonSignatureUtil {
         try (OutputStream stdin = process.getOutputStream()) {
             stdin.write(encodedImage.getBytes(StandardCharsets.UTF_8));
             stdin.flush();
+            log.info("[PythonSignatureUtil] Imagen enviada al proceso de Python exitosamente.");
         } catch (IOException writeException) {
             String earlyOutput = readProcessOutputSafely(process);
             process.destroyForcibly();
+            log.error("[PythonSignatureUtil] Error al enviar imagen al proceso: {}", earlyOutput);
             throw new IllegalStateException(
                 buildBrokenPipeMessage(earlyOutput),
                 writeException
@@ -91,6 +101,7 @@ public class PythonSignatureUtil {
         );
         if (!finished) {
             process.destroyForcibly();
+            log.error("[PythonSignatureUtil] El proceso excedió el tiempo límite de {} ms", DEFAULT_TIMEOUT.toMillis());
             throw new IllegalStateException(
                 "El extractor de firmas excedio el tiempo limite"
             );
@@ -100,12 +111,15 @@ public class PythonSignatureUtil {
             process.getInputStream().readAllBytes(),
             StandardCharsets.UTF_8
         ).trim();
+        log.info("[PythonSignatureUtil] Proceso de Python finalizado con exit code {}. Salida (parcial): {}", process.exitValue(), output.length() > 200 ? output.substring(0, 200) + "..." : output);
 
         if (process.exitValue() != 0) {
+            log.error("[PythonSignatureUtil] Python devolvió código de error. Salida completa: {}", output);
             throw new IllegalStateException(buildPythonErrorMessage(output));
         }
 
         if (output.isBlank()) {
+            log.error("[PythonSignatureUtil] El script de Python no devolvió ninguna salida.");
             throw new IllegalStateException(
                 "El extractor de firmas no devolvio salida JSON"
             );
@@ -113,6 +127,7 @@ public class PythonSignatureUtil {
 
         JsonNode rootNode = OBJECT_MAPPER.readTree(output);
         if (rootNode.hasNonNull("error")) {
+            log.error("[PythonSignatureUtil] Error devuelto en el JSON de Python: {}", rootNode.get("error").asText());
             throw new IllegalStateException(rootNode.get("error").asText());
         }
 
