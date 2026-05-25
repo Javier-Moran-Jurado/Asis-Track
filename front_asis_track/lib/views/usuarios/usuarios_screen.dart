@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import '../../services/user_service.dart';
-import '../../services/role_service.dart';
 import '../../themes/app_theme.dart';
 import '../../utils/app_breakpoints.dart';
 import '../../widgets/custom_button.dart';
@@ -192,7 +190,6 @@ class _UsuariosScreenState extends State<UsuariosScreen> {
       itemBuilder: (ctx, i) {
         final u = _usuarios[i];
         final nombre = u['nombreCompleto']?.toString() ?? 'Sin nombre';
-        final inicial = nombre.isNotEmpty ? nombre[0].toUpperCase() : '?';
         
         return DynamicInfoCard(
           title: nombre,
@@ -424,7 +421,7 @@ class _UsuarioFormState extends State<_UsuarioForm> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: _rolId,
+                initialValue: _rolId,
                 decoration: InputDecoration(
                   labelText: 'Rol',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),

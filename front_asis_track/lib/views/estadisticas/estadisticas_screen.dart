@@ -50,10 +50,12 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() {
-        _error = e.toString().replaceFirst('Exception: ', '');
-        _cargandoEventos = false;
-      });
+      if (mounted) {
+        setState(() {
+          _error = e.toString().replaceFirst('Exception: ', '');
+          _cargandoEventos = false;
+        });
+      }
     }
   }
 
@@ -63,10 +65,12 @@ class _EstadisticasScreenState extends State<EstadisticasScreen> {
       final stats = await PlanillaService.obtenerEstadisticas(eventoId);
       if (mounted) setState(() { _estadisticas = stats; _cargandoStats = false; });
     } catch (e) {
-      if (mounted) setState(() {
-        _estadisticas = null;
-        _cargandoStats = false;
-      });
+      if (mounted) {
+        setState(() {
+          _estadisticas = null;
+          _cargandoStats = false;
+        });
+      }
     }
   }
 

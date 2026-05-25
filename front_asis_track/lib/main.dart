@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart' hide ChangeNotifierProvi
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'package:front_asis_track/routes/app_router.dart';
+import 'package:front_asis_track/services/auth_service.dart';
 import 'providers/auth_provider.dart';
+import 'providers/student_provider.dart';
 import 'themes/app_theme.dart';
 
 Future<void> main() async {
@@ -12,6 +14,8 @@ Future<void> main() async {
 
   final authProvider = AuthProvider();
   await authProvider.checkAuthStatus();
+
+  AuthService.onUnauthorized = authProvider.logout;
 
   runApp(MyApp(authProvider: authProvider));
 }
@@ -24,12 +28,17 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ProviderScope(
-      child: ChangeNotifierProvider<AuthProvider>.value(
-        value: authProvider,
+      child: MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AuthProvider>.value(value: authProvider),
+          ChangeNotifierProvider<StudentProvider>(
+            create: (_) => StudentProvider(),
+          ),
+        ],
         child: MaterialApp.router(
           theme: AppTheme.lightTheme,
-          title: 'Asis-Track',
-          routerConfig: appRouter,
+          title: 'AsisTrack',
+          routerConfig: createAppRouter(authProvider),
           debugShowCheckedModeBanner: false,
         ),
       ),

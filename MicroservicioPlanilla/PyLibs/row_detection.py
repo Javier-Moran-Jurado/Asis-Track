@@ -7,7 +7,7 @@ def detect_rows_in_column(firma_col: np.ndarray) -> list[tuple[int, int]]:
     gray = cv2.cvtColor(firma_col, cv2.COLOR_BGR2GRAY)
 
     binary = cv2.adaptiveThreshold(
-        gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 21, 10
+        gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 21, 10
     )
 
     h_len = max(int(img_w * 0.4), 20)

@@ -49,23 +49,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _loginWithGoogle() async {
-    final auth = context.read<AuthProvider>();
-
-    // Limpiar errores previos
-    auth.clearError();
-
-    final success = await auth.loginWithGoogle();
-
-    if (!mounted) return;
-
-    if (success) {
-      context.go('/home');
-    } else if (auth.errorMessage != null) {
-      _showErrorSnackBar(auth.errorMessage!);
-    }
-  }
-
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -114,7 +97,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 16),
                   const Text(
-                    'Asis-Track',
+                    'AsisTrack',
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -192,7 +175,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // ── Botón de Google ──────────────────────────────────────
                   GoogleSignInButton(),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
 
                   // (Registro deshabilitado: solo roles autorizados pueden crear usuarios)
                 ],

@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -40,7 +39,13 @@ class _FormularioInvitadoScreenState extends State<FormularioInvitadoScreen> {
   @override
   void initState() {
     super.initState();
-    _loadData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _loadData().catchError((e) {
+          debugPrint('Error cargando datos del formulario invitado: $e');
+        });
+      }
+    });
   }
 
   Future<void> _loadData() async {
@@ -100,7 +105,9 @@ class _FormularioInvitadoScreenState extends State<FormularioInvitadoScreen> {
             double distanceInMeters = Geolocator.distanceBetween(position.latitude, position.longitude, latEvento, lngEvento);
 
             if (distanceInMeters > 50.0) {
-              if (mounted) ErrorDialog.show(context, 'No puedes registrarte. Estás a \${distanceInMeters.toStringAsFixed(1)} metros del evento (límite 50m).');
+              if (mounted) {
+                ErrorDialog.show(context, 'No puedes registrarte. Estás a ${distanceInMeters.toStringAsFixed(1)} metros del evento (límite 50m).');
+              }
               setState(() => _guardando = false);
               return;
             }
@@ -272,7 +279,7 @@ class _FormularioInvitadoScreenState extends State<FormularioInvitadoScreen> {
       case 'combo':
       case 'radio':
         return DropdownButtonFormField<String>(
-          value: _selectedValues[campo.id!],
+          initialValue: _selectedValues[campo.id!],
           items: campo.opciones.map((opt) => DropdownMenuItem(value: opt, child: Text(opt))).toList(),
           onChanged: (v) => setState(() => _selectedValues[campo.id!] = v),
           decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12)),

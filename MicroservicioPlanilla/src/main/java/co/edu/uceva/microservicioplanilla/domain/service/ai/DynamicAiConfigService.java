@@ -44,7 +44,7 @@ public class DynamicAiConfigService {
     @Value("${app.ai.groq.token:}")
     private String groqToken;
     
-    @Value("${app.ai.groq.model:meta-llama/llama-4-scout-17b-16e-instruct}")
+    @Value("${app.ai.groq.model:llama-3.2-90b-vision-preview}")
     private String groqModel;
 
     public void updateConfig(String provider, String baseUrl, String token, String modelName) {

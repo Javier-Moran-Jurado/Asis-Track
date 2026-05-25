@@ -13,8 +13,7 @@ import '../models/user_model.dart';
 /// En web, usa SharedPreferences como fallback para tokens debido a
 /// limitaciones de flutter_secure_storage_web con el Web Crypto API.
 class AuthService {
-  static String get _authUrl => AppConfig.authUrl;
-  static String get _usuarioUrl => AppConfig.usuarioUrl;
+  static String get _baseUrl => AppConfig.authUrl;
 
   // ── Keys ──
   static const String _keyAccessToken = 'access_token';
@@ -119,7 +118,7 @@ class AuthService {
     String codigo,
     String contrasena,
   ) async {
-    final uri = Uri.parse('$_authUrl/api/v1/auth/login');
+    final uri = Uri.parse('$_baseUrl/api/v1/auth/login');
 
     try {
       final response = await http
@@ -165,7 +164,7 @@ class AuthService {
     String codigo,
     String accessToken,
   ) async {
-    final uri = Uri.parse('$_usuarioUrl/api/v1/usuario-service/usuarios/$codigo');
+    final uri = Uri.parse('$_baseUrl/api/v1/usuario-service/usuarios/$codigo');
 
     try {
       final response = await http.get(
@@ -180,6 +179,8 @@ class AuthService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         return UserModel.fromJson(data['usuario'] as Map<String, dynamic>);
+      } else if (response.statusCode == 401) {
+        await handleUnauthorized();
       } else {
         throw Exception(
             'Error al obtener el perfil del usuario (${response.statusCode}).');
@@ -194,7 +195,7 @@ class AuthService {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // JWT DECODE
+  // JWT DECODE & EXPIRY
   // ══════════════════════════════════════════════════════════════════════════
 
   static Map<String, dynamic> decodeJwtPayload(String token) {
@@ -209,5 +210,46 @@ class AuthService {
 
     final decoded = utf8.decode(base64Url.decode(payload));
     return jsonDecode(decoded) as Map<String, dynamic>;
+  }
+
+  static Future<bool> isTokenExpired() async {
+    final token = await getAccessToken();
+    if (token == null || token.isEmpty) return true;
+    try {
+      final claims = decodeJwtPayload(token);
+      final exp = claims['exp'];
+      if (exp == null) return false;
+      final expiry = DateTime.fromMillisecondsSinceEpoch((exp as int) * 1000);
+      return DateTime.now().isAfter(expiry);
+    } catch (_) {
+      return true;
+    }
+  }
+
+  static Future<DateTime?> getTokenExpiryDate() async {
+    final token = await getAccessToken();
+    if (token == null || token.isEmpty) return null;
+    try {
+      final claims = decodeJwtPayload(token);
+      final exp = claims['exp'];
+      if (exp == null) return null;
+      return DateTime.fromMillisecondsSinceEpoch((exp as int) * 1000);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // UNAUTHORIZED HANDLER
+  // ══════════════════════════════════════════════════════════════════════════
+
+  static Future<void> Function()? onUnauthorized;
+
+  static Future<Never> handleUnauthorized() async {
+    await clearAllStorage();
+    if (onUnauthorized != null) {
+      await onUnauthorized!();
+    }
+    throw Exception('Sesión expirada. Por favor inicia sesión nuevamente.');
   }
 }

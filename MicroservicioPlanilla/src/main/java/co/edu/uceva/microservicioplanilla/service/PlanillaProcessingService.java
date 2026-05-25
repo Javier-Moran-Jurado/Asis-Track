@@ -110,6 +110,7 @@ public class PlanillaProcessingService {
                 for (String localPath : signatureLocalPaths) {
                     signatureBytes.add(Files.readAllBytes(Paths.get(localPath)));
                 }
+                System.out.println("[PlanillaProcessingService] Página " + pageIndex + " -> firmas extraídas: " + signatureBytes.size());
 
                 Map<Integer, List<CellData>> filaMap = new TreeMap<>();
                 for (JsonNode cellNode : arr) {
@@ -120,8 +121,17 @@ public class PlanillaProcessingService {
                     filaMap.computeIfAbsent(filaIdx, k -> new ArrayList<>()).add(new CellData(colName, tipoCampo, val));
                 }
 
+                int signatureFieldsDetected = 0;
+                for (List<CellData> cells : filaMap.values()) {
+                    for (CellData c : cells) {
+                        if ("signature_file".equals(c.tipoCampo)) signatureFieldsDetected++;
+                    }
+                }
+                System.out.println("[PlanillaProcessingService] Página " + pageIndex + " -> filas detectadas por IA: " + filaMap.size() + ", celdas tipo signature_file: " + signatureFieldsDetected);
+
                 List<Campo> campos = campoService.findByPlanillaId(planillaId);
                 int signatureIndex = 0;
+                int signaturesAssigned = 0;
 
                 for (Map.Entry<Integer, List<CellData>> entry : filaMap.entrySet()) {
                     List<DatoRequest> datosFila = new ArrayList<>();
@@ -130,12 +140,18 @@ public class PlanillaProcessingService {
                     for (CellData cell : entry.getValue()) {
                         String valorFinal = cell.valor;
 
-                        if ("signature_file".equals(cell.tipoCampo) && signatureIndex < signatureBytes.size()) {
-                            byte[] sigBytes = signatureBytes.get(signatureIndex);
-                            String s3Key = String.format("planillas/%d/page_%d/firma_%d.png", planillaId, pageIndex, filaIndice);
-                            s3StorageService.upload(sigBytes, s3Key, "image/png");
-                            valorFinal = s3StorageService.publicUrl(s3Key);
-                            signatureIndex++;
+                        if ("signature_file".equals(cell.tipoCampo)) {
+                            if (signatureIndex < signatureBytes.size()) {
+                                byte[] sigBytes = signatureBytes.get(signatureIndex);
+                                String s3Key = String.format("planillas/%d/page_%d/firma_%d.png", planillaId, pageIndex, filaIndice);
+                                s3StorageService.upload(sigBytes, s3Key, "image/png");
+                                valorFinal = s3StorageService.publicUrl(s3Key);
+                                signatureIndex++;
+                                signaturesAssigned++;
+                                System.out.println("[PlanillaProcessingService] Asignada firma #" + signatureIndex + " a fila " + filaIndice + " columna " + cell.colName);
+                            } else {
+                                System.out.println("[PlanillaProcessingService] Fila " + filaIndice + " columna " + cell.colName + " es signature_file pero no hay firma disponible (index=" + signatureIndex + ", total=" + signatureBytes.size() + ")");
+                            }
                         }
 
                         Campo campoMatch = campos.stream()
@@ -148,6 +164,8 @@ public class PlanillaProcessingService {
                             dr.setPosicion(0);
                             dr.setInformacion(valorFinal);
                             datosFila.add(dr);
+                        } else {
+                            System.out.println("[PlanillaProcessingService] Advertencia: no se encontró Campo para columna '" + cell.colName + "'");
                         }
                     }
 
@@ -157,6 +175,7 @@ public class PlanillaProcessingService {
                     filaReq.setDatos(datosFila);
                     filaService.create(filaReq);
                 }
+                System.out.println("[PlanillaProcessingService] Página " + pageIndex + " -> firmas asignadas: " + signaturesAssigned + "/" + signatureBytes.size());
 
                 filaIndiceOffset += filaMap.size();
                 pageIndex++;

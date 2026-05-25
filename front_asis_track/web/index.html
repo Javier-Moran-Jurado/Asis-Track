@@ -18,18 +18,35 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="App de seguimiento de asistencia">
+  <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="pragma" content="no-cache">
+  <meta http-equiv="expires" content="0">
+
+  <script>
+    // Forzar actualización del Service Worker al cargar la página
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        registrations.forEach(function(registration) {
+          registration.update();
+          if (registration.waiting) {
+            registration.waiting.postMessage({type: 'SKIP_WAITING'});
+          }
+        });
+      });
+    }
+  </script>
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="front_asis_track">
+  <meta name="apple-mobile-web-app-title" content="AsisTrack">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>Asis-Track</title>
+  <title>AsisTrack</title>
   <link rel="manifest" href="manifest.json">
 
   <!-- Google Identity Services (OAuth2) -->
@@ -48,7 +65,11 @@
         client_id: '655549064856-hn07fp0osk2c2luodfo679020gt4od1d.apps.googleusercontent.com',
         callback: handleCredentialResponse,
         auto_select: false,
-        cancel_on_tap_outside: true
+        cancel_on_tap_outside: true,
+        // Deshabilitar FedCM para evitar el polling infinito de "status?client_id="
+        // que bloquea el inicio de sesión en navegadores modernos (Chrome 120+).
+        use_fedcm_for_prompt: false,
+        ux_mode: 'popup'
       });
     }
 
@@ -61,6 +82,7 @@
   </script>
 </head>
 <body>
+  <script src="env-config.js"></script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

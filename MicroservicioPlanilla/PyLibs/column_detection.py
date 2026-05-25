@@ -5,7 +5,7 @@ import numpy as np
 import pytesseract
 
 
-def find_firma_position(img_bgr: np.ndarray) -> dict | None:
+def find_firma_position(img_bgr: np.ndarray, verbose: bool = False) -> dict | None:
     gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
     _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
@@ -35,7 +35,8 @@ def find_firma_position(img_bgr: np.ndarray) -> dict | None:
                 firma_ratio = len(firma_part) / full_chars
                 tx = tx + int(tw * (1 - firma_ratio))
                 tw = int(tw * firma_ratio)
-            print(f"  ↷ Encabezado combinado '{text.strip()}' → x ajustado a {tx}")
+            if verbose:
+                print(f"  ↷ Encabezado combinado '{text.strip()}' → x ajustado a {tx}")
 
         best_conf = conf
         best = {
@@ -52,7 +53,7 @@ def find_firma_position(img_bgr: np.ndarray) -> dict | None:
     return best
 
 
-def detect_table_cells(img_bgr: np.ndarray) -> list[dict]:
+def detect_table_cells(img_bgr: np.ndarray, verbose: bool = False) -> list[dict]:
     gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
     img_h, img_w = gray.shape[:2]
 
@@ -86,11 +87,12 @@ def detect_table_cells(img_bgr: np.ndarray) -> list[dict]:
             continue
         cells.append({"x": x, "y": y, "w": w, "h": h})
 
-    print(f"  Detectadas {len(cells)} celdas rectangulares")
+    if verbose:
+        print(f"  Detectadas {len(cells)} celdas rectangulares")
     return cells
 
 
-def find_colliding_cell(cells: list[dict], firma: dict) -> dict | None:
+def find_colliding_cell(cells: list[dict], firma: dict, verbose: bool = False) -> dict | None:
     cx, cy = firma["cx"], firma["cy"]
 
     containing = []
@@ -110,31 +112,35 @@ def find_colliding_cell(cells: list[dict], firma: dict) -> dict | None:
                 containing.append(cell)
 
     if not containing:
-        print("  No se encontro celda que colisione con 'Firma'")
+        if verbose:
+            print("  No se encontro celda que colisione con 'Firma'")
         return None
 
     containing.sort(key=lambda c: c["w"] * c["h"])
     best = containing[0]
-    print(f"  Celda firma: x={best['x']}, y={best['y']}, w={best['w']}, h={best['h']}")
+    if verbose:
+        print(f"  Celda firma: x={best['x']}, y={best['y']}, w={best['w']}, h={best['h']}")
     return best
 
 
-def find_cell_bounds(img_bgr: np.ndarray, firma: dict) -> dict:
+def find_cell_bounds(img_bgr: np.ndarray, firma: dict, verbose: bool = False) -> dict:
     img_h, img_w = img_bgr.shape[:2]
 
-    cells = detect_table_cells(img_bgr)
-    firma_cell = find_colliding_cell(cells, firma)
+    cells = detect_table_cells(img_bgr, verbose=verbose)
+    firma_cell = find_colliding_cell(cells, firma, verbose=verbose)
 
     if firma_cell is not None:
         x1 = firma_cell["x"] + 2
         x2 = firma_cell["x"] + firma_cell["w"] - 2
         y1 = firma_cell["y"] + firma_cell["h"] + 3
     else:
-        print("  Fallback: usando posicion de firma con margen")
+        if verbose:
+            print("  Fallback: usando posicion de firma con margen")
         x1 = max(0, firma["x"] - 10)
         x2 = min(img_w, firma["x"] + firma["w"] + int(img_w * 0.10))
         y1 = firma["y"] + firma["h"] + 3
 
     y2 = img_h
-    print(f"  Bounds -> x=[{x1},{x2}] y=[{y1},{y2}]")
+    if verbose:
+        print(f"  Bounds -> x=[{x1},{x2}] y=[{y1},{y2}]")
     return {"x1": x1, "x2": x2, "y1": y1, "y2": y2}

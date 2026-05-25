@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -40,11 +41,16 @@ class _DigitizationScreenState extends ConsumerState<DigitizationScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _pickImage());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _pickImage(ImageSource.camera));
   }
 
-  Future<void> _pickImage() async {
-    final img = await _picker.pickImage(source: ImageSource.camera, imageQuality: 85);
+  Future<void> _pickImage(ImageSource source) async {
+    final img = await _picker.pickImage(
+      source: source,
+      imageQuality: 85,      // Compresión razonable para reducir tamaño
+      maxWidth: 2000,        // Max 2000px de ancho
+      maxHeight: 2000,       // Max 2000px de alto
+    );
     if (img == null) return;
     final bytes = await img.readAsBytes();
     if (!mounted) return;
@@ -52,6 +58,58 @@ class _DigitizationScreenState extends ConsumerState<DigitizationScreen> {
       _imageBytes = bytes;
       _imageName = img.name;
       _error = null;
+    });
+    await _digitize();
+  }
+
+  /// Redimensiona bytes de imagen si superan el tamaño máximo (para archivos del explorador)
+  Future<Uint8List> _compressImageBytes(Uint8List bytes, String filename) async {
+    // Para PDF y ZIP no hacemos nada
+    final lower = filename.toLowerCase();
+    if (lower.endsWith('.pdf') || lower.endsWith('.zip')) return bytes;
+
+    // Si la imagen es menor a 3MB, la enviamos tal cual
+    if (bytes.length < 3 * 1024 * 1024) return bytes;
+
+    try {
+      final codec = await ui.instantiateImageCodec(
+        bytes,
+        targetWidth: 2000,
+        targetHeight: 2000,
+      );
+      final frame = await codec.getNextFrame();
+      final img = frame.image;
+      final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData != null) {
+        return byteData.buffer.asUint8List();
+      }
+    } catch (_) {}
+    return bytes;
+  }
+
+  Future<void> _seleccionarArchivoExplorador() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf', 'zip'],
+      withData: true,
+    );
+    if (result == null || result.files.isEmpty) return;
+    final file = result.files.first;
+    if (file.bytes == null) return;
+    if (!mounted) return;
+
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    final compressedBytes = await _compressImageBytes(file.bytes!, file.name);
+
+    if (!mounted) return;
+    setState(() {
+      _imageBytes = compressedBytes;
+      _imageName = file.name;
+      _loading = false;
     });
     await _digitize();
   }
@@ -113,8 +171,6 @@ class _DigitizationScreenState extends ConsumerState<DigitizationScreen> {
       List<CampoPreviewModel> campos, List<PlanillaFieldDef> fieldDefs) {
     final encabezados = fieldDefs.map((def) {
       final entry = <String, dynamic>{
-        // 'nombre' is required — backend getTipoCampoFromEstructura reads
-        // enc.path("nombre") to resolve the tipo_campo for each column.
         'nombre': def.label,
         'tipo_campo': def.type,
       };
@@ -138,13 +194,11 @@ class _DigitizationScreenState extends ConsumerState<DigitizationScreen> {
       Uint8List? signatureBytes;
 
       for (final def in fieldDefs) {
-        // Find the CampoPreviewModel that matches this fieldDef
         final campo = campos.where(
           (c) => _normalize(c.nombreCampo) == _normalize(def.label),
         ).firstOrNull;
         if (campo == null) continue;
 
-        // Find the dato for this campo in the current fila
         final dato = fila.datos
             .where((d) => d.campoId == campo.id)
             .firstOrNull;
@@ -172,7 +226,6 @@ class _DigitizationScreenState extends ConsumerState<DigitizationScreen> {
     return records;
   }
 
-  /// Sanitiza fieldDefs: fuerza signature_file si el nombre contiene "firma".
   List<PlanillaFieldDef> sanitizeFieldDefs(List<PlanillaFieldDef> raw) {
     return raw.map((f) {
       final isFirma = f.key.toLowerCase().contains('firma') ||
@@ -189,7 +242,6 @@ class _DigitizationScreenState extends ConsumerState<DigitizationScreen> {
     }).toList();
   }
 
-  /// Sanitiza records: limpia signatureBytes/source si hay campos de firma.
   List<StudentRecord> sanitizeRecords(
       List<StudentRecord> raw, List<PlanillaFieldDef> fieldDefs) {
     final hasSig = fieldDefs.any((f) => f.type == 'signature_file');
@@ -197,7 +249,6 @@ class _DigitizationScreenState extends ConsumerState<DigitizationScreen> {
     return raw.map((r) => r.copyWith(signatureBytes: null, signatureSource: null)).toList();
   }
 
-  /// Construye PlanillaFieldDef desde los campos detectados por OCR.
   List<PlanillaFieldDef> _buildFieldDefs(List<CampoPreviewModel> campos) {
     return campos.map((c) {
       final key = _normalize(c.nombreCampo)
@@ -220,22 +271,34 @@ class _DigitizationScreenState extends ConsumerState<DigitizationScreen> {
       _error = null;
     });
 
+    int? planillaId;
+
     try {
       final planilla = await PlanillaService.crearPlanilla({
         'eventoId': int.parse(widget.eventId),
         'origenId': 1,
       });
-      final planillaId = planilla.id;
+      planillaId = planilla.id;
       if (planillaId == null) throw Exception('No se pudo crear la planilla');
 
       final mimeType = _inferMimeType(_imageName!);
-      final campos = await PlanillaService.proponerEstructura(
-        planillaId: planillaId,
-        fileBytes: _imageBytes!,
-        filename: _imageName!,
-        contentType: mimeType,
-      );
+
+      List<CampoPreviewModel> campos;
+      try {
+        campos = await PlanillaService.proponerEstructura(
+          planillaId: planillaId,
+          fileBytes: _imageBytes!,
+          filename: _imageName!,
+          contentType: mimeType,
+        );
+      } catch (e) {
+        // Eliminar la planilla creada si falla la propuesta de estructura
+        try { await PlanillaService.eliminarPlanilla(planillaId); } catch (_) {}
+        rethrow;
+      }
+
       if (campos.isEmpty) {
+        try { await PlanillaService.eliminarPlanilla(planillaId); } catch (_) {}
         throw Exception('No se detectaron campos en la planilla');
       }
 
@@ -243,13 +306,21 @@ class _DigitizationScreenState extends ConsumerState<DigitizationScreen> {
       final safeFieldDefs = sanitizeFieldDefs(rawFieldDefs);
 
       final estructuraJson = _buildEstructuraJson(campos, safeFieldDefs);
-      final planillaResp = await PlanillaService.digitalizarPlanilla(
-        planillaId: planillaId,
-        fileBytes: _imageBytes!,
-        filename: _imageName!,
-        estructuraJson: estructuraJson,
-        contentType: mimeType,
-      );
+
+      Planilla planillaResp;
+      try {
+        planillaResp = await PlanillaService.digitalizarPlanilla(
+          planillaId: planillaId,
+          fileBytes: _imageBytes!,
+          filename: _imageName!,
+          estructuraJson: estructuraJson,
+          contentType: mimeType,
+        );
+      } catch (e) {
+        // Eliminar la planilla si falla la digitalización
+        try { await PlanillaService.eliminarPlanilla(planillaId); } catch (_) {}
+        rethrow;
+      }
 
       final rawRecords = await _mapPlanillaToRecords(planillaResp, safeFieldDefs);
       final safeRecords = sanitizeRecords(rawRecords, safeFieldDefs);
@@ -271,7 +342,8 @@ class _DigitizationScreenState extends ConsumerState<DigitizationScreen> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+        final msg = e.toString().replaceFirst('Exception: ', '');
+        setState(() => _error = msg);
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -329,17 +401,38 @@ class _DigitizationScreenState extends ConsumerState<DigitizationScreen> {
                 const CircularProgressIndicator(color: AppTheme.primaryColor)
               else
                 Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     ElevatedButton.icon(
-                      onPressed: _pickImage,
-                      icon: const Icon(Icons.photo_camera_outlined),
-                      label: const Text('Tomar/Seleccionar imagen'),
+                      onPressed: () => _pickImage(ImageSource.camera),
+                      icon: const Icon(Icons.photo_camera_outlined, size: 20),
+                      label: const Text('Tomar foto'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primaryColor,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        alignment: Alignment.center,
                       ),
+                    ),
+                    const SizedBox(height: 12),
+                    ElevatedButton.icon(
+                      onPressed: _seleccionarArchivoExplorador,
+                      icon: const Icon(Icons.folder_open_outlined, size: 20),
+                      label: const Text('Seleccionar planilla'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.secondaryColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        alignment: Alignment.center,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Formatos: JPG, PNG, PDF, ZIP',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 11, color: Colors.grey),
                     ),
                   ],
                 ),

@@ -222,7 +222,7 @@ class CampoPreview extends StatelessWidget {
               children: [
                 SizedBox(
                   height: 20, width: 20,
-                  child: Radio<String>(value: opt, groupValue: '', onChanged: null, materialTapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                  child: Icon(Icons.radio_button_unchecked, size: 18, color: Colors.grey.shade400),
                 ),
                 const SizedBox(width: 8),
                 Text(opt, style: TextStyle(color: Colors.grey.shade500, fontSize: 14)),
