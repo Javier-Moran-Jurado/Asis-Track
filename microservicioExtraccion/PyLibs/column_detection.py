@@ -1,55 +1,25 @@
-import logging
 import re
 
 import cv2
 import numpy as np
 import pytesseract
 
-logger = logging.getLogger(__name__)
 
-FIRMA_REGEX = re.compile(r"f[ií]?[r]?m?a?", re.IGNORECASE)
-
-PSM_MODES = [11, 6, 3]
-
-
-def _preprocess_for_tesseract(img_bgr: np.ndarray) -> list[np.ndarray]:
-    """Genera múltiples versiones preprocesadas para maximizar detección de texto."""
+def find_firma_position(img_bgr: np.ndarray) -> dict | None:
     gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
+    _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
-    h, w = gray.shape
-    if w < 600:
-        gray = cv2.resize(gray, (w * 2, h * 2), interpolation=cv2.INTER_CUBIC)
-
-    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
-    gray_clahe = clahe.apply(gray)
-
-    _, binary_otsu = cv2.threshold(gray_clahe, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    _, binary_inv = cv2.threshold(gray_clahe, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-
-    sharpened = cv2.GaussianBlur(gray_clahe, (0, 0), 1.5)
-    sharpened = cv2.addWeighted(gray_clahe, 1.5, sharpened, -0.5, 0)
-    _, binary_sharp = cv2.threshold(sharpened, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-
-    return [binary_otsu, binary_inv, binary_sharp]
-
-
-def _run_tesseract(img: np.ndarray, psm: int) -> dict:
-    return pytesseract.image_to_data(
-        img, config=f"--psm {psm} -l spa+eng", output_type=pytesseract.Output.DICT
+    data = pytesseract.image_to_data(
+        binary, config="--psm 11 -l eng", output_type=pytesseract.Output.DICT
     )
 
-
-def _extract_best_firma(data: dict, best: dict | None, best_conf: int) -> tuple[dict | None, int]:
+    best, best_conf = None, -1
     for i, text in enumerate(data["text"]):
         cleaned = text.strip().lower()
-        if not cleaned:
+        if not re.search(r"f?irm", cleaned) or len(cleaned) < 3:
             continue
-
-        if not FIRMA_REGEX.search(cleaned) or len(cleaned) < 2:
-            continue
-
         conf = int(data["conf"][i])
-        if conf < 15 or conf <= best_conf:
+        if conf < 20 or conf <= best_conf:
             continue
 
         tx = data["left"][i]
@@ -65,54 +35,24 @@ def _extract_best_firma(data: dict, best: dict | None, best_conf: int) -> tuple[
                 firma_ratio = len(firma_part) / full_chars
                 tx = tx + int(tw * (1 - firma_ratio))
                 tw = int(tw * firma_ratio)
+            print(f"  ↷ Encabezado combinado '{text.strip()}' → x ajustado a {tx}")
 
         best_conf = conf
         best = {
-            "x": tx, "y": ty, "w": tw, "h": th,
-            "cx": tx + tw // 2, "cy": ty + th // 2,
-            "text": text.strip(), "conf": conf,
+            "x": tx,
+            "y": ty,
+            "w": tw,
+            "h": th,
+            "cx": tx + tw // 2,
+            "cy": ty + th // 2,
+            "text": text.strip(),
+            "conf": conf,
         }
-        logger.info(f"[Tesseract] Match candidato: '{text.strip()}' conf={conf} pos=({tx},{ty})")
-
-    return best, best_conf
-
-
-def find_firma_position_tesseract(img_bgr: np.ndarray, verbose: bool = False) -> dict | None:
-    """Busca 'Firma' usando Tesseract con múltiples preprocesamientos y modos PSM."""
-    preprocessed_images = _preprocess_for_tesseract(img_bgr)
-
-    best, best_conf = None, -1
-
-    for psm in PSM_MODES:
-        if best is not None and best_conf >= 60:
-            break
-
-        for idx, proc_img in enumerate(preprocessed_images):
-            if best is not None and best_conf >= 60:
-                break
-
-            data = _run_tesseract(proc_img, psm)
-            all_texts = [t.strip() for t in data["text"] if t.strip()]
-
-            if idx == 0:
-                logger.info(f"[Tesseract psm={psm}] Detectó {len(all_texts)} palabras: {all_texts[:15]}")
-
-            best, best_conf = _extract_best_firma(data, best, best_conf)
-
-    if best is None:
-        logger.warning(f"[Tesseract] No se encontró 'Firma' tras probar {len(PSM_MODES)} modos PSM y {len(preprocessed_images)} preprocesamientos")
-    else:
-        logger.info(f"[Tesseract] Seleccionado: '{best['text']}' conf={best['conf']} (psm=óptimo)")
 
     return best
 
 
-def find_firma_position(img_bgr: np.ndarray, verbose: bool = False) -> dict | None:
-    """Busca 'Firma' usando Tesseract OCR con múltiples estrategias."""
-    return find_firma_position_tesseract(img_bgr, verbose=verbose)
-
-
-def detect_table_cells(img_bgr: np.ndarray, verbose: bool = False) -> list[dict]:
+def detect_table_cells(img_bgr: np.ndarray) -> list[dict]:
     gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
     img_h, img_w = gray.shape[:2]
 
@@ -146,12 +86,11 @@ def detect_table_cells(img_bgr: np.ndarray, verbose: bool = False) -> list[dict]
             continue
         cells.append({"x": x, "y": y, "w": w, "h": h})
 
-    if verbose:
-        print(f"  Detectadas {len(cells)} celdas rectangulares")
+    print(f"  Detectadas {len(cells)} celdas rectangulares")
     return cells
 
 
-def find_colliding_cell(cells: list[dict], firma: dict, verbose: bool = False) -> dict | None:
+def find_colliding_cell(cells: list[dict], firma: dict) -> dict | None:
     cx, cy = firma["cx"], firma["cy"]
 
     containing = []
@@ -171,35 +110,31 @@ def find_colliding_cell(cells: list[dict], firma: dict, verbose: bool = False) -
                 containing.append(cell)
 
     if not containing:
-        if verbose:
-            print("  No se encontro celda que colisione con 'Firma'")
+        print("  No se encontro celda que colisione con 'Firma'")
         return None
 
     containing.sort(key=lambda c: c["w"] * c["h"])
     best = containing[0]
-    if verbose:
-        print(f"  Celda firma: x={best['x']}, y={best['y']}, w={best['w']}, h={best['h']}")
+    print(f"  Celda firma: x={best['x']}, y={best['y']}, w={best['w']}, h={best['h']}")
     return best
 
 
-def find_cell_bounds(img_bgr: np.ndarray, firma: dict, verbose: bool = False) -> dict:
+def find_cell_bounds(img_bgr: np.ndarray, firma: dict) -> dict:
     img_h, img_w = img_bgr.shape[:2]
 
-    cells = detect_table_cells(img_bgr, verbose=verbose)
-    firma_cell = find_colliding_cell(cells, firma, verbose=verbose)
+    cells = detect_table_cells(img_bgr)
+    firma_cell = find_colliding_cell(cells, firma)
 
     if firma_cell is not None:
         x1 = firma_cell["x"] + 2
         x2 = firma_cell["x"] + firma_cell["w"] - 2
         y1 = firma_cell["y"] + firma_cell["h"] + 3
     else:
-        if verbose:
-            print("  Fallback: usando posicion de firma con margen")
+        print("  Fallback: usando posicion de firma con margen")
         x1 = max(0, firma["x"] - 10)
         x2 = min(img_w, firma["x"] + firma["w"] + int(img_w * 0.10))
         y1 = firma["y"] + firma["h"] + 3
 
     y2 = img_h
-    if verbose:
-        print(f"  Bounds -> x=[{x1},{x2}] y=[{y1},{y2}]")
+    print(f"  Bounds -> x=[{x1},{x2}] y=[{y1},{y2}]")
     return {"x1": x1, "x2": x2, "y1": y1, "y2": y2}

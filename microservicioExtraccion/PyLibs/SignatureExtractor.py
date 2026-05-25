@@ -9,6 +9,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+from paddleocr import TextDetection
 
 try:
     from .column_detection import find_cell_bounds, find_firma_position
@@ -69,46 +70,23 @@ def extract_firma_column(
     orig_h, orig_w = img_orig.shape[:2]
     scale = target_width / orig_w
     img_orig_scaled = cv2.resize(
-        img_orig, (target_width, int(orig_h * scale)), interpolation=cv2.INTER_LINEAR
+        img_orig, (target_width, int(orig_h * scale)), interpolation=cv2.INTER_CUBIC
     )
+    img_pre = preprocess_for_ocr(img_orig.copy(), target_width=target_width)
 
-    # --- Resolución reducida para OCR (pytesseract no necesita 1800 px) ---
-    OCR_WIDTH = 900
-    ocr_scale = OCR_WIDTH / target_width          # factor para reducir
-    back_scale = target_width / OCR_WIDTH         # factor para escalar coordenadas de vuelta
-
-    img_ocr_small = cv2.resize(
-        img_orig,
-        (OCR_WIDTH, int(orig_h * ocr_scale)),
-        interpolation=cv2.INTER_LINEAR,
-    )
-    img_pre_small = preprocess_for_ocr(img_ocr_small.copy(), target_width=OCR_WIDTH)
-
-    firma = find_firma_position(img_pre_small, verbose=verbose)
+    firma = find_firma_position(img_pre)
     if firma is None:
-        _log("  Reintentando con original a 900 px...", verbose)
-        firma = find_firma_position(img_ocr_small, verbose=verbose)
-
+        _log("  Reintentando con original escalada...", verbose)
+        firma = find_firma_position(img_orig_scaled)
     if firma is None:
         _log("  'Firma' no encontrada", verbose)
         return None
-
-    # Reescalar coordenadas de OCR_WIDTH → target_width
-    firma = {
-        **firma,
-        "x":  int(firma["x"]  * back_scale),
-        "y":  int(firma["y"]  * back_scale),
-        "w":  int(firma["w"]  * back_scale),
-        "h":  int(firma["h"]  * back_scale),
-        "cx": int(firma["cx"] * back_scale),
-        "cy": int(firma["cy"] * back_scale),
-    }
 
     _log(
         f"  '{firma['text']}' pos=({firma['x']},{firma['y']}) conf={firma['conf']}",
         verbose,
     )
-    bounds = find_cell_bounds(img_orig_scaled, firma, verbose=verbose)
+    bounds = find_cell_bounds(img_orig_scaled, firma)
 
     if save_debug_img:
         tag = os.path.splitext(image_name)[0]
@@ -118,7 +96,7 @@ def extract_firma_column(
             else Path(__file__).resolve().parent / "output"
         )
         os.makedirs(dbg_dir, exist_ok=True)
-        save_debug(img_orig_scaled, firma, bounds, os.path.join(dbg_dir, f"{tag}_debug.jpg"))
+        save_debug(img_pre, firma, bounds, os.path.join(dbg_dir, f"{tag}_debug.jpg"))
 
     x1, x2 = bounds["x1"], bounds["x2"]
     y1, y2 = bounds["y1"], bounds["y2"]
@@ -300,16 +278,30 @@ def main():
             image_paths.append(path)
 
     try:
+        paddle_model = TextDetection(
+            thresh=0.01, box_thresh=0.02, unclip_ratio=2.5, limit_side_len=2560
+        )
+        _ = paddle_model
+
         for path in image_paths:
+            base_name = os.path.basename(path)
             print(f"\n{'-' * 55}\nProcesando: {path}")
-            result = extract_signatures(
-                image_source=path,
-                target_width=1800,
-                save_debug_img=True,
-                save_overlay=True,
-                verbose=True,
+            firma_col = extract_firma_column(path)
+            if firma_col is None:
+                continue
+
+            row_bounds = refine_rows(detect_rows_in_column(firma_col))
+            enhanced = enhance_for_detection(firma_col)
+            final_signature_boxes = extract_signature_boxes(
+                firma_col=firma_col, enhanced=enhanced, row_bounds=row_bounds
             )
-            print(f"  Encontradas {result.get('signature_count', 0)} firmas")
+            final_signature_boxes = merge_split_signatures(final_signature_boxes)
+
+            out_img, _ = save_signature_crops(
+                base_name, firma_col, final_signature_boxes, output_dir=out_dir
+            )
+            cv2.imwrite(os.path.join(paddle_out, base_name), out_img)
+            print(f"  Encontradas {len(final_signature_boxes)} firmas")
     except Exception as e:
         print(f"\nError al procesar: {e}")
         import traceback

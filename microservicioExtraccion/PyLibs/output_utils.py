@@ -1,15 +1,9 @@
 import os
 import shutil
-import warnings
 from pathlib import Path
 
 import cv2
 import numpy as np
-
-try:
-    from .signature_boxes import SignatureBox
-except ImportError:
-    from signature_boxes import SignatureBox
 
 
 def save_debug(img_bgr: np.ndarray, firma: dict, bounds: dict, path: str) -> None:
@@ -34,24 +28,23 @@ def save_debug(img_bgr: np.ndarray, firma: dict, bounds: dict, path: str) -> Non
 def save_signature_crops(
     base_name: str,
     firma_col: np.ndarray,
-    final_signature_boxes: list[SignatureBox],
+    final_signature_boxes: list[tuple[np.ndarray, bool, bool]],
     output_dir: str | os.PathLike[str] = "output",
     margin: int = 10,
 ) -> tuple[np.ndarray, list[str]]:
     out_img = firma_col.copy()
     crops_dir = Path(output_dir) / "crops" / Path(base_name).stem
     if os.path.exists(crops_dir):
-        warnings.warn(f"Eliminando directorio existente: {crops_dir}", stacklevel=2)
         shutil.rmtree(crops_dir)
     os.makedirs(crops_dir, exist_ok=True)
 
     crop_paths: list[str] = []
 
-    for i, box in enumerate(final_signature_boxes):
-        cv2.polylines(out_img, [box.poly], isClosed=True, color=(0, 0, 255), thickness=2)
+    for i, (poly, _, _) in enumerate(final_signature_boxes):
+        cv2.polylines(out_img, [poly], isClosed=True, color=(0, 0, 255), thickness=2)
 
-        x1, y1 = box.poly[0]
-        x2, y2 = box.poly[2]
+        x1, y1 = poly[0]
+        x2, y2 = poly[2]
 
         cx1 = max(0, x1 - margin)
         cy1 = max(0, y1 - margin)
