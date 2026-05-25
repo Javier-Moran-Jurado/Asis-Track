@@ -88,6 +88,11 @@ spring:
   session:
     store-type: redis
 
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
   ai:
     ollama:
       base-url: ${OLLAMA_URL:http://localhost:11434}
