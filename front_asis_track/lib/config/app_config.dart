@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 
 import 'app_config_web.dart'
     if (dart.library.io) 'app_config_io.dart';

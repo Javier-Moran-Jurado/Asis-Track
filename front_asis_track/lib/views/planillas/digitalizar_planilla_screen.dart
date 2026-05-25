@@ -465,7 +465,7 @@ class _DigitalizarPlanillaScreenState extends State<DigitalizarPlanillaScreen> {
     }
 
     return DropdownButtonFormField<EventoPlanilla>(
-      value: _eventoSeleccionado,
+      initialValue: _eventoSeleccionado,
       isExpanded: true,
       decoration: InputDecoration(
         labelText: 'Evento',
@@ -1312,14 +1312,12 @@ class _BeforeAfterSlider extends StatefulWidget {
   final Widget right;
   final String leftLabel;
   final String rightLabel;
-  final double initialRatio;
 
   const _BeforeAfterSlider({
     required this.left,
     required this.right,
     required this.leftLabel,
     required this.rightLabel,
-    this.initialRatio = 0.5,
   });
 
   @override
@@ -1332,7 +1330,7 @@ class _BeforeAfterSliderState extends State<_BeforeAfterSlider> {
   @override
   void initState() {
     super.initState();
-    _ratio = widget.initialRatio.clamp(0.15, 0.85);
+    _ratio = 0.5;
   }
 
   void _updateRatio(double width, double dx) {

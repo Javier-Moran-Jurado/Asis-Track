@@ -31,10 +31,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final stats = await PlanillaService.obtenerEstadisticas(_eventoId);
       if (mounted) setState(() { _estadisticas = stats; _cargando = false; });
     } catch (e) {
-      if (mounted) setState(() {
-        _error = e.toString().replaceFirst('Exception: ', '');
-        _cargando = false;
-      });
+      if (mounted) {
+        setState(() {
+          _error = e.toString().replaceFirst('Exception: ', '');
+          _cargando = false;
+        });
+      }
     }
   }
 

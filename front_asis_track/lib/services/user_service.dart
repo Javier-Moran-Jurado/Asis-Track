@@ -1,6 +1,4 @@
-import 'dart:async' show TimeoutException;
 import 'dart:convert';
-import 'dart:io' show SocketException;
 import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
 import 'auth_service.dart';

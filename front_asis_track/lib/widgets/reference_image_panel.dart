@@ -8,7 +8,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/planilla_digital.dart';
 import '../providers/planilla_provider.dart';
-import '../themes/app_theme.dart';
 import 'confirm_crop_button.dart';
 import 'crop_overlay_painter.dart';
 import 'mode_toolbar.dart';
@@ -85,6 +84,7 @@ class _ReferenceImagePanelState extends ConsumerState<ReferenceImagePanel> {
 
     int? target = state.targetRecordIndex;
     if (target == null) {
+      if (!mounted) return;
       final selected = await showModalBottomSheet<int>(
         context: context,
         backgroundColor: Colors.white,

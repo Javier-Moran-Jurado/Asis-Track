@@ -42,13 +42,6 @@ class _EventosScreenState extends State<EventosScreen> {
     return '';
   }
 
-  String _fmt(dynamic iso) {
-    if (iso == null) return '';
-    final dt = DateTime.tryParse(iso.toString());
-    if (dt == null) return iso.toString();
-    return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} '
-        '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-  }
 
   void _showForm({Map<String, dynamic>? evento}) {
     showModalBottomSheet(
@@ -306,8 +299,11 @@ class _EventoFormState extends State<_EventoForm> {
     );
     if (picked != null) {
       setState(() {
-        if (isInicio) _horaInicio = picked;
-        else _horaFin = picked;
+        if (isInicio) {
+          _horaInicio = picked;
+        } else {
+          _horaFin = picked;
+        }
       });
     }
   }
@@ -417,7 +413,7 @@ class _EventoFormState extends State<_EventoForm> {
             _loadingPlaces
                 ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
                 : DropdownButtonFormField<String>(
-                    value: _lugarId,
+                    initialValue: _lugarId,
                     decoration: InputDecoration(labelText: 'Lugar', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8))),
                     hint: const Text('Selecciona un lugar'),
                     items: _lugares.map((l) => DropdownMenuItem(value: l['id'].toString(), child: Text(l['nombre']?.toString() ?? ''))).toList(),

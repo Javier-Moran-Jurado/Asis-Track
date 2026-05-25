@@ -271,7 +271,7 @@ class _LugarFormState extends State<_LugarForm> {
         return;
       }
       final pos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
       );
       _latCtrl.text = pos.latitude.toStringAsFixed(6);
       _lngCtrl.text = pos.longitude.toStringAsFixed(6);
@@ -309,10 +309,12 @@ class _LugarFormState extends State<_LugarForm> {
         );
       }
       widget.onSave();
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(widget.lugar != null ? 'Lugar actualizado' : 'Lugar creado'),
-        backgroundColor: AppTheme.secondaryColor,
-      ));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(widget.lugar != null ? 'Lugar actualizado' : 'Lugar creado'),
+          backgroundColor: AppTheme.secondaryColor,
+        ));
+      }
     } catch (e) {
       if (mounted) ErrorDialog.show(context, e.toString().replaceFirst('Exception: ', ''));
     } finally {

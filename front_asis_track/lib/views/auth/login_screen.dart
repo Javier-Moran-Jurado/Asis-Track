@@ -49,18 +49,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _loginWithGoogle() async {
-    final auth = context.read<AuthProvider>();
-    auth.clearError();
-    final success = await auth.loginWithGoogle();
-    if (!mounted) return;
-    if (success) {
-      context.go('/home');
-    } else if (auth.errorMessage != null) {
-      _showErrorSnackBar(auth.errorMessage!);
-    }
-  }
-
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

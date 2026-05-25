@@ -620,7 +620,7 @@ class _CrearPlanillaScreenState extends State<CrearPlanillaScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           DropdownButtonFormField<EventoPlanilla>(
-            value: _eventoSeleccionado,
+            initialValue: _eventoSeleccionado,
             decoration: InputDecoration(
               labelText: 'Evento',
               hintText: 'Selecciona un evento',
