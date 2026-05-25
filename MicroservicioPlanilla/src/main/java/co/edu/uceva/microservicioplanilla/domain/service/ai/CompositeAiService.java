@@ -109,8 +109,7 @@ public class CompositeAiService {
             try {
                 return fallbackService.extractText(List.of(image), estructuraJson);
             } catch (Exception fallbackEx) {
-                System.err.println("[!] Error crítico en fallback (" + fallbackService.getProviderName() + "): " + fallbackEx.getMessage());
-                return "[Error de OCR: Ambos modelos fallaron. " + fallbackEx.getMessage() + "]";
+                throw new RuntimeException("Ambos modelos de OCR fallaron. Error primario: " + e.getMessage() + " | Error fallback: " + fallbackEx.getMessage());
             }
         }
     }
@@ -140,8 +139,7 @@ public class CompositeAiService {
             try {
                 return fallbackService.extractStructure(List.of(image), tiposPermitidos);
             } catch (Exception fallbackEx) {
-                System.err.println("[!] Error crítico en fallback de Estructura (" + fallbackService.getProviderName() + "): " + fallbackEx.getMessage());
-                return "[Error de OCR: Ambos modelos fallaron al extraer la estructura. " + fallbackEx.getMessage() + "]";
+                throw new RuntimeException("Ambos modelos fallaron al extraer la estructura. Error primario: " + e.getMessage() + " | Error fallback: " + fallbackEx.getMessage());
             }
         }
     }
@@ -160,8 +158,7 @@ public class CompositeAiService {
             try {
                 return fallbackService.extractStructureFromImage(List.of(image), tiposPermitidos);
             } catch (Exception fallbackEx) {
-                System.err.println("[!] Error crítico en fallback de Estructura desde Imagen (" + fallbackService.getProviderName() + "): " + fallbackEx.getMessage());
-                return "[Error: Ambos modelos fallaron al extraer la estructura desde imagen. " + fallbackEx.getMessage() + "]";
+                throw new RuntimeException("Ambos modelos fallaron al extraer la estructura desde imagen. Error primario: " + e.getMessage() + " | Error fallback: " + fallbackEx.getMessage());
             }
         }
     }
