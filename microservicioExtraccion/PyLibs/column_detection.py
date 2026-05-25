@@ -7,30 +7,49 @@ import pytesseract
 
 logger = logging.getLogger(__name__)
 
+FIRMA_REGEX = re.compile(r"f[ií]?[r]?m?a?", re.IGNORECASE)
 
-def find_firma_position_tesseract(img_bgr: np.ndarray, verbose: bool = False) -> dict | None:
-    """Fallback: busca 'Firma' usando Tesseract (legacy)."""
+PSM_MODES = [11, 6, 3]
+
+
+def _preprocess_for_tesseract(img_bgr: np.ndarray) -> list[np.ndarray]:
+    """Genera múltiples versiones preprocesadas para maximizar detección de texto."""
     gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
-    _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
-    data = pytesseract.image_to_data(
-        binary, config="--psm 11 -l spa+eng", output_type=pytesseract.Output.DICT
+    h, w = gray.shape
+    if w < 600:
+        gray = cv2.resize(gray, (w * 2, h * 2), interpolation=cv2.INTER_CUBIC)
+
+    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+    gray_clahe = clahe.apply(gray)
+
+    _, binary_otsu = cv2.threshold(gray_clahe, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    _, binary_inv = cv2.threshold(gray_clahe, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+
+    sharpened = cv2.GaussianBlur(gray_clahe, (0, 0), 1.5)
+    sharpened = cv2.addWeighted(gray_clahe, 1.5, sharpened, -0.5, 0)
+    _, binary_sharp = cv2.threshold(sharpened, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+    return [binary_otsu, binary_inv, binary_sharp]
+
+
+def _run_tesseract(img: np.ndarray, psm: int) -> dict:
+    return pytesseract.image_to_data(
+        img, config=f"--psm {psm} -l spa+eng", output_type=pytesseract.Output.DICT
     )
 
-    all_texts = [t.strip() for t in data["text"] if t.strip()]
-    logger.info(f"[Tesseract] Detectó {len(all_texts)} palabras: {all_texts[:15]}")
 
-    best, best_conf = None, -1
+def _extract_best_firma(data: dict, best: dict | None, best_conf: int) -> tuple[dict | None, int]:
     for i, text in enumerate(data["text"]):
         cleaned = text.strip().lower()
         if not cleaned:
             continue
 
-        if not re.search(r"f[ií]?rma?", cleaned) or len(cleaned) < 3:
+        if not FIRMA_REGEX.search(cleaned) or len(cleaned) < 2:
             continue
 
         conf = int(data["conf"][i])
-        if conf < 20 or conf <= best_conf:
+        if conf < 15 or conf <= best_conf:
             continue
 
         tx = data["left"][i]
@@ -46,8 +65,6 @@ def find_firma_position_tesseract(img_bgr: np.ndarray, verbose: bool = False) ->
                 firma_ratio = len(firma_part) / full_chars
                 tx = tx + int(tw * (1 - firma_ratio))
                 tw = int(tw * firma_ratio)
-            if verbose:
-                print(f"  ↷ Encabezado combinado '{text.strip()}' → x ajustado a {tx}")
 
         best_conf = conf
         best = {
@@ -57,16 +74,41 @@ def find_firma_position_tesseract(img_bgr: np.ndarray, verbose: bool = False) ->
         }
         logger.info(f"[Tesseract] Match candidato: '{text.strip()}' conf={conf} pos=({tx},{ty})")
 
+    return best, best_conf
+
+
+def find_firma_position_tesseract(img_bgr: np.ndarray, verbose: bool = False) -> dict | None:
+    """Busca 'Firma' usando Tesseract con múltiples preprocesamientos y modos PSM."""
+    preprocessed_images = _preprocess_for_tesseract(img_bgr)
+
+    best, best_conf = None, -1
+
+    for psm in PSM_MODES:
+        if best is not None and best_conf >= 60:
+            break
+
+        for idx, proc_img in enumerate(preprocessed_images):
+            if best is not None and best_conf >= 60:
+                break
+
+            data = _run_tesseract(proc_img, psm)
+            all_texts = [t.strip() for t in data["text"] if t.strip()]
+
+            if idx == 0:
+                logger.info(f"[Tesseract psm={psm}] Detectó {len(all_texts)} palabras: {all_texts[:15]}")
+
+            best, best_conf = _extract_best_firma(data, best, best_conf)
+
     if best is None:
-        logger.warning(f"[Tesseract] No se encontró 'Firma' entre {len(all_texts)} palabras")
+        logger.warning(f"[Tesseract] No se encontró 'Firma' tras probar {len(PSM_MODES)} modos PSM y {len(preprocessed_images)} preprocesamientos")
     else:
-        logger.info(f"[Tesseract] Seleccionado: '{best['text']}' conf={best['conf']}")
+        logger.info(f"[Tesseract] Seleccionado: '{best['text']}' conf={best['conf']} (psm=óptimo)")
 
     return best
 
 
 def find_firma_position(img_bgr: np.ndarray, verbose: bool = False) -> dict | None:
-    """Busca 'Firma' usando Tesseract OCR."""
+    """Busca 'Firma' usando Tesseract OCR con múltiples estrategias."""
     return find_firma_position_tesseract(img_bgr, verbose=verbose)
 
 
