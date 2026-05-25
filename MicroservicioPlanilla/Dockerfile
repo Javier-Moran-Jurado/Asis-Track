@@ -36,7 +36,7 @@ RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r /build/requirements.txt
 
 # ── Etapa 3: Imagen Final (Runtime) ──
-FROM eclipse-temurin:17-jre
+FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
