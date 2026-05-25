@@ -1,4 +1,5 @@
 import base64
+import logging
 import os
 import sys
 import tempfile
@@ -7,6 +8,10 @@ from pathlib import Path
 
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
+
+# Configurar logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
+logger = logging.getLogger(__name__)
 
 # Agregar PyLibs al path para imports
 sys.path.insert(0, str(Path(__file__).resolve().parent / "PyLibs"))
@@ -21,15 +26,43 @@ def health():
     return {"status": "ok", "service": "extraccion-firmas"}
 
 
+@app.get("/health/ocr")
+def health_ocr():
+    """
+    Health check que ejecuta Tesseract real para verificar que OCR funciona.
+    """
+    import cv2
+    import numpy as np
+    import pytesseract
+
+    # Crear imagen de prueba con la palabra "Firma"
+    img = np.ones((100, 300, 3), dtype=np.uint8) * 255
+    cv2.putText(img, "Firma", (20, 70), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 0), 3)
+
+    data = pytesseract.image_to_data(img, config="--psm 7 -l spa+eng", output_type=pytesseract.Output.DICT)
+    words = [t.strip() for t in data["text"] if t.strip()]
+
+    return {
+        "status": "ok",
+        "tesseract_version": str(pytesseract.get_tesseract_version()),
+        "detected_words": words,
+        "firma_detected": any("firma" in w.lower() for w in words),
+    }
+
+
 @app.post("/extract")
 async def extract(file: UploadFile = File(...)):
     """
     Recibe una imagen (JPG/PNG/PDF convertido) y devuelve las firmas extraídas
     como array de objetos con base64.
     """
+    logger.info(f"[/extract] Recibiendo archivo: {file.filename}, content_type={file.content_type}")
     contents = await file.read()
     if not contents:
+        logger.warning("[/extract] Archivo vacío")
         raise HTTPException(status_code=400, detail="Archivo vacío")
+
+    logger.info(f"[/extract] Tamaño de archivo: {len(contents)} bytes")
 
     base_name = str(uuid.uuid4())
     output_dir = Path(tempfile.gettempdir()) / "extraccion" / base_name
@@ -46,8 +79,11 @@ async def extract(file: UploadFile = File(...)):
             verbose=False,
         )
 
+        signature_paths = result.get("signature_paths", [])
+        logger.info(f"[/extract] Extracción completada. Firmas encontradas: {len(signature_paths)}")
+
         signatures = []
-        for path in result.get("signature_paths", []):
+        for path in signature_paths:
             path_obj = Path(path)
             if path_obj.exists():
                 with open(path_obj, "rb") as f:
@@ -56,7 +92,10 @@ async def extract(file: UploadFile = File(...)):
                     "filename": path_obj.name,
                     "base64": b64,
                 })
+            else:
+                logger.warning(f"[/extract] Archivo de firma no encontrado: {path}")
 
+        logger.info(f"[/extract] Devolviendo {len(signatures)} firmas como base64")
         return {
             "base_name": result.get("base_name"),
             "count": len(signatures),
@@ -64,6 +103,7 @@ async def extract(file: UploadFile = File(...)):
         }
 
     except Exception as e:
+        logger.exception("[/extract] Error extrayendo firmas")
         raise HTTPException(status_code=500, detail=f"Error extrayendo firmas: {str(e)}")
 
     finally:
@@ -71,6 +111,7 @@ async def extract(file: UploadFile = File(...)):
         import shutil
         if output_dir.exists():
             shutil.rmtree(output_dir, ignore_errors=True)
+            logger.info(f"[/extract] Limpiando temp dir: {output_dir}")
 
 
 @app.post("/crop")

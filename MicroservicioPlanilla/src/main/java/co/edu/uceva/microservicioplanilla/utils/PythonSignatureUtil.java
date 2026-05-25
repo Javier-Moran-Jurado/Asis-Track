@@ -101,13 +101,19 @@ public class PythonSignatureUtil {
             throw new IllegalStateException(rootNode.get("error").asText());
         }
 
+        int reportedCount = rootNode.path("count").asInt(-1);
+        log.info("[PythonSignatureUtil] Microservicio reportó count={}", reportedCount);
+
         JsonNode signaturesNode = rootNode.path("signatures");
         List<String> signaturePaths = new ArrayList<>();
         if (signaturesNode.isArray()) {
             int idx = 0;
             for (JsonNode sigNode : signaturesNode) {
                 String b64 = sigNode.path("base64").asText();
-                if (b64 == null || b64.isBlank()) continue;
+                if (b64 == null || b64.isBlank()) {
+                    log.warn("[PythonSignatureUtil] Firma {} tiene base64 vacío, saltando.", idx);
+                    continue;
+                }
 
                 byte[] sigBytes = Base64.getDecoder().decode(b64);
                 Path sigPath = normalizedOutputDir.resolve("firma_" + String.format("%02d", idx + 1) + ".jpg");
@@ -115,9 +121,11 @@ public class PythonSignatureUtil {
                 signaturePaths.add(sigPath.toString());
                 idx++;
             }
+        } else {
+            log.warn("[PythonSignatureUtil] Nodo 'signatures' no es un array. Tipo: {}", signaturesNode.getNodeType());
         }
 
-        log.info("[PythonSignatureUtil] Extracción completada. {} firmas guardadas en {}", signaturePaths.size(), normalizedOutputDir);
+        log.info("[PythonSignatureUtil] Extracción completada. {} firmas decodificadas y guardadas en {}", signaturePaths.size(), normalizedOutputDir);
         return signaturePaths;
     }
 

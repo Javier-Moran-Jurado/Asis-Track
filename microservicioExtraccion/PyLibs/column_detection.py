@@ -1,23 +1,35 @@
+import logging
 import re
 
 import cv2
 import numpy as np
 import pytesseract
 
+logger = logging.getLogger(__name__)
+
 
 def find_firma_position(img_bgr: np.ndarray, verbose: bool = False) -> dict | None:
     gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
     _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
+    # Usar español + inglés para reconocer "Firma" correctamente
     data = pytesseract.image_to_data(
-        binary, config="--psm 11 -l eng", output_type=pytesseract.Output.DICT
+        binary, config="--psm 11 -l spa+eng", output_type=pytesseract.Output.DICT
     )
+
+    all_texts = [t.strip() for t in data["text"] if t.strip()]
+    logger.info(f"[find_firma_position] Tesseract detectó {len(all_texts)} palabras: {all_texts[:15]}")
 
     best, best_conf = None, -1
     for i, text in enumerate(data["text"]):
         cleaned = text.strip().lower()
-        if not re.search(r"f?irm", cleaned) or len(cleaned) < 3:
+        if not cleaned:
             continue
+
+        # Regex más flexible: firma, firm, fima, con errores OCR
+        if not re.search(r"f[ií]?rma?", cleaned) or len(cleaned) < 3:
+            continue
+
         conf = int(data["conf"][i])
         if conf < 20 or conf <= best_conf:
             continue
@@ -49,6 +61,12 @@ def find_firma_position(img_bgr: np.ndarray, verbose: bool = False) -> dict | No
             "text": text.strip(),
             "conf": conf,
         }
+        logger.info(f"[find_firma_position] Match candidato: '{text.strip()}' conf={conf} pos=({tx},{ty})")
+
+    if best is None:
+        logger.warning(f"[find_firma_position] No se encontró 'Firma' entre {len(all_texts)} palabras detectadas")
+    else:
+        logger.info(f"[find_firma_position] Seleccionado: '{best['text']}' conf={best['conf']}")
 
     return best
 
