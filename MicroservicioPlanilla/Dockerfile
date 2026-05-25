@@ -16,6 +16,7 @@ RUN mvn package -DskipTests -B
 # ── Etapa 2: Construcción de dependencias Python ──
 FROM eclipse-temurin:17-jdk-jammy AS python-builder
 WORKDIR /build
+ENV HOME=/root
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         python3 \
@@ -35,12 +36,13 @@ RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir opencv-python-headless \
     && pip install --no-cache-dir -r /build/requirements.txt
 
-# Pre-descargar modelos de PaddleOCR para evitar timeouts en el primer request
-RUN python3 -c "from paddleocr import PaddleOCR; PaddleOCR(use_angle_cls=False, lang='en')"
+# Pre-descargar modelos de PaddleOCR haciendo una inferencia de prueba (fuerza la descarga)
+RUN python3 -c "import numpy as np; from paddleocr import PaddleOCR; ocr = PaddleOCR(use_angle_cls=False, lang='en'); ocr.ocr(np.zeros((100, 100, 3), dtype=np.uint8))"
 
 # ── Etapa 3: Imagen Final (Runtime) ──
 FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
+ENV HOME=/root
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         python3 \
