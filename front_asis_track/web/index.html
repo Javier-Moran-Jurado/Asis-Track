@@ -69,12 +69,12 @@
         cancel_on_tap_outside: true,
         // Deshabilitar FedCM para evitar el polling infinito de "status?client_id="
         // que bloquea el inicio de sesión en navegadores modernos (Chrome 120+).
-        use_fedcm_for_prompt: false,
-        ux_mode: 'popup'
+        use_fedcm_for_prompt: false
       });
     }
 
     function handleCredentialResponse(response) {
+      console.log('GIS handleCredentialResponse called', response);
       window.googleIdToken = response.credential;
       window.dispatchEvent(new Event('google-signin-success'));
     }
