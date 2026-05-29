@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
 import '../models/user_model.dart';
+import 'api_client.dart';
 import 'auth_service.dart';
 
 /// Servicio de autenticacion con Google OAuth2.
@@ -61,16 +61,11 @@ class GoogleAuthService {
     debugPrint('[GoogleAuthService] Starting OAuth2 authentication...');
 
     final uri = Uri.parse('$_baseUrl/api/v1/auth/oauth2/google');
-    final response = await http
-        .post(
-          uri,
-          headers: {
-            'Content-Type': 'application/json',
-            'ngrok-skip-browser-warning': 'true',
-          },
-          body: jsonEncode({'idToken': idToken}),
-        )
-        .timeout(const Duration(seconds: 30));
+    final response = await ApiClient.post(
+      uri,
+      body: jsonEncode({'idToken': idToken}),
+      requiresAuth: false,
+    );
 
     debugPrint(
         '[GoogleAuthService] OAuth2 response status: ${response.statusCode}');

@@ -3,10 +3,10 @@ import 'dart:convert';
 import 'dart:io' show SocketException;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_config.dart';
 import '../models/user_model.dart';
+import 'api_client.dart';
 
 /// Servicio de autenticación.
 ///
@@ -121,19 +121,14 @@ class AuthService {
     final uri = Uri.parse('$_baseUrl/api/v1/auth/login');
 
     try {
-      final response = await http
-          .post(
-            uri,
-            headers: {
-              'Content-Type': 'application/json',
-              'ngrok-skip-browser-warning': 'true',
-            },
-            body: jsonEncode({
-              'codigo': int.parse(codigo),
-              'contrasena': contrasena,
-            }),
-          )
-          .timeout(const Duration(seconds: 30));
+      final response = await ApiClient.post(
+        uri,
+        body: jsonEncode({
+          'codigo': int.parse(codigo),
+          'contrasena': contrasena,
+        }),
+        requiresAuth: false,
+      );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -167,21 +162,12 @@ class AuthService {
     final uri = Uri.parse('$_baseUrl/api/v1/usuario-service/usuarios/$codigo');
 
     try {
-      final response = await http.get(
-        uri,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $accessToken',
-          'ngrok-skip-browser-warning': 'true',
-        },
-      ).timeout(const Duration(seconds: 30));
+      final response = await ApiClient.get(uri);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         return UserModel.fromJson(data['usuario'] as Map<String, dynamic>);
       } else if (response.statusCode == 401) {
-        // NO llamar handleUnauthorized() aquí: durante el login es destructivo
-        // porque borra los tokens recién guardados.
         throw Exception('Token no autorizado para obtener perfil (401).');
       } else if (response.statusCode == 404) {
         throw Exception('Usuario no encontrado en el sistema (404).');

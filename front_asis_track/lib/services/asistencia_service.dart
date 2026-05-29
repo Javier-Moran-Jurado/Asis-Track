@@ -1,42 +1,30 @@
 import 'dart:convert';
 import 'dart:async' show TimeoutException;
 import 'dart:io' show SocketException;
-import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
 import '../models/evento_qr.dart';
 import '../models/zona.dart';
-import 'auth_service.dart';
+import 'api_client.dart';
 
 /// Servicio que se comunica con el microservicio de asistencia.
-/// BASE_URL apunta al gateway/backend real; ajústala según el entorno.
 class AsistenciaService {
-  // Ajustado para funcionar en dispositivo físico (moto g52), web o escritorio.
   static String get _baseUrl => AppConfig.planillaUrl;
-
 
   // ─────────────────────────────────────────────────────────────────────────
   // Valida el token del QR contra el backend y devuelve los detalles del evento.
-  // Lanza [Exception] si el QR está expirado o es inválido.
   // ─────────────────────────────────────────────────────────────────────────
   static Future<EventoQr> validarQr(String tokenQr) async {
     final uri = Uri.parse('$_baseUrl/asistencia/qr/validar');
     try {
-      final response = await http
-          .post(
-            uri,
-            headers: {
-              'Content-Type': 'application/json',
-              'ngrok-skip-browser-warning': 'true',
-            },
-            body: jsonEncode({'tokenQr': tokenQr}),
-          )
-          .timeout(const Duration(seconds: 30));
+      final response = await ApiClient.post(
+        uri,
+        body: jsonEncode({'tokenQr': tokenQr}),
+        requiresAuth: false,
+      );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         return EventoQr.fromJson({...data, 'tokenQr': tokenQr});
-      } else if (response.statusCode == 401) {
-        await AuthService.handleUnauthorized();
       } else if (response.statusCode == 410) {
         throw Exception('El código QR ha expirado.');
       } else {
@@ -53,8 +41,6 @@ class AsistenciaService {
 
   // ─────────────────────────────────────────────────────────────────────────
   // Registra la asistencia del estudiante.
-  // Incluye ubicación GPS opcional.
-  // Devuelve el mensaje de éxito del backend.
   // ─────────────────────────────────────────────────────────────────────────
   static Future<String> registrarAsistencia({
     required String tokenQr,
@@ -73,30 +59,21 @@ class AsistenciaService {
     }
 
     try {
-      final response = await http
-          .post(
-            uri,
-            headers: {
-              'Content-Type': 'application/json',
-              'ngrok-skip-browser-warning': 'true',
-            },
-            body: jsonEncode(body),
-          )
-          .timeout(const Duration(seconds: 30));
+      final response = await ApiClient.post(
+        uri,
+        body: jsonEncode(body),
+        requiresAuth: false,
+      );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
-        return data['mensaje'] as String? ??
-            'Asistencia registrada exitosamente.';
-      } else if (response.statusCode == 401) {
-        await AuthService.handleUnauthorized();
+        return data['mensaje'] as String? ?? 'Asistencia registrada exitosamente.';
       } else if (response.statusCode == 409) {
         throw Exception('Ya registraste tu asistencia para este evento.');
       } else if (response.statusCode == 410) {
         throw Exception('El código QR ha expirado.');
       } else {
-        throw Exception(
-            'Error al registrar asistencia (${response.statusCode}).');
+        throw Exception('Error al registrar asistencia (${response.statusCode}).');
       }
     } on TimeoutException {
       throw Exception(
@@ -113,10 +90,7 @@ class AsistenciaService {
   static Future<List<Zona>> fetchZonas() async {
     final uri = Uri.parse('$_baseUrl/asistencia/zonas');
     try {
-      final response = await http.get(
-        uri,
-        headers: {'ngrok-skip-browser-warning': 'true'},
-      ).timeout(const Duration(seconds: 30));
+      final response = await ApiClient.get(uri, requiresAuth: false);
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         return data.map((z) => Zona.fromJson(z)).toList();
@@ -140,22 +114,15 @@ class AsistenciaService {
   static Future<EventoQr> crearEvento(Map<String, dynamic> payload) async {
     final uri = Uri.parse('$_baseUrl/asistencia/crear');
     try {
-      final response = await http
-          .post(
-            uri,
-            headers: {
-              'Content-Type': 'application/json',
-              'ngrok-skip-browser-warning': 'true',
-            },
-            body: jsonEncode(payload),
-          )
-          .timeout(const Duration(seconds: 30));
+      final response = await ApiClient.post(
+        uri,
+        body: jsonEncode(payload),
+        requiresAuth: false,
+      );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         return EventoQr.fromJson(data);
-      } else if (response.statusCode == 401) {
-        await AuthService.handleUnauthorized();
       } else {
         throw Exception('Error al crear el evento (${response.statusCode})');
       }

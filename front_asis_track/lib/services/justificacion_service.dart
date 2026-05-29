@@ -1,38 +1,12 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
-import 'auth_service.dart';
-
-String _msg(http.Response r) {
-  try {
-    final b = jsonDecode(r.body) as Map<String, dynamic>?;
-    if (b == null) return 'Error ${r.statusCode}';
-    if (b['mensaje'] != null) return b['mensaje'].toString();
-    if (b['message'] != null) return b['message'].toString();
-    if (b['error'] != null) return b['error'].toString();
-    return 'Error ${r.statusCode}';
-  } catch (_) {
-    return 'Error ${r.statusCode}';
-  }
-}
+import 'api_client.dart';
 
 /// Servicio para la gestión de justificaciones.
 ///
 /// Conecta con el backend real: /api/v1/planilla-service/justificaciones
 class JustificacionService {
   static String get _url => AppConfig.planillaUrl;
-
-  static Future<String?> _token() async {
-    final t = await AuthService.getAccessToken();
-    if (t == null || t.isEmpty) throw Exception('No hay sesión activa.');
-    return t;
-  }
-
-  static Map<String, String> _h(String t) => {
-    'Content-Type': 'application/json',
-    'Authorization': 'Bearer $t',
-    'ngrok-skip-browser-warning': 'true',
-  };
 
   // ══════════════════════════════════════════════════════════════════════════
   // SOLICITAR JUSTIFICACIÓN
@@ -45,7 +19,6 @@ class JustificacionService {
     required String motivo,
     String? documentoUrl,
   }) async {
-    final t = await _token();
     final body = <String, dynamic>{
       'eventoId': eventoId,
       'codigoEstudiante': codigoEstudiante,
@@ -54,20 +27,13 @@ class JustificacionService {
     if (documentoUrl != null && documentoUrl.isNotEmpty) {
       body['documentoUrl'] = documentoUrl;
     }
-    final r = await http
-        .post(
-          Uri.parse('$_url/api/v1/planilla-service/justificaciones/solicitar'),
-          headers: _h(t!),
-          body: jsonEncode(body),
-        )
-        .timeout(const Duration(seconds: 30));
-    if (r.statusCode == 201 || r.statusCode == 200) {
-      return jsonDecode(r.body) as Map<String, dynamic>;
+
+    final uri = Uri.parse('$_url/api/v1/planilla-service/justificaciones/solicitar');
+    final response = await ApiClient.post(uri, body: jsonEncode(body));
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
     }
-    if (r.statusCode == 401) {
-      await AuthService.handleUnauthorized();
-    }
-    throw Exception(_msg(r));
+    throw Exception(ApiClient.extractErrorMessage(response));
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -80,27 +46,19 @@ class JustificacionService {
     required int codigoDecano,
     String? observaciones,
   }) async {
-    final t = await _token();
     final body = <String, dynamic>{
       'codigoDecano': codigoDecano,
     };
     if (observaciones != null && observaciones.isNotEmpty) {
       body['observaciones'] = observaciones;
     }
-    final r = await http
-        .post(
-          Uri.parse('$_url/api/v1/planilla-service/justificaciones/$id/aprobar'),
-          headers: _h(t!),
-          body: jsonEncode(body),
-        )
-        .timeout(const Duration(seconds: 30));
-    if (r.statusCode == 200) {
-      return jsonDecode(r.body) as Map<String, dynamic>;
+
+    final uri = Uri.parse('$_url/api/v1/planilla-service/justificaciones/$id/aprobar');
+    final response = await ApiClient.post(uri, body: jsonEncode(body));
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
     }
-    if (r.statusCode == 401) {
-      await AuthService.handleUnauthorized();
-    }
-    throw Exception(_msg(r));
+    throw Exception(ApiClient.extractErrorMessage(response));
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -113,27 +71,19 @@ class JustificacionService {
     required int codigoDecano,
     String? observaciones,
   }) async {
-    final t = await _token();
     final body = <String, dynamic>{
       'codigoDecano': codigoDecano,
     };
     if (observaciones != null && observaciones.isNotEmpty) {
       body['observaciones'] = observaciones;
     }
-    final r = await http
-        .post(
-          Uri.parse('$_url/api/v1/planilla-service/justificaciones/$id/rechazar'),
-          headers: _h(t!),
-          body: jsonEncode(body),
-        )
-        .timeout(const Duration(seconds: 30));
-    if (r.statusCode == 200) {
-      return jsonDecode(r.body) as Map<String, dynamic>;
+
+    final uri = Uri.parse('$_url/api/v1/planilla-service/justificaciones/$id/rechazar');
+    final response = await ApiClient.post(uri, body: jsonEncode(body));
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
     }
-    if (r.statusCode == 401) {
-      await AuthService.handleUnauthorized();
-    }
-    throw Exception(_msg(r));
+    throw Exception(ApiClient.extractErrorMessage(response));
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -142,20 +92,12 @@ class JustificacionService {
 
   /// GET /api/v1/planilla-service/justificaciones/{id}
   static Future<Map<String, dynamic>> obtenerJustificacion(int id) async {
-    final t = await _token();
-    final r = await http
-        .get(
-          Uri.parse('$_url/api/v1/planilla-service/justificaciones/$id'),
-          headers: _h(t!),
-        )
-        .timeout(const Duration(seconds: 30));
-    if (r.statusCode == 200) {
-      return jsonDecode(r.body) as Map<String, dynamic>;
+    final uri = Uri.parse('$_url/api/v1/planilla-service/justificaciones/$id');
+    final response = await ApiClient.get(uri);
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
     }
-    if (r.statusCode == 401) {
-      await AuthService.handleUnauthorized();
-    }
-    throw Exception(_msg(r));
+    throw Exception(ApiClient.extractErrorMessage(response));
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -164,21 +106,13 @@ class JustificacionService {
 
   /// GET /api/v1/planilla-service/justificaciones/estudiante/{codigoEstudiante}
   static Future<List<Map<String, dynamic>>> obtenerPorEstudiante(int codigoEstudiante) async {
-    final t = await _token();
-    final r = await http
-        .get(
-          Uri.parse('$_url/api/v1/planilla-service/justificaciones/estudiante/$codigoEstudiante'),
-          headers: _h(t!),
-        )
-        .timeout(const Duration(seconds: 30));
-    if (r.statusCode == 200) {
-      final list = jsonDecode(r.body) as List<dynamic>;
+    final uri = Uri.parse('$_url/api/v1/planilla-service/justificaciones/estudiante/$codigoEstudiante');
+    final response = await ApiClient.get(uri);
+    if (response.statusCode == 200) {
+      final list = jsonDecode(response.body) as List<dynamic>;
       return list.map((e) => e as Map<String, dynamic>).toList();
     }
-    if (r.statusCode == 401) {
-      await AuthService.handleUnauthorized();
-    }
-    throw Exception(_msg(r));
+    throw Exception(ApiClient.extractErrorMessage(response));
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -187,21 +121,13 @@ class JustificacionService {
 
   /// GET /api/v1/planilla-service/justificaciones/evento/{eventoId}
   static Future<List<Map<String, dynamic>>> obtenerPorEvento(int eventoId) async {
-    final t = await _token();
-    final r = await http
-        .get(
-          Uri.parse('$_url/api/v1/planilla-service/justificaciones/evento/$eventoId'),
-          headers: _h(t!),
-        )
-        .timeout(const Duration(seconds: 30));
-    if (r.statusCode == 200) {
-      final list = jsonDecode(r.body) as List<dynamic>;
+    final uri = Uri.parse('$_url/api/v1/planilla-service/justificaciones/evento/$eventoId');
+    final response = await ApiClient.get(uri);
+    if (response.statusCode == 200) {
+      final list = jsonDecode(response.body) as List<dynamic>;
       return list.map((e) => e as Map<String, dynamic>).toList();
     }
-    if (r.statusCode == 401) {
-      await AuthService.handleUnauthorized();
-    }
-    throw Exception(_msg(r));
+    throw Exception(ApiClient.extractErrorMessage(response));
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -210,21 +136,13 @@ class JustificacionService {
 
   /// GET /api/v1/planilla-service/justificaciones/estado/{estado}
   static Future<List<Map<String, dynamic>>> obtenerPorEstado(String estado) async {
-    final t = await _token();
-    final r = await http
-        .get(
-          Uri.parse('$_url/api/v1/planilla-service/justificaciones/estado/$estado'),
-          headers: _h(t!),
-        )
-        .timeout(const Duration(seconds: 30));
-    if (r.statusCode == 200) {
-      final list = jsonDecode(r.body) as List<dynamic>;
+    final uri = Uri.parse('$_url/api/v1/planilla-service/justificaciones/estado/$estado');
+    final response = await ApiClient.get(uri);
+    if (response.statusCode == 200) {
+      final list = jsonDecode(response.body) as List<dynamic>;
       return list.map((e) => e as Map<String, dynamic>).toList();
     }
-    if (r.statusCode == 401) {
-      await AuthService.handleUnauthorized();
-    }
-    throw Exception(_msg(r));
+    throw Exception(ApiClient.extractErrorMessage(response));
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -233,21 +151,13 @@ class JustificacionService {
 
   /// GET /api/v1/planilla-service/justificaciones/all
   static Future<List<Map<String, dynamic>>> obtenerTodas() async {
-    final t = await _token();
-    final r = await http
-        .get(
-          Uri.parse('$_url/api/v1/planilla-service/justificaciones/all'),
-          headers: _h(t!),
-        )
-        .timeout(const Duration(seconds: 30));
-    if (r.statusCode == 200) {
-      final list = jsonDecode(r.body) as List<dynamic>;
+    final uri = Uri.parse('$_url/api/v1/planilla-service/justificaciones/all');
+    final response = await ApiClient.get(uri);
+    if (response.statusCode == 200) {
+      final list = jsonDecode(response.body) as List<dynamic>;
       return list.map((e) => e as Map<String, dynamic>).toList();
     }
-    if (r.statusCode == 401) {
-      await AuthService.handleUnauthorized();
-    }
-    throw Exception(_msg(r));
+    throw Exception(ApiClient.extractErrorMessage(response));
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -256,13 +166,10 @@ class JustificacionService {
 
   /// DELETE /api/v1/planilla-service/justificaciones/{id}
   static Future<void> eliminar(int id) async {
-    final t = await _token();
-    final r = await http
-        .delete(
-          Uri.parse('$_url/api/v1/planilla-service/justificaciones/$id'),
-          headers: _h(t!),
-        )
-        .timeout(const Duration(seconds: 30));
-    if (r.statusCode != 204 && r.statusCode != 200) throw Exception(_msg(r));
+    final uri = Uri.parse('$_url/api/v1/planilla-service/justificaciones/$id');
+    final response = await ApiClient.delete(uri);
+    if (response.statusCode != 204 && response.statusCode != 200) {
+      throw Exception(ApiClient.extractErrorMessage(response));
+    }
   }
 }

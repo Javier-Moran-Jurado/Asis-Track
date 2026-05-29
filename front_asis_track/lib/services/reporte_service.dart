@@ -1,20 +1,6 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
-import 'auth_service.dart';
-
-String _msg(http.Response r) {
-  try {
-    final b = jsonDecode(r.body) as Map<String, dynamic>?;
-    if (b == null) return 'Error ${r.statusCode}';
-    if (b['mensaje'] != null) return b['mensaje'].toString();
-    if (b['message'] != null) return b['message'].toString();
-    if (b['error'] != null) return b['error'].toString();
-    return 'Error ${r.statusCode}';
-  } catch (_) {
-    return 'Error ${r.statusCode}';
-  }
-}
+import 'api_client.dart';
 
 /// Servicio de reportes y estadísticas.
 ///
@@ -22,36 +8,18 @@ String _msg(http.Response r) {
 class ReporteService {
   static String get _url => AppConfig.planillaUrl;
 
-  static Future<String?> _token() async {
-    final t = await AuthService.getAccessToken();
-    if (t == null || t.isEmpty) throw Exception('No hay sesión activa.');
-    return t;
-  }
-
-  static Map<String, String> _h(String t) => {
-    'Content-Type': 'application/json',
-    'Authorization': 'Bearer $t',
-    'ngrok-skip-browser-warning': 'true',
-  };
-
   // ══════════════════════════════════════════════════════════════════════════
   // RESUMEN DE JUSTIFICACIONES
   // ══════════════════════════════════════════════════════════════════════════
 
   /// GET /api/v1/planilla-service/reportes/justificaciones/resumen
-  /// Retorna: { "pendientes": int, "aprobadas": int, "rechazadas": int, "total": int }
   static Future<Map<String, dynamic>> resumenJustificaciones() async {
-    final t = await _token();
-    final r = await http
-        .get(
-          Uri.parse('$_url/api/v1/planilla-service/reportes/justificaciones/resumen'),
-          headers: _h(t!),
-        )
-        .timeout(const Duration(seconds: 30));
-    if (r.statusCode == 200) {
-      return jsonDecode(r.body) as Map<String, dynamic>;
+    final uri = Uri.parse('$_url/api/v1/planilla-service/reportes/justificaciones/resumen');
+    final response = await ApiClient.get(uri);
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
     }
-    throw Exception(_msg(r));
+    throw Exception(ApiClient.extractErrorMessage(response));
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -63,18 +31,14 @@ class ReporteService {
     int eventoId, {
     int? bins,
   }) async {
-    final t = await _token();
     final query = bins != null ? '?bins=$bins' : '';
-    final r = await http
-        .get(
-          Uri.parse('$_url/api/v1/planilla-service/reportes/evento/$eventoId/estadisticas-completas$query'),
-          headers: _h(t!),
-        )
-        .timeout(const Duration(seconds: 30));
-    if (r.statusCode == 200) {
-      return jsonDecode(r.body) as Map<String, dynamic>;
+    final uri = Uri.parse(
+        '$_url/api/v1/planilla-service/reportes/evento/$eventoId/estadisticas-completas$query');
+    final response = await ApiClient.get(uri);
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
     }
-    throw Exception(_msg(r));
+    throw Exception(ApiClient.extractErrorMessage(response));
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -87,18 +51,14 @@ class ReporteService {
     String nombreCampo, {
     int? bins,
   }) async {
-    final t = await _token();
     final query = bins != null ? '?bins=$bins' : '';
-    final r = await http
-        .get(
-          Uri.parse('$_url/api/v1/planilla-service/reportes/evento/$eventoId/campo/$nombreCampo/estadisticas$query'),
-          headers: _h(t!),
-        )
-        .timeout(const Duration(seconds: 30));
-    if (r.statusCode == 200) {
-      return jsonDecode(r.body) as Map<String, dynamic>;
+    final uri = Uri.parse(
+        '$_url/api/v1/planilla-service/reportes/evento/$eventoId/campo/$nombreCampo/estadisticas$query');
+    final response = await ApiClient.get(uri);
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
     }
-    throw Exception(_msg(r));
+    throw Exception(ApiClient.extractErrorMessage(response));
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -111,18 +71,14 @@ class ReporteService {
     List<String> campos, {
     int? bins,
   }) async {
-    final t = await _token();
     final camposParam = campos.map((c) => 'campos=$c').join('&');
     final binsParam = bins != null ? '&bins=$bins' : '';
-    final r = await http
-        .get(
-          Uri.parse('$_url/api/v1/planilla-service/reportes/evento/$eventoId/comparativa?$camposParam$binsParam'),
-          headers: _h(t!),
-        )
-        .timeout(const Duration(seconds: 30));
-    if (r.statusCode == 200) {
-      return jsonDecode(r.body) as Map<String, dynamic>;
+    final uri = Uri.parse(
+        '$_url/api/v1/planilla-service/reportes/evento/$eventoId/comparativa?$camposParam$binsParam');
+    final response = await ApiClient.get(uri);
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
     }
-    throw Exception(_msg(r));
+    throw Exception(ApiClient.extractErrorMessage(response));
   }
 }

@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
-import 'auth_service.dart';
+import 'api_client.dart';
 
 /// Servicio para subir archivos al backend y obtener una URL pública.
 ///
@@ -10,25 +10,15 @@ import 'auth_service.dart';
 class UploadFileService {
   static String get _url => AppConfig.planillaUrl;
 
-  static Future<String?> _token() async {
-    final t = await AuthService.getAccessToken();
-    if (t == null || t.isEmpty) throw Exception('No hay sesión activa.');
-    return t;
-  }
-
-  /// Sube un archivo (bytes + nombre + contentType) al storage del backend.
+  /// Sube un archivo (bytes + nombre) al storage del backend.
   /// Retorna la URL pública del archivo subido.
   static Future<String> uploadFile({
     required Uint8List bytes,
     required String filename,
     String? contentType,
   }) async {
-    final t = await _token();
     final uri = Uri.parse('$_url/api/v1/planilla-service/upload');
-
-    final request = http.MultipartRequest('POST', uri);
-    request.headers['Authorization'] = 'Bearer $t';
-    request.headers['ngrok-skip-browser-warning'] = 'true';
+    final request = await ApiClient.multipartRequest('POST', uri);
 
     request.files.add(http.MultipartFile.fromBytes(
       'file',
@@ -48,18 +38,6 @@ class UploadFileService {
       return url;
     }
 
-    if (response.statusCode == 401) {
-      await AuthService.handleUnauthorized();
-    }
-
-    String msg = 'Error al subir archivo (${response.statusCode})';
-    try {
-      final body = jsonDecode(response.body) as Map<String, dynamic>?;
-      msg = body?['message']?.toString() ??
-          body?['error']?.toString() ??
-          body?['mensaje']?.toString() ??
-          msg;
-    } catch (_) {}
-    throw Exception(msg);
+    throw Exception(ApiClient.extractErrorMessage(response));
   }
 }
