@@ -132,10 +132,12 @@ class _GoogleSignInButtonWebState extends State<GoogleSignInButtonWeb> {
       });
     }
 
-    return SizedBox(
-      height: 48,
-      width: double.infinity,
-      child: const HtmlElementView(viewType: viewType),
+    return Center(
+      child: SizedBox(
+        height: 48,
+        width: 300,
+        child: const HtmlElementView(viewType: viewType),
+      ),
     );
   }
 }
