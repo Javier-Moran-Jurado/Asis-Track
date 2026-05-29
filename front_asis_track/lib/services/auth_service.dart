@@ -180,7 +180,11 @@ class AuthService {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         return UserModel.fromJson(data['usuario'] as Map<String, dynamic>);
       } else if (response.statusCode == 401) {
-        await handleUnauthorized();
+        // NO llamar handleUnauthorized() aquí: durante el login es destructivo
+        // porque borra los tokens recién guardados.
+        throw Exception('Token no autorizado para obtener perfil (401).');
+      } else if (response.statusCode == 404) {
+        throw Exception('Usuario no encontrado en el sistema (404).');
       } else {
         throw Exception(
             'Error al obtener el perfil del usuario (${response.statusCode}).');

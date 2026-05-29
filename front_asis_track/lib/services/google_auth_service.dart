@@ -58,6 +58,8 @@ class GoogleAuthService {
 
   static Future<UserModel> _authenticate(
       String idToken, String fallbackEmail) async {
+    debugPrint('[GoogleAuthService] Starting OAuth2 authentication...');
+
     final uri = Uri.parse('$_baseUrl/api/v1/auth/oauth2/google');
     final response = await http
         .post(
@@ -70,11 +72,15 @@ class GoogleAuthService {
         )
         .timeout(const Duration(seconds: 30));
 
+    debugPrint(
+        '[GoogleAuthService] OAuth2 response status: ${response.statusCode}');
+
     if (response.statusCode == 200 || response.statusCode == 201) {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       final accessToken = data['access_token'] as String;
       final refreshToken = data['refresh_token'] as String;
 
+      debugPrint('[GoogleAuthService] Tokens received, saving...');
       await AuthService.saveTokens(accessToken, refreshToken);
 
       final claims = AuthService.decodeJwtPayload(accessToken);
@@ -82,11 +88,25 @@ class GoogleAuthService {
       final nombreCompleto = claims['nombre_completo']?.toString() ?? '';
       final rol = claims['rol']?.toString() ?? '';
 
+      debugPrint(
+          '[GoogleAuthService] JWT claims — codigo: "$codigo", nombre: "$nombreCompleto", rol: "$rol"');
+
       String correo = '';
-      try {
-        final profile = await AuthService.getUserProfile(codigo, accessToken);
-        correo = profile.correo;
-      } catch (_) {
+      if (codigo.isNotEmpty) {
+        try {
+          debugPrint(
+              '[GoogleAuthService] Fetching user profile for codigo: $codigo');
+          final profile = await AuthService.getUserProfile(codigo, accessToken);
+          correo = profile.correo;
+          debugPrint('[GoogleAuthService] Profile fetched, correo: $correo');
+        } catch (e) {
+          debugPrint(
+              '[GoogleAuthService] Profile fetch failed, using fallbackEmail. Error: $e');
+          correo = fallbackEmail;
+        }
+      } else {
+        debugPrint(
+            '[GoogleAuthService] Empty codigo from JWT, using fallbackEmail: $fallbackEmail');
         correo = fallbackEmail;
       }
 
@@ -97,6 +117,7 @@ class GoogleAuthService {
         rol: rol,
       );
       await AuthService.saveUserData(user);
+      debugPrint('[GoogleAuthService] User saved: ${user.toString()}');
 
       return user;
     } else {
@@ -104,6 +125,7 @@ class GoogleAuthService {
       final message = body?['message']?.toString() ??
           body?['error']?.toString() ??
           'Error al iniciar sesion con Google (${response.statusCode}).';
+      debugPrint('[GoogleAuthService] OAuth2 error: $message');
       throw Exception(message);
     }
   }
