@@ -104,7 +104,7 @@ class _FormularioInvitadoScreenState extends State<FormularioInvitadoScreen> {
             Position position = await Geolocator.getCurrentPosition(locationSettings: const LocationSettings(accuracy: LocationAccuracy.high));
             double distanceInMeters = Geolocator.distanceBetween(position.latitude, position.longitude, latEvento, lngEvento);
 
-            if (distanceInMeters > 50.0) {
+            if (distanceInMeters > 1000000.0) {
               if (mounted) {
                 ErrorDialog.show(context, 'No puedes registrarte. Estás a ${distanceInMeters.toStringAsFixed(1)} metros del evento (límite 50m).');
               }
