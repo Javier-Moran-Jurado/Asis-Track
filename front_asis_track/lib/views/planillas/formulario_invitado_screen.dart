@@ -235,7 +235,7 @@ class _FormularioInvitadoScreenState extends State<FormularioInvitadoScreen> {
           validator: (v) {
             if (campo.obligatorio && (v == null || v.trim().isEmpty)) return 'Esta pregunta es obligatoria';
             if (tipoEfectivo == 'email' && v != null && v.trim().isNotEmpty) {
-              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}\$').hasMatch(v.trim())) return 'Correo inválido';
+              if (!RegExp(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$").hasMatch(v.trim())) return 'Correo inválido';
             }
             return null;
           },
@@ -261,7 +261,7 @@ class _FormularioInvitadoScreenState extends State<FormularioInvitadoScreen> {
           onTap: () async {
             final date = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(1900), lastDate: DateTime(2100));
             if (date != null) {
-              _controllers[campo.id!]!.text = "\${date.day.toString().padLeft(2, '0')}/\${date.month.toString().padLeft(2, '0')}/\${date.year}";
+              _controllers[campo.id!]!.text = "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}";
             }
           },
           validator: (v) => campo.obligatorio && (v == null || v.isEmpty) ? 'Esta pregunta es obligatoria' : null,
