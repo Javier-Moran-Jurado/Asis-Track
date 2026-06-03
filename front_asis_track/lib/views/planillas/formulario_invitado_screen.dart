@@ -112,7 +112,7 @@ class _FormularioInvitadoScreenState extends State<FormularioInvitadoScreen> {
               return;
             }
           } catch (e) {
-            if (mounted) ErrorDialog.show(context, "Error verificando ubicación: \${e.toString().replaceFirst('Exception: ', '')}");
+            if (mounted) ErrorDialog.show(context, "Error verificando ubicación: ${e.toString().replaceFirst('Exception: ', '')}");
             setState(() => _guardando = false);
             return;
           }
@@ -123,7 +123,7 @@ class _FormularioInvitadoScreenState extends State<FormularioInvitadoScreen> {
     // Check required signatures
     for (final c in _campos) {
       if (c.tipoCampo.tipo == 'signature_file' && c.obligatorio && _signatureBytes[c.id!] == null) {
-        ErrorDialog.show(context, 'Falta la firma en el campo "\${c.nombreCampo}".');
+        ErrorDialog.show(context, 'Falta la firma en el campo "${c.nombreCampo}".');
         return;
       }
     }
@@ -261,7 +261,7 @@ class _FormularioInvitadoScreenState extends State<FormularioInvitadoScreen> {
           onTap: () async {
             final date = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(1900), lastDate: DateTime(2100));
             if (date != null) {
-              _controllers[campo.id!]!.text = "\${date.day.toString().padLeft(2, '0')}/\${date.month.toString().padLeft(2, '0')}/\${date.year}";
+              _controllers[campo.id!]!.text = "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}";
             }
           },
           validator: (v) => campo.obligatorio && (v == null || v.isEmpty) ? 'Esta pregunta es obligatoria' : null,
@@ -362,7 +362,7 @@ class _FormularioInvitadoScreenState extends State<FormularioInvitadoScreen> {
                   const SizedBox(height: 24),
                   const Text('Se ha registrado tu respuesta', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
                   const SizedBox(height: 16),
-                  Text('Tus datos han sido enviados correctamente a la planilla "\${_planilla!.nombreEvento}".', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade600)),
+                  Text('Tus datos han sido enviados correctamente a la planilla "${_planilla!.nombreEvento}".', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade600)),
                   const SizedBox(height: 32),
                   TextButton(
                     onPressed: () => context.go('/'),
@@ -402,7 +402,7 @@ class _FormularioInvitadoScreenState extends State<FormularioInvitadoScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(_planilla!.nombreEvento ?? 'Planilla \${_planilla!.id}', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppTheme.gray900)),
+                          Text(_planilla!.nombreEvento ?? 'Planilla ${_planilla!.id}', style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppTheme.gray900)),
                           const SizedBox(height: 16),
                           const Divider(),
                           const SizedBox(height: 8),
